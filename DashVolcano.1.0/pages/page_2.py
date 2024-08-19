@@ -7,8 +7,9 @@
 # 2) update_oxyde: creates the Harker diagrams
 #
 # Author: F. Oggier
-# Last update: Sep 1 2022
+# Last update: 23 Sep 2023 
 # ************************************************************************************* #
+
 
 import dash
 from dash import dcc
@@ -35,7 +36,7 @@ from Georoc_functions import *
 
 # *************************#
 #
-# creates a layout
+# create a layout
 #
 # *************************#
 
@@ -52,24 +53,23 @@ layout = html.Div([
                 # paragraph
                 html.P(
                     children=["Extracts data per volcano. "
-                              "The chemical composition is coming from ",
-                              html.A("Georoc", href="https://georoc.eu/georoc/new-start.asp", target="_blank"),
-                              ", names may be aggregated "
-                              "as indicated. The eruption dates can be filtered if available. "
-                              "Different symbols correspond to different materials: WR=whole rock, "
-                              " GL=volcano glass, INC=inclusion and MIN=mineral. "
-                              " Click on each of the legend symbols to isolate some materials from the others. "
-                              "The corresponding Harker Diagram is shown. "
-                              "The VEI (volcanic explosity index) data is then extracted from ",
-                              html.A("GVP", href="https://volcano.si.edu/", target="_blank"),
-                              " with major rocks and eruption dates, if any. "
-                              "If a mapping of dates is found between the two, it is indicated.  "],
+                             "The chemical composition is coming from ",
+                             html.A("Georoc", href="https://georoc.eu/georoc/new-start.asp", target="_blank"),
+                             ", names may be aggregated "
+                             "as indicated. The eruption dates can be filtered if available. "
+                             "Different symbols correspond to different materials: WR=whole rock, "
+                             " GL=volcano glass, INC=inclusion and MIN=mineral. "
+                             "The corresponding Harker Diagram is shown. "
+                             "The VEI (volcanic explosity index) data is then extracted from ",
+                             html.A("GVP", href="https://volcano.si.edu/", target="_blank"), 
+                             " with eruption dates. "
+                             "If a mapping of dates is found between the two, it is indicated.  "],
                     className="description",
                 ),
             ], align='center', className='intro'),
             html.Br(),
             # *************************************************#
-            # menus
+            # 2 menus
             # **************************************************#
             dbc.Row([
                 # 1st column
@@ -92,6 +92,7 @@ layout = html.Div([
                         clearable=False,
                     ),
                     #
+                   
                     
                 ], width=3),
                 # empty column to create alignment
@@ -138,6 +139,10 @@ layout = html.Div([
                         dcc.Graph(id="chem-chart-georoc"),
                     ),
                     #
+                    html.Div(id='tas-title', style={'whiteSpace': 'pre-line'}),
+                    # dcc.Store stores the legends that are active
+                    dcc.Store(id="store"),
+                    #
                     html.Div(
                         dcc.Graph(id='oxyde-chart', style={'height': '1000px'}),
                     ),
@@ -151,6 +156,10 @@ layout = html.Div([
                     html.Div(
                         dcc.Graph(id="chem-chart-georoc2"),
                     ),
+                    #
+                    html.Div(id='tas-title2', style={'whiteSpace': 'pre-line'}),
+                    # dcc.Store stores the legends that are active
+                    dcc.Store(id="store2"),
                     #
                     html.Div(
                         dcc.Graph(id='oxyde-chart2', style={'height': '1000px'}),
@@ -173,10 +182,8 @@ layout = html.Div([
 # ************************************#
 # part 1
 @app.callback(
-    [
-        dash.dependencies.Output("erup-filter", "options"),
-        dash.dependencies.Output("erup-filter", "value"),
-    ],
+    dash.dependencies.Output("erup-filter", "options"),
+    dash.dependencies.Output("erup-filter", "value"),
     # from drop down
     dash.dependencies.Input("region-filter", "value"),
 )
@@ -186,14 +193,12 @@ def set_date_options(volcano_name):
     Args:
         volcano_name: name of a chosen volcano
 
-    Returns:
-        Updates eruption dates choice based on volcano name
+    Returns:  Updates eruption dates choice based on volcano name
 
     """
     opts = update_onedropdown(volcano_name)
 
     return opts, 'all'
-
 
 # part 2
 @app.callback(
@@ -208,8 +213,7 @@ def set_date_options2(volcano_name2):
     Args:
         volcano_name2: name of a chosen volcano
 
-    Returns:
-        Updates eruption dates choice based on volcano name
+    Returns:  Updates eruption dates choice based on volcano name
 
     """
     opts2 = update_onedropdown(volcano_name2)
@@ -229,14 +233,13 @@ def set_date_options2(volcano_name2):
     [
         dash.dependencies.Output("chem-chart-georoc", "figure"),
         dash.dependencies.Output("vei-chart", "figure"),
-        dash.dependencies.Output('oxyde-chart', 'figure')
+        dash.dependencies.Output('oxyde-chart','figure'),
     ],
     [
         # from drop down
         dash.dependencies.Input("region-filter", "value"),
         # from date drop down
         dash.dependencies.Input("erup-filter", "value"),
-
     ],
 )
 def update_charts_rock_vei(volcano_name, date):
@@ -246,38 +249,71 @@ def update_charts_rock_vei(volcano_name, date):
         volcano_name: name of volcano
         date: eruptions dates, possibly all
 
-    Returns:
-        Updates plots based on user's inputs, for first volcano
+    Returns: Updates plots based on user's inputs, for first volcano
 
     """
-
+    
     # first figure
-    fig = go.Figure()
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, row_width=[0.85, 0.2], vertical_spacing=0.05,)
     fig, tmp = update_chemchart(volcano_name, fig, date)
-    figa = update_oxyde(tmp)
-
+    fig = add_alkaline_line(fig)
+    
+    figa = go.Figure()
+    figa = update_oxyde(figa,tmp)
+    figa = add_alkaline_series(figa)
     # second figure
     fig2 = go.Figure()
-    fig2, fndmatch = update_veichart(volcano_name, fig2, date)
+    fig2, fndmatch = update_veichart(volcano_name, fig2, date) 	
 
     return fig, fig2, figa
+    
+
+@app.callback(
+    [
+    dash.dependencies.Output("store", "data"),
+    dash.dependencies.Output("tas-title", "children")
+    ],
+    [
+     # from drop down
+     dash.dependencies.Input("region-filter", "value"),
+     # from date drop down
+     dash.dependencies.Input("erup-filter", "value"),
+     #
+     dash.dependencies.Input("chem-chart-georoc", "figure"),
+     #
+     dash.dependencies.Input("store", "data"),
+     #
+     dash.dependencies.Input("chem-chart-georoc", "restyleData"),
+    ]
+)
+def update_store(volcanoname, date, currentfig, store, restyle):
+    #
+    # this function just answers to the callback
+    # it redirects to the actual function which computes the subtitle
+    #
+    recs = [d for d in currentfig['data'] if 'customdata' in d.keys() and len(d['marker']['symbol'])>0] 
+    if len(recs) > 0:
+        store, subtitle = update_subtitle(currentfig, store, restyle, volcanoname, date)
+    else:
+        subtitle = ''
+                 
+    return store, subtitle       
 
 
 # part 2
 @app.callback(
-    # to the dcc.Graph with id='chem-chart-georoc2'
+    # to the dcc.Graph with id='chem-chart-georoc'
     # cautious that using [] means a list, which causes error with a single argument
     [
         dash.dependencies.Output("chem-chart-georoc2", "figure"),
         dash.dependencies.Output("vei-chart2", "figure"),
-        dash.dependencies.Output('oxyde-chart2', 'figure'),
+        dash.dependencies.Output('oxyde-chart2','figure'),
     ],
     [
         # from drop down
         dash.dependencies.Input("region-filter2", "value"),
         # from date drop down
         dash.dependencies.Input("erup-filter2", "value"),
-     
     ]
 )
 def update_charts_rock_vei2(volcano_name2, date2):
@@ -287,28 +323,61 @@ def update_charts_rock_vei2(volcano_name2, date2):
         volcano_name2: name of a volcano
         date2: eruptions dates, possibly all
 
-    Returns:
-        Updates plots based on user's inputs, for second volcano
+    Returns: Updates plots based on user's inputs, for second volcano
 
     """
 
     # first figure
-    fig = go.Figure()
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, row_width=[0.85, 0.2], vertical_spacing=0.05,)
     fig, tmp = update_chemchart(volcano_name2, fig, date2)
-    figa = update_oxyde(tmp)
+    fig = add_alkaline_line(fig)
+    figa = go.Figure()
+    figa = update_oxyde(figa,tmp)
+    figa = add_alkaline_series(figa)
 
     # second figure
     fig2 = go.Figure()
     fig2, fndmatch = update_veichart(volcano_name2, fig2, date2)
 
+
     return fig, fig2, figa
+
+@app.callback(
+    [
+    dash.dependencies.Output("store2", "data"),
+    dash.dependencies.Output("tas-title2", "children")
+    ],
+    [
+     # from drop down
+     dash.dependencies.Input("region-filter2", "value"),
+     # from date drop down
+     dash.dependencies.Input("erup-filter2", "value"),
+     #
+     dash.dependencies.Input("chem-chart-georoc2", "figure"),
+     #
+     dash.dependencies.Input("store2", "data"),
+     #
+     dash.dependencies.Input("chem-chart-georoc2", "restyleData"),
+    ]
+)
+def update_store2(volcanoname2, date2, currentfig2, store2, restyle2):
+    #
+    # this function just answers to the callback
+    # it redirects to the actual function which computes the subtitle
+    #
+    recs = [d for d in currentfig2['data'] if 'customdata' in d.keys() and len(d['marker']['symbol'])>0] 
+    if len(recs) > 0:
+        store2, subtitle2 = update_subtitle(currentfig2, store2, restyle2, volcanoname2, date2)
+    else:
+        subtitle2 = ''
+             
+    return store2, subtitle2    
 
 # ********************************************************#
 #
-# Functions for the 3rd and 4rth callback
+# Functions for the 4rth callback
 # * update_chemchart is in Georoc_functions
 # **********************************************************#
-
 
 def update_veichart(thisvolcano_name, thisfig, thisdate):
     """
@@ -318,8 +387,7 @@ def update_veichart(thisvolcano_name, thisfig, thisdate):
         thisfig: figure to be updated
         thisdate: chosen eruption dates, possibly all
 
-    Returns:
-        Updates the VEI content from GVP
+    Returns: Updates the VEI content from GVP
 
     """
     these_annotations = []
@@ -362,14 +430,14 @@ def update_veichart(thisvolcano_name, thisfig, thisdate):
                 go.Bar(
                     x=dfvei['VEI range'],
                     y=dfvei['VEI'],
-                    marker=dict(color='rgb' + str(thiscolor)),
+                    marker_color='rgb' + str(thiscolor),
                     name=n
                 ),
             )
 
             # matches GVP dates
             if not ((thisdate == 'all') or (thisdate == 'start')):
-                date_gvp = match_gvpdates(thisvolcano_name, thisdate, n)
+                date_gvp = match_GVPdates(thisvolcano_name,thisdate,n)
         
             # dates from GVP
             ddate = datav[3]
@@ -426,7 +494,8 @@ def update_veichart(thisvolcano_name, thisfig, thisdate):
                         x=[i] * cnts[i],
                         y=[yi + .5 for yi in range(cnts[i])],
                         mode='markers',
-                        marker=dict(symbol='circle'),
+                        # marker_color = 'rgb'+str(thiscolor),
+                        marker_symbol='circle',
                         name='eruption date',
                         customdata=dfd['date'],
                         hovertemplate='%{customdata}',
@@ -441,10 +510,10 @@ def update_veichart(thisvolcano_name, thisfig, thisdate):
                     if len(y_a) > 0:
                         y_a = y_a[0] + 1
                         these_annotations += [dict(x=x_a, y=y_a,
-                                                   text='eruption match',
-                                                   showarrow=True,
-                                                   arrowhead=2
-                                                   )]
+                                                  text='eruption match',
+                                                  showarrow=True,
+                                                  arrowhead=2
+                                                  )]
 
             # add rock composition to caption
             datav2 = datav[2]
@@ -454,7 +523,7 @@ def update_veichart(thisvolcano_name, thisfig, thisdate):
                 if i in datav2 and i <= 4:
                     strc += 'Major Rock ' + str(i) + ': ' + str(rock_col[datav2.index(i)]) + ' '
                 if i in datav2 and i >= 5:
-                    if not hasminor:
+                    if hasminor == False:
                         strc += '<br>'
                         hasminor = True
                     strc += ' Minor Rock ' + str(i) + ': ' + str(rock_col[datav2.index(i)])
@@ -489,7 +558,7 @@ def update_veichart(thisvolcano_name, thisfig, thisdate):
     return thisfig, fndyr
 
     
-def update_oxyde(thisdf):
+def update_oxyde(thisfig,thisdf):
     """
 
     Args:
@@ -536,4 +605,5 @@ def update_oxyde(thisdf):
         thisfig.update_yaxes(title_text=title, row=thisrow, col=thiscol)
         thisfig.update_yaxes(range=[0, my], row=thisrow, col=thiscol)
 
+    
     return thisfig
