@@ -506,7 +506,7 @@ def create_map_samples(db, thisvolcano, tect_GVP, tect_GEOROC, country, rocksopt
     dfgeo2 = dfgeo2.rename(columns={'SAMPLE NAME': thisname})
     
     # ROCK or ROCK no inc
-    dfgeo = dfgeo.append(dfgeo2[['Latitude', 'Longitude', 'db', 'Volcano Name', thisname, 'ROCK no inc']+[s+'mean' for s in chemicals_settings[0:1]]])
+    dfgeo = pd.concat([dfgeo, dfgeo2[['Latitude', 'Longitude', 'db', 'Volcano Name', thisname, 'ROCK no inc']+[s+'mean' for s in chemicals_settings[0:1]]]])
     
     # format tectonic setting names
     if len(set(tect_lst) & set([x.strip() for x in new_tectonic_settings])) > 0:
@@ -536,9 +536,9 @@ def create_map_samples(db, thisvolcano, tect_GVP, tect_GEOROC, country, rocksopt
             dfmissing = dfzoom[missing]
         
             if len(dfmissing.index) > 0:
-                dfgeo = dfgeo.append(dfmissing[['Latitude', 'Longitude', 'db', thisname]])
+                dfgeo = pd.concat([dfgeo, dfmissing[['Latitude', 'Longitude', 'db', thisname]]])
         else:
-            dfgeo = dfgeo.append(dfzoom[['Latitude', 'Longitude', 'db', thisname]])
+            dfgeo = pd.concat([dfgeo, dfzoom[['Latitude', 'Longitude', 'db', thisname]]])
             # to get points plotted
             db.append('GEOROC')
         
@@ -562,7 +562,7 @@ def create_map_samples(db, thisvolcano, tect_GVP, tect_GEOROC, country, rocksopt
         
     dfgeo3.loc[:, 'db'] = ['GVP with eruptions']*len(dfgeo3.index)
     dfgeo3 = dfgeo3.rename(columns={'Volcano Name': thisname})
-    dfgeo = dfgeo.append(dfgeo3)
+    dfgeo = pd.concat([dfgeo, dfgeo3])
     
     # GVP without eruption
     condtc = (dfvne['Tectonic Settings'].isin(tect_GVP))
@@ -575,7 +575,7 @@ def create_map_samples(db, thisvolcano, tect_GVP, tect_GEOROC, country, rocksopt
     
     dfgeo4.loc[:, 'db'] = ['GVP no eruption']*len(dfgeo4.index)
     dfgeo4 = dfgeo4.rename(columns={'Volcano Name': thisname})
-    dfgeo = dfgeo.append(dfgeo4)
+    dfgeo = pd.concat([dfgeo, dfgeo4])
     
     # choose which Db(s) to display
     if 'GEOROC' in db:
@@ -603,9 +603,9 @@ def create_map_samples(db, thisvolcano, tect_GVP, tect_GEOROC, country, rocksopt
     
     dfchoice = dfgeo[cond] 
     
-    dfchoice['db'].replace({'Georoc': 'Rock sample (GEOROC)', 'Georoc found': 'Matching rock sample (GEOROC)', 
+    dfchoice['db'] = dfchoice['db'].replace({'Georoc': 'Rock sample (GEOROC)', 'Georoc found': 'Matching rock sample (GEOROC)', 
                             'GVP with eruptions': 'Volcano with known eruption data (GVP)', 
-                            'GVP no eruption': 'Volcano with no known eruption data (GVP)'}, inplace=True)
+                            'GVP no eruption': 'Volcano with no known eruption data (GVP)'})
     
     return dfchoice
     
@@ -1024,7 +1024,7 @@ def update_TAS(fig, volcano_name, db, selectedpts):
             for lt_lg in without_text:
                 lt = lt_lg[1]
                 lg = lt_lg[0]
-                thisgeopdb = thisgeopdb.append(pdb_idx.loc[(lt, lg), ['SIO2(WT%)','NA2O(WT%)','K2O(WT%)','CAO(WT%)','FEOT(WT%)','MGO(WT%)','MATERIAL']])
+                thisgeopdb = pd.concat([thisgeopdb, pdb_idx.loc[(lt, lg), ['SIO2(WT%)','NA2O(WT%)','K2O(WT%)','CAO(WT%)','FEOT(WT%)','MGO(WT%)','MATERIAL']]])
                    
             convert_df = {}
             for c in list(thisgeopdb):
@@ -1046,7 +1046,7 @@ def update_TAS(fig, volcano_name, db, selectedpts):
             # update dff to detect abnormal chemicals
             thisgeopdb = detects_chems(thisgeopdb, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], morechemsh, lbls2)
             # draws the scatter plot
-            thisgeogr = thisgeogr.append(thisgeopdb) 
+            thisgeogr = pd.concat([thisgeogr, thisgeopdb]) 
         
         # plots points from GEOROC
         gr_idx = dfgeogr.set_index(['LATITUDE', 'LONGITUDE'])
@@ -1085,7 +1085,7 @@ def update_TAS(fig, volcano_name, db, selectedpts):
             # adds names to rocks using TAS 
             dfloc = guess_rock(dfloc)
              
-            dfloaded = dfloaded.append(dfloc)
+            dfloaded = pd.concat([dfloaded, dfloc])
           
         if len(dfloaded.index) > 0:
             # add normalization 
@@ -1241,7 +1241,7 @@ def update_charts(country_name, tectonic, tect_GEOROC, thisvolcano):
             dftmp['db'] = ['PetDB']*len(dftmp.index)
             # rename columns
             dftmp.rename(columns={'PetDB Major Rock 1': 'db Major Rock 1', 'PetDB Major Rock 2': 'db Major Rock 2', 'PetDB Major Rock 3': 'db Major Rock 3'}, inplace=True)
-            thisdf = thisdf.append(dftmp)
+            thisdf = pd.concat([thisdf, dftmp])
             
     
     if ' all GEOROC' in tect_GEOROC:
@@ -1256,7 +1256,7 @@ def update_charts(country_name, tectonic, tect_GEOROC, thisvolcano):
             dftmp['db'] = ['GEOROC']*len(dftmp.index)
             # rename columns
             dftmp.rename(columns={'GEOROC Major Rock 1': 'db Major Rock 1', 'GEOROC Major Rock 2': 'db Major Rock 2', 'GEOROC Major Rock 3': 'db Major Rock 3'}, inplace=True)
-            thisdf = thisdf.append(dftmp) 
+            thisdf = pd.concat([thisdf, dftmp]) 
             
     # some volcanoes appear in two tectonic settings, this deduplicates
     thisdf = thisdf.drop_duplicates()
