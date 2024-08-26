@@ -1,0 +1,157 @@
+,Volcano Name,material,PetDB Major Rock 1,PetDB Major Rock 2,PetDB Major Rock 3,PetDB Major Rock 4,PetDB Major Rock 5,cnt 1,cnt 2,cnt 3,cnt 4,cnt 5
+0,Nishinoshima,WR,ANDESITE,No Data,No Data,No Data,No Data,9,0,0,0,0
+1,Nishinoshima,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+2,Nishinoshima,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+3,Home Reef,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+4,Home Reef,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+5,Home Reef,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+6,Ioto,WR,TRACHYTE/TRACHYDACITE,No Data,No Data,No Data,No Data,2,0,0,0,0
+7,Ioto,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+8,Ioto,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+9,Hunga Tonga-Hunga Ha'apai,WR,BASALT,No Data,No Data,No Data,No Data,2,0,0,0,0
+10,Hunga Tonga-Hunga Ha'apai,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+11,Hunga Tonga-Hunga Ha'apai,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+12,Kavachi,WR,BASALT,No Data,No Data,No Data,No Data,6,0,0,0,0
+13,Kavachi,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+14,Kavachi,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+15,Pagan,WR,BASALTIC ANDESITE,BASALT,No Data,No Data,No Data,25,12,0,0,0
+16,Pagan,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+17,Pagan,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+18,Soufriere St. Vincent,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+19,Soufriere St. Vincent,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+20,Soufriere St. Vincent,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+21,Kikai,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+22,Kikai,GL,DACITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+23,Kikai,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+24,Lateiki,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+25,Lateiki,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+26,Lateiki,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+27,Tinakula,WR,BASALT,BASALTIC ANDESITE,No Data,No Data,No Data,5,2,0,0,0
+28,Tinakula,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+29,Tinakula,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+30,Kick 'em Jenny,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+31,Kick 'em Jenny,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+32,Kick 'em Jenny,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+33,Tofua,WR,BASALT,No Data,No Data,No Data,No Data,2,0,0,0,0
+34,Tofua,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+35,Tofua,INC,BASALT,No Data,No Data,No Data,No Data,1,0,0,0,0
+36,Chirpoi,WR,ANDESITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+37,Chirpoi,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+38,Chirpoi,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+39,Havre Seamount,WR,BASALT,No Data,No Data,No Data,No Data,2,0,0,0,0
+40,Havre Seamount,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+41,Havre Seamount,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+42,South Sarigan Seamount,WR,FOIDITE,BASALT,No Data,No Data,No Data,2,2,0,0,0
+43,South Sarigan Seamount,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+44,South Sarigan Seamount,INC,ANDESITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+45,Miyakejima,WR,BASALTIC ANDESITE,BASALT,PICROBASALT,No Data,No Data,2,1,1,0,0
+46,Miyakejima,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+47,Miyakejima,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+48,Anatahan,WR,ANDESITE,BASALT,No Data,No Data,No Data,1,1,0,0,0
+49,Anatahan,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+50,Anatahan,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+51,Gamkonora,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+52,Gamkonora,GL,RHYOLITE,DACITE,No Data,No Data,No Data,5,1,0,0,0
+53,Gamkonora,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+54,Raoul Island,WR,BASALT,No Data,No Data,No Data,No Data,2,0,0,0,0
+55,Raoul Island,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+56,Raoul Island,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+57,Soufriere Hills,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+58,Soufriere Hills,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+59,Soufriere Hills,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+60,Vailulu'u,WR,PICROBASALT,No Data,No Data,No Data,No Data,2,0,0,0,0
+61,Vailulu'u,GL,TEPHRITE/BASANITE,No Data,No Data,No Data,No Data,3,0,0,0,0
+62,Vailulu'u,INC,FOIDITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+63,Izu-Torishima,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+64,Izu-Torishima,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+65,Izu-Torishima,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+66,Ruby,WR,RHYOLITE,BASALTIC ANDESITE,ANDESITE,No Data,No Data,6,1,1,0,0
+67,Ruby,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+68,Ruby,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+69,Izu-Oshima,WR,BASALT,No Data,No Data,No Data,No Data,22,0,0,0,0
+70,Izu-Oshima,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+71,Izu-Oshima,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+72,Curacoa,WR,BASALT,No Data,No Data,No Data,No Data,7,0,0,0,0
+73,Curacoa,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+74,Curacoa,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+75,Ketoi,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+76,Ketoi,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+77,Ketoi,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+78,Zavaritzki Caldera,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+79,Zavaritzki Caldera,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+80,Zavaritzki Caldera,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+81,Fonualei,WR,BASALTIC ANDESITE,ANDESITE,No Data,No Data,No Data,2,2,0,0,0
+82,Fonualei,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+83,Fonualei,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+84,Niuafo'ou,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+85,Niuafo'ou,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+86,Niuafo'ou,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+87,Pelee,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+88,Pelee,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+89,Pelee,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+90,Agrigan,WR,PICROBASALT,ANDESITE,No Data,No Data,No Data,2,1,0,0,0
+91,Agrigan,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+92,Agrigan,INC,BASALT,FOIDITE,No Data,No Data,No Data,1,1,0,0,0
+93,Simbo,WR,ANDESITE,BASALTIC ANDESITE,BASALT,No Data,No Data,11,6,5,0,0
+94,Simbo,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+95,Simbo,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+96,Savaii,WR,FOIDITE,No Data,No Data,No Data,No Data,4,0,0,0,0
+97,Savaii,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+98,Savaii,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+99,Ushishur,WR,ANDESITE,No Data,No Data,No Data,No Data,2,0,0,0,0
+100,Ushishur,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+101,Ushishur,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+102,Guguan,WR,PICROBASALT,BASALT,No Data,No Data,No Data,2,1,0,0,0
+103,Guguan,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+104,Guguan,INC,BASALT,TEPHRITE/BASANITE,BASALTIC ANDESITE,No Data,No Data,3,1,1,0,0
+105,Ofu-Olosega,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+106,Ofu-Olosega,GL,TEPHRITE/BASANITE,No Data,No Data,No Data,No Data,12,0,0,0,0
+107,Ofu-Olosega,INC,FOIDITE,PICROBASALT,No Data,No Data,No Data,2,1,0,0,0
+108,Late,WR,BASALT,No Data,No Data,No Data,No Data,10,0,0,0,0
+109,Late,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+110,Late,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+111,Kao,WR,BASALT,No Data,No Data,No Data,No Data,2,0,0,0,0
+112,Kao,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+113,Kao,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+114,Savo,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+115,Savo,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+116,Savo,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+117,Prevo Peak,WR,ANDESITE,No Data,No Data,No Data,No Data,2,0,0,0,0
+118,Prevo Peak,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+119,Prevo Peak,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+120,Aogashima,WR,BASALTIC ANDESITE,BASALT,No Data,No Data,No Data,1,1,0,0,0
+121,Aogashima,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+122,Aogashima,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+123,Qualibou,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+124,Qualibou,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+125,Qualibou,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+126,Saba,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+127,Saba,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+128,Saba,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+129,Hachijojima,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+130,Hachijojima,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+131,Hachijojima,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+132,"Trois Pitons, Morne",WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+133,"Trois Pitons, Morne",GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+134,"Trois Pitons, Morne",INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+135,Niijima,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+136,Niijima,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+137,Niijima,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+138,Kozushima,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+139,Kozushima,GL,RHYOLITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+140,Kozushima,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+141,Tutuila,WR,BASALT,TRACHYBASALT,TEPHRITE/BASANITE,BASALTIC TRACHYANDESITE,No Data,36,29,13,11,0
+142,Tutuila,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+143,Tutuila,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+144,"Quill, The",WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+145,"Quill, The",GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+146,"Quill, The",INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+147,Liamuiga,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+148,Liamuiga,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+149,Liamuiga,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+150,Ambitle,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+151,Ambitle,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+152,Ambitle,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+153,Macauley,WR,PICROBASALT,No Data,No Data,No Data,No Data,2,0,0,0,0
+154,Macauley,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+155,Macauley,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0

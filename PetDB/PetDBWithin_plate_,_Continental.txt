@@ -1,0 +1,58 @@
+,Volcano Name,material,PetDB Major Rock 1,PetDB Major Rock 2,PetDB Major Rock 3,PetDB Major Rock 4,PetDB Major Rock 5,cnt 1,cnt 2,cnt 3,cnt 4,cnt 5
+0,Fogo,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+1,Fogo,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+2,Fogo,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+3,Cameroon,WR,FOIDITE,TEPHRITE/BASANITE,No Data,No Data,No Data,12,6,0,0,0
+4,Cameroon,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+5,Cameroon,INC,BASALT,PICROBASALT,TEPHRITE/BASANITE,FOIDITE,No Data,3,2,2,1,0
+6,Hainan Volcanic Field,WR,ANDESITE,BASALTIC ANDESITE,No Data,No Data,No Data,34,7,0,0,0
+7,Hainan Volcanic Field,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+8,Hainan Volcanic Field,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+9,Santa Isabel-Africa (western),WR,FOIDITE,TEPHRITE/BASANITE,No Data,No Data,No Data,13,7,0,0,0
+10,Santa Isabel-Africa (western),GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+11,Santa Isabel-Africa (western),INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+12,Wrangell,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+13,Wrangell,GL,RHYOLITE,No Data,No Data,No Data,No Data,2,0,0,0,0
+14,Wrangell,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+15,Changbaishan,WR,BASALTIC TRACHYANDESITE,TRACHYTE/TRACHYDACITE,ANDESITE,TRACHYANDESITE,RHYOLITE,4,2,2,1,1
+16,Changbaishan,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+17,Changbaishan,INC,PICROBASALT,No Data,No Data,No Data,No Data,1,0,0,0,0
+18,Lanzarote,WR,PICROBASALT,FOIDITE,TEPHRITE/BASANITE,No Data,No Data,11,7,5,0,0
+19,Lanzarote,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+20,Lanzarote,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+21,Wudalianchi,WR,TRACHYANDESITE,RHYOLITE,No Data,No Data,No Data,8,7,0,0,0
+22,Wudalianchi,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+23,Wudalianchi,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+24,Auckland Volcanic Field,WR,FOIDITE,No Data,No Data,No Data,No Data,2,0,0,0,0
+25,Auckland Volcanic Field,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+26,Auckland Volcanic Field,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+27,"Sawad, Harra Es-",WR,PICROBASALT,BASALT,No Data,No Data,No Data,6,4,0,0,0
+28,"Sawad, Harra Es-",GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+29,"Sawad, Harra Es-",INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+30,Halla,WR,TEPHRITE/BASANITE,BASALT,TRACHYBASALT,No Data,No Data,26,13,8,0,0
+31,Halla,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+32,Halla,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+33,Longgang Group,WR,TRACHYANDESITE,BASALTIC TRACHYANDESITE,ANDESITE,No Data,No Data,6,3,2,0,0
+34,Longgang Group,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+35,Longgang Group,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+36,Jingpohu,WR,PHONO-TEPHRITE,BASALTIC TRACHYANDESITE,TEPHRI-PHONOLITE,No Data,No Data,9,7,3,0,0
+37,Jingpohu,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+38,Jingpohu,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+39,Flores-Azores,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+40,Flores-Azores,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+41,Flores-Azores,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+42,Ghegham Volcanic Ridge,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+43,Ghegham Volcanic Ridge,GL,RHYOLITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+44,Ghegham Volcanic Ridge,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+45,Newer Volcanics Province,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+46,Newer Volcanics Province,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+47,Newer Volcanics Province,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+48,Taryatu-Chulutu,WR,PICROBASALT,BASALT,No Data,No Data,No Data,16,15,0,0,0
+49,Taryatu-Chulutu,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+50,Taryatu-Chulutu,INC,BASALT,No Data,No Data,No Data,No Data,1,0,0,0,0
+51,Calatrava Volcanic Field,WR,FOIDITE,PICROBASALT,No Data,No Data,No Data,10,4,0,0,0
+52,Calatrava Volcanic Field,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+53,Calatrava Volcanic Field,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+54,Infiernillo,WR,BASALT,No Data,No Data,No Data,No Data,2,0,0,0,0
+55,Infiernillo,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+56,Infiernillo,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0

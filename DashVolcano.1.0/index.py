@@ -2,12 +2,13 @@
 #
 # DashVolcano contains several pages. This file creates the multipage layout.
 # It also creates a menu on top of each page to navigate to the other pages.
-# There are 3 pages: they are page-4, page-2 and page-5.
+# There are 4 pages: they are page-2, page-5, page-3 and page-4.
 # Their respective pages are in the folder /pages.
 #
 # Author: F. Oggier
-# Last update: Aug 30 2022
+# Last update: 23 Sept 2023
 # **************************************************************************** #
+
 
 import dash
 from dash import dcc
@@ -16,14 +17,14 @@ from dash.dependencies import Input, Output
 import dash_bootstrap_components as dbc
 
 from app import app
-# content from the separate pages are inside the folder /pages
-from pages import page_2, page_4, page_5
+# content from the separate pages inside the folder pages
+from pages import page_2, page_4, page_5, page_3
 
 
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
     # this creates links on top of all pages,
-    # since it is displayed before the page content.
+    # since it is displayed before the page content
     dbc.Row([
         dbc.Col([
             dcc.Link('Map | ', href='/page-4', className='menu-link'),
@@ -34,6 +35,9 @@ app.layout = html.Div([
         dbc.Col([
             dcc.Link('TAS Diagrams and Chronogram', href='/page-5', className='menu-link'),
             ], width=2),    
+        dbc.Col([
+            dcc.Link('Rock Similarity', href='/page-3', className='menu-link'),
+            ], width=2),     
     ]),
     # this loads the page content
     html.Div(id='page-content', children=[])
@@ -55,5 +59,8 @@ def display_page(pathname):
         return page_2.layout
     elif pathname == '/page-5':
         return page_5.layout    
+    elif pathname == '/page-3':
+        return page_3.layout
     else:
         return page_4.layout
+        
