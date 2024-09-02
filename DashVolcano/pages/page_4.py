@@ -11,33 +11,32 @@
 # Last update: Sep 3 2022
 # ************************************************************************************* #
 
-
+import os
 import dash
-from dash import dcc
-from dash import html
 import dash_bootstrap_components as dbc
 import plotly.graph_objs as go
 import plotly.express as px
-
 import geopandas as gpd
 import json
-from shapely.geometry import Polygon, LineString
-
 import pandas as pd
 import numpy as np
 import ast
 
-# links to the main app
-from app import app
 
-# import variables common to all files
-# this includes loading the dataframes
-from config_variables import *
+from dash import dcc, html, callback, Input, Output
+from shapely.geometry import Polygon
+
+from dataloader.data_loader import df_volcano, df_volcano_no_eruption, dict_Georoc_sl, dict_volcano_file, grnames, lst_countries, dict_Georoc_GVP
+
+from constants.tectonics import ALL_TECTONIC_SETTINGS, NEW_TECTONIC_SETTINGS
+from constants.chemicals import CHEMICALS_SETTINGS, MORE_CHEMS, LBLS, LBLS2
+from constants.rocks import GEOROC_ROCKS
+from constants.paths import GEOROC_DATASET_DIR, GEOROC_AROUND_GVP_FILE, GEOROC_AROUND_PETDB_FILE, TECTONICS_PLATES_DIR
 
 # import functions to process GVP, GEOROC and PetDB data
-from GVP_functions import *
-from Georoc_functions import *
-from PetDB_functions import *
+from functions.gvp import update_tectonicmenu, read_gmt, extract_by_filter, update_rockchart
+from functions.georoc import find_new_tect_setting, createGEOROCaroundGVP, load_georoc, update_subtitle, make_subplots, plot_TAS, guess_rock, detects_chems, fix_pathname, fix_inclusion, with_FEOnorm, plot_chem, GEOROC_majorrocks, update_GEOrockchart
+from functions.petdb import createPetDBaroundGVP, PetDB_majorrocks
 
 # *************************#
 #
@@ -46,18 +45,18 @@ from PetDB_functions import *
 # *************************#
 
 disable = {}
-for ts in all_tectonic_settings:
+for ts in ALL_TECTONIC_SETTINGS:
     disable[ts] = False
 
 tectonic_options = []
-for ts in all_tectonic_settings:
+for ts in ALL_TECTONIC_SETTINGS:
     tectonic_options.append({'label': ts,
                              'disabled': disable[ts],
                              'value': ts})
 # GEOROC tectonic settings
 # new_GEOROC_tectonic_settings = ([' all GEOROC', ' PetDB']+ GEOROC_tectonic_settings)
 # new_GEOROC_tectonic_settings.remove(' Inclusions')
-new_GEOROC_tectonic_settings = [' all GEOROC', ' PetDB'] + new_tectonic_settings
+new_GEOROC_tectonic_settings = [' all GEOROC', ' PetDB'] + NEW_TECTONIC_SETTINGS
 
                                              
 disable2 = {}
@@ -71,11 +70,11 @@ for ts in new_GEOROC_tectonic_settings:
                                     'value': ts})
                              
 disable3 = {}
-for ch in GEOROC_rocks+chemicals_settings[0:1]:
+for ch in GEOROC_ROCKS+CHEMICALS_SETTINGS[0:1]:
     disable3[ch] = False
 
 rocks_options = []
-for r in GEOROC_rocks+chemicals_settings[0:1]:
+for r in GEOROC_ROCKS+CHEMICALS_SETTINGS[0:1]:
     rocks_options.append({'label': ' '+r,
                           'disabled': disable3[r],
                           'value': r})
@@ -314,10 +313,10 @@ layout = html.Div([
 #
 # ************************************#
 # to change checkboxes based on input, first column
-@app.callback(
-    dash.dependencies.Output("tectonic-filter", "options"),
+@callback(
+    Output("tectonic-filter", "options"),
     # from drop down
-    dash.dependencies.Input("country-filter", "value"),
+    Input("country-filter", "value"),
 )
 
 def set_tectonic_options(country_name):
@@ -328,28 +327,28 @@ def set_tectonic_options(country_name):
     return opts
 
 
-@app.callback(
+@callback(
     # to the dcc.Graph with id='chem-chart-georoc'
     # cautious that using [] means a list, which causes error with a single argument
     [
-        dash.dependencies.Output("map", "figure"),
-        dash.dependencies.Output("map", "selectedData"),
-        dash.dependencies.Output('textarea-example-output', 'children'),
+        Output("map", "figure"),
+        Output("map", "selectedData"),
+        Output('textarea-example-output', 'children'),
     ],
            
     [
         # from drop down
-        dash.dependencies.Input("region-filter", "value"),
+        Input("region-filter", "value"),
         # from check list
-        dash.dependencies.Input("db-filter", "value"),
+        Input("db-filter", "value"),
         # from check list
-        dash.dependencies.Input("tectonic-filter", "value"),
+        Input("tectonic-filter", "value"),
         # from check list
-        dash.dependencies.Input("GEOROC-tectonic-filter", "value"),
+        Input("GEOROC-tectonic-filter", "value"),
         # from drop down
-        dash.dependencies.Input("country-filter", "value"),
+        Input("country-filter", "value"),
         # from check list
-        dash.dependencies.Input("rocksopt", "value"),
+        Input("rocksopt", "value"),
         
     ],
 )
@@ -395,10 +394,10 @@ def update_map(volcano_name, db, tect_GVP, tect_GEOROC, country, rocksopt):
         else:
             n = volcano_name.title()
            
-        volrecord = dfv[dfv['Volcano Name'] == n]
+        volrecord = df_volcano[df_volcano['Volcano Name'] == n]
         # if no eruption data, switches to other record
         if len(volrecord) == 0:
-            volrecord = dfvne[dfvne['Volcano Name'] == n]
+            volrecord = df_volcano_no_eruption[df_volcano_no_eruption['Volcano Name'] == n]
             
         # in case no GVP record is found
         if len(volrecord) > 0:            
@@ -430,7 +429,7 @@ def update_map(volcano_name, db, tect_GVP, tect_GEOROC, country, rocksopt):
                 tectext += t + '\n'
     
     chosenrocks = [c.strip() for c in rocksopt if c is not None] 
-    dffig = create_map_samples(db, volcano_name, tect_GVP, tect_GEOROC, country, rocksopt)
+    dffig = create_map_samples(db, volcano_name, tect_GVP, tect_GEOROC, country)
     fig = displays_map_samples(dffig, thiszoom, thiscenter, db, tect_GVP, tect_GEOROC, country, chosenrocks)
     fig.update_layout(legend=dict(
                 yanchor="top",
@@ -443,17 +442,20 @@ def update_map(volcano_name, db, tect_GVP, tect_GEOROC, country, rocksopt):
     return [fig, None, tectext]
 
 
-def create_map_samples(db, thisvolcano, tect_GVP, tect_GEOROC, country, rocksopt):
+def create_map_samples(db, thisvolcano, tect_GVP, tect_GEOROC, country):
     """
+    Creates a world map showing sample locations based on the chosen database (PetDB, GEOROC, GVP),
+    tectonic settings, country, and optionally a specific volcano.
 
     Args:
-        db: choice of db from the check boxes
-        thisvolcano: contains volcano from dropped down menu if any
-        tect_GVP: to shortlist GVP tectonic settings
-        tect_GEOROC: to shortlist GEOROC tectonic settings
-        country: to shortlist GVP country
-    Returns: returns a world map
+        db (list): List of databases selected (PetDB, GEOROC, GVP).
+        thisvolcano (str): Specific volcano name selected from dropdown.
+        tect_GVP (list): List of GVP tectonic settings.
+        tect_GEOROC (list): List of GEOROC tectonic settings.
+        country (str): Selected country for filtering volcanoes.
 
+    Returns:
+        pd.DataFrame: Dataframe containing coordinates and metadata for plotting on the map.
     """
     # name of column
     thisname = 'Name'
@@ -463,10 +465,10 @@ def create_map_samples(db, thisvolcano, tect_GVP, tect_GEOROC, country, rocksopt
     
     # PetDB
     # checks if file exists 
-    if 'PetDBaroundGVP.csv' in os.listdir('../GeorocDataset'):
+    if 'PetDBaroundGVP.csv' in os.listdir(GEOROC_DATASET_DIR):
         if 'PetDB' in tect_lst:
             # file exists, just reads it
-            dfgeo = pd.read_csv('../GeorocDataset/PetDBaroundGVP.csv')   
+            dfgeo = pd.read_csv(GEOROC_AROUND_PETDB_FILE)   
             # from string back to list
             dfgeo['Volcano Name'] = dfgeo['Volcano Name'].apply(lambda x: set(ast.literal_eval(x)))
             dfgeo['Volcano Name'] = dfgeo['Volcano Name'].apply(lambda y: [x.split(';') for x in y])
@@ -485,10 +487,10 @@ def create_map_samples(db, thisvolcano, tect_GVP, tect_GEOROC, country, rocksopt
     
     # loads GEOROC
     # lists files in the folder
-    if 'GEOROCaroundGVP.csv' in os.listdir('../GeorocDataset'):
+    if 'GEOROCaroundGVP.csv' in os.listdir(GEOROC_DATASET_DIR):
         if 'all GEOROC' in tect_lst:
             # file exists, just reads it
-            dfgeo2 = pd.read_csv('../GeorocDataset/GEOROCaroundGVP.csv')   
+            dfgeo2 = pd.read_csv(GEOROC_AROUND_GVP_FILE)   
             dfgeo2['Volcano Name'] = dfgeo2['Volcano Name'].apply(lambda x: list(set(ast.literal_eval(x))))
         else:
             # ROCK or ROCK no inc
@@ -506,10 +508,10 @@ def create_map_samples(db, thisvolcano, tect_GVP, tect_GEOROC, country, rocksopt
     dfgeo2 = dfgeo2.rename(columns={'SAMPLE NAME': thisname})
     
     # ROCK or ROCK no inc
-    dfgeo = pd.concat([dfgeo, dfgeo2[['Latitude', 'Longitude', 'db', 'Volcano Name', thisname, 'ROCK no inc']+[s+'mean' for s in chemicals_settings[0:1]]]])
+    dfgeo = pd.concat([dfgeo, dfgeo2[['Latitude', 'Longitude', 'db', 'Volcano Name', thisname, 'ROCK no inc']+[s+'mean' for s in CHEMICALS_SETTINGS[0:1]]]])
     
     # format tectonic setting names
-    if len(set(tect_lst) & set([x.strip() for x in new_tectonic_settings])) > 0:
+    if len(set(tect_lst) & set([x.strip() for x in NEW_TECTONIC_SETTINGS])) > 0:
         # filter
         tect_lst = [x for x in tect_lst if (x != 'all GEOROC') & (x != 'PetDB')]
         dfgeo = dfgeo[dfgeo['Volcano Name'].map(lambda x: True if len(list(np.intersect1d(x, tect_lst))) > 0 else False)]
@@ -545,33 +547,33 @@ def create_map_samples(db, thisvolcano, tect_GVP, tect_GEOROC, country, rocksopt
     # GVP tectonic setting
     tect_GVP = [x.strip() for x in tect_GVP if ((x != None) and (x != 'start'))]
     if len(tect_GVP) == 0:
-        tect_GVP = [x.strip() for x in all_tectonic_settings]
+        tect_GVP = [x.strip() for x in ALL_TECTONIC_SETTINGS]
         # we may still want to display volcanoes with no tectonic setting known
         tect_GVP.append('Unknown')
     
     # GVP with eruption    
-    condtc = (dfv['Tectonic Settings'].isin(tect_GVP))
+    condtc = (df_volcano['Tectonic Settings'].isin(tect_GVP))
     
     if country == 'all':
-        dfgeo3 = dfv[condtc][['Longitude', 'Latitude', 'Volcano Name']]
+        dfgeo3 = df_volcano[condtc][['Longitude', 'Latitude', 'Volcano Name']]
         
     else:
-        condc = (dfv['Country'] == country)
-        condtc = (dfv['Tectonic Settings'].isin(tect_GVP))
-        dfgeo3 = dfv[(condc)&(condtc)][['Longitude', 'Latitude', 'Volcano Name']]
+        condc = (df_volcano['Country'] == country)
+        condtc = (df_volcano['Tectonic Settings'].isin(tect_GVP))
+        dfgeo3 = df_volcano[(condc)&(condtc)][['Longitude', 'Latitude', 'Volcano Name']]
         
     dfgeo3.loc[:, 'db'] = ['GVP with eruptions']*len(dfgeo3.index)
     dfgeo3 = dfgeo3.rename(columns={'Volcano Name': thisname})
     dfgeo = pd.concat([dfgeo, dfgeo3])
     
     # GVP without eruption
-    condtc = (dfvne['Tectonic Settings'].isin(tect_GVP))
+    condtc = (df_volcano_no_eruption['Tectonic Settings'].isin(tect_GVP))
 
     if country == 'all':
-        dfgeo4 = dfvne[condtc][['Longitude', 'Latitude', 'Volcano Name']]
+        dfgeo4 = df_volcano_no_eruption[condtc][['Longitude', 'Latitude', 'Volcano Name']]
     else:
-        condc = (dfvne['Country'] == country)
-        dfgeo4 = dfvne[(condc)&(condtc)][['Longitude', 'Latitude', 'Volcano Name']]
+        condc = (df_volcano_no_eruption['Country'] == country)
+        dfgeo4 = df_volcano_no_eruption[(condc)&(condtc)][['Longitude', 'Latitude', 'Volcano Name']]
     
     dfgeo4.loc[:, 'db'] = ['GVP no eruption']*len(dfgeo4.index)
     dfgeo4 = dfgeo4.rename(columns={'Volcano Name': thisname})
@@ -628,7 +630,7 @@ def displays_map_samples(thisdf, thiszoom, thiscenter, db, tect_GVP, tect_GEOROC
 
     """    
 
-    if  len(list(set(rocksopt) & set(chemicals_settings))) > 0 and len([c for c in tect_GEOROC if c is not None]) > 0:
+    if  len(list(set(rocksopt) & set(CHEMICALS_SETTINGS))) > 0 and len([c for c in tect_GEOROC if c is not None]) > 0:
         colorcol = 'SIO2(WT%)mean'
         thisdf['SIO2(WT%)mean'] = thisdf['SIO2(WT%)mean'].fillna(0)
         # filters ranges of silica
@@ -645,7 +647,7 @@ def displays_map_samples(thisdf, thiszoom, thiscenter, db, tect_GVP, tect_GEOROC
                                    'Volcano with no known eruption data (GVP)': 'black',
                                    'Matching rock sample (GEOROC)': 'cornflowerblue'}
                        
-    if len(list(set(rocksopt) & set(GEOROC_rocks)))>0 and len([c for c in tect_GEOROC if c is not None])>0:
+    if len(list(set(rocksopt) & set(GEOROC_ROCKS)))>0 and len([c for c in tect_GEOROC if c is not None])>0:
         # reads list format from a list in string format
         # ROCK for all rocks, and ROCK no inc to remove inclusions
         thisdf['ROCK no inc'] = thisdf['ROCK no inc'].apply(lambda y: ast.literal_eval(y) if type(y)==str else [])
@@ -711,7 +713,7 @@ def displays_map_samples(thisdf, thiszoom, thiscenter, db, tect_GVP, tect_GEOROC
         # plots the plates first
         if 'tectonic' in db:
         
-            with open('../tectonicplates-master/GeoJSON/PB2002_plates.json', 'r') as f:
+            with open(TECTONICS_PLATES_DIR, 'r') as f:
                 # this loads the json file  
                 js_tect = json.load(f)
     
@@ -877,30 +879,30 @@ def displays_map_samples(thisdf, thiszoom, thiscenter, db, tect_GVP, tect_GEOROC
 # 2nd callback for updates based on dropdown
 #
 # ********************************************#
-@app.callback(
+@callback(
     [
-    dash.dependencies.Output("store3", "data"),
-    dash.dependencies.Output("tas-title3", "children")
+    Output("store3", "data"),
+    Output("tas-title3", "children")
     ],
     [
      # from drop down
-     dash.dependencies.Input("region-filter", "value"),
+     Input("region-filter", "value"),
      #
-     dash.dependencies.Input("tas", "figure"),
+     Input("tas", "figure"),
      #
-     dash.dependencies.Input("store3", "data"),
+     Input("store3", "data"),
      #
-     dash.dependencies.Input("tas", "restyleData"),
+     Input("tas", "restyleData"),
      # from selection tool
-     dash.dependencies.Input("map", "selectedData"),
+     Input("map", "selectedData"),
      #
-     dash.dependencies.Input("GEOROC-tectonic-filter", "value"),
+     Input("GEOROC-tectonic-filter", "value"),
      #
-     dash.dependencies.Input("country-filter", "value"),
+     Input("country-filter", "value"),
      #
-     dash.dependencies.Input("tectonic-filter", "value"),
+     Input("tectonic-filter", "value"),
      #
-     dash.dependencies.Input("db-filter", "value"),
+     Input("db-filter", "value"),
     ]
 )
 def update_store3(volcanoname, currentfig, store, restyle, selecteddata, tectg, country, tect, db):
@@ -920,25 +922,25 @@ def update_store3(volcanoname, currentfig, store, restyle, selecteddata, tectg, 
     return store, subtitle       
 
 
-@app.callback(
+@callback(
     # to the dcc.Graph with id='chem-chart-georoc'
     # cautious that using [] means a list, which causes error with a single argument
     [
-    dash.dependencies.Output("tas", "figure"),
-    dash.dependencies.Output("afm", "figure"),
-    dash.dependencies.Output('radar','figure'),
+    Output("tas", "figure"),
+    Output("afm", "figure"),
+    Output('radar','figure'),
     ],
     [
         # from drop down
-        dash.dependencies.Input("region-filter", "value"),
+        Input("region-filter", "value"),
         # from date drop down
-        dash.dependencies.Input("db-filter", "value"),
+        Input("db-filter", "value"),
         # from selection tool
-        dash.dependencies.Input("map", "selectedData"),
+        Input("map", "selectedData"),
         # from button
-        dash.dependencies.Input('button-1', 'n_clicks'),
+        Input('button-1', 'n_clicks'),
         # from GEOROC tectonic check boxes
-        dash.dependencies.Input("GEOROC-tectonic-filter", "value"),
+        Input("GEOROC-tectonic-filter", "value"),
     ],
 )
 
@@ -997,9 +999,9 @@ def update_TAS(fig, volcano_name, db, selectedpts):
         selectedpts = selectedpts['points']
         
         # loads PetDB
-        dfgeopdb = pd.read_csv('../GeorocDataset/PetDBaroundGVP.csv')
+        dfgeopdb = pd.read_csv(GEOROC_AROUND_PETDB_FILE)
         # loads GEOROC
-        dfgeogr = pd.read_csv('../GeorocDataset/GEOROCaroundGVP.csv')    
+        dfgeogr = pd.read_csv(GEOROC_AROUND_GVP_FILE)    
         
         dfgeogr['LATITUDE'] = (dfgeogr['LATITUDE MIN']+ dfgeogr['LATITUDE MAX'])/2
         dfgeogr['LONGITUDE'] = (dfgeogr['LONGITUDE MIN'] + dfgeogr['LONGITUDE MAX'])/2
@@ -1044,7 +1046,7 @@ def update_TAS(fig, volcano_name, db, selectedpts):
         
             thisgeopdb = thisgeopdb.dropna(subset=['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], how='all')
             # update dff to detect abnormal chemicals
-            thisgeopdb = detects_chems(thisgeopdb, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], morechemsh, lbls2)
+            thisgeopdb = detects_chems(thisgeopdb, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], morechemsh, LBLS2)
             # draws the scatter plot
             thisgeogr = pd.concat([thisgeogr, thisgeopdb]) 
         
@@ -1075,7 +1077,7 @@ def update_TAS(fig, volcano_name, db, selectedpts):
             # change name to latest file version
             pathcsv = fix_pathname(pathcsv)
             # loads the file
-            dftmp = pd.read_csv("../GeorocDataset/%s" % pathcsv, low_memory=False, encoding='latin1') 
+            dftmp = pd.read_csv(os.path.join(GEOROC_DATASET_DIR, pathcsv), low_memory=False, encoding='latin1') 
             # inclusion file has a different format
             if 'Inclusions_comp' in pathcsv:
                 # updates columns to have the same format as dataframes from other files
@@ -1092,7 +1094,7 @@ def update_TAS(fig, volcano_name, db, selectedpts):
             dfloaded = with_FEOnorm(dfloaded)       
             # makes sure all 3 chemicals are present
             dfloaded = dfloaded.dropna(subset=['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], how='all')
-            dfloaded = detects_chems(dfloaded, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], morechems, lbls)
+            dfloaded = detects_chems(dfloaded, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], MORE_CHEMS, LBLS)
             # adds a db column
             dfloaded['db'] = ['GEOROC']*len(dfloaded.index)
         # merges both PetDb and Georoc
@@ -1104,7 +1106,7 @@ def update_TAS(fig, volcano_name, db, selectedpts):
             dfloaded = load_georoc(volcano_name)
             # makes sure all 3 chemicals are present
             dfloaded = dfloaded.dropna(subset=['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], how='all')
-            dfloaded = detects_chems(dfloaded, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], morechems, lbls)
+            dfloaded = detects_chems(dfloaded, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], MORE_CHEMS, LBLS)
             # adds a db column
             dfloaded['db'] = ['GEOROC']*len(dfloaded.index)
             thisgeogr = pd.concat([thisgeogr, dfloaded]) 
@@ -1112,7 +1114,7 @@ def update_TAS(fig, volcano_name, db, selectedpts):
     if len(thisgeogr.index) > 0:
         
         # draws the scatter plot
-        fig = plot_chem(fig, thisgeogr, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], lbls)
+        fig = plot_chem(fig, thisgeogr, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], LBLS)
         
         # adds subtitles
         # take the first 4 and removes UNNAMED, if present
@@ -1186,22 +1188,22 @@ def download_TASdata(TASdata, button, volcano_name):
     
     
 # for the first figure part 1, only rocks
-@app.callback(
+@callback(
     # to the dcc.Graph with id='rock-chart'
     # cautious that using [] means a list, which causes error with a single argument
     [
-    dash.dependencies.Output('rocks', 'figure'),
-    dash.dependencies.Output('rocksGEO', 'figure'),
+    Output('rocks', 'figure'),
+    Output('rocksGEO', 'figure'),
     ],
     [
         # from country drop down
-        dash.dependencies.Input("country-filter", "value"),
+        Input("country-filter", "value"),
         # from GVP tectonic check boxes
-        dash.dependencies.Input("tectonic-filter", "value"),
+        Input("tectonic-filter", "value"),
         # from GEOROC tectonic check boxes
-        dash.dependencies.Input("GEOROC-tectonic-filter", "value"),
+        Input("GEOROC-tectonic-filter", "value"),
         #
-        dash.dependencies.Input("region-filter", "value"),
+        Input("region-filter", "value"),
     ],
 )
 def update_charts(country_name, tectonic, tect_GEOROC, thisvolcano):
@@ -1277,14 +1279,14 @@ def update_radar(tect_GEOROC, thisvolcano, TASdata):
     # PetDB
     if 'PetDB' in tect_lst:
         # loads
-        dfgeo = pd.read_csv('../GeorocDataset/PetDBaroundGVP.csv')[['ROCK', 'Volcano Name']]  
+        dfgeo = pd.read_csv(GEOROC_AROUND_PETDB_FILE)[['ROCK', 'Volcano Name']]  
         # from string back to list
         dfgeo['Volcano Name'] = dfgeo['Volcano Name'].apply(lambda x: set(ast.literal_eval(x)))
         dfgeo['Volcano Name'] = dfgeo['Volcano Name'].apply(lambda y: [x.split(';') for x in y])
         dfgeo['Volcano Name'] = dfgeo['Volcano Name'].apply(lambda y: list(set([item for sublist in y for item in sublist])))
         dfgeo['Volcano Name'] = dfgeo['Volcano Name'].apply(lambda x: [find_new_tect_setting(y) for y in x if y!='' ] ) 
     elif 'all GEOROC' in tect_lst:
-        dfgeo = pd.read_csv('../GeorocDataset/GEOROCaroundGVP.csv')[['ROCK', 'Volcano Name']]  
+        dfgeo = pd.read_csv(GEOROC_AROUND_GVP_FILE)[['ROCK', 'Volcano Name']]  
         # from string back to list 
         dfgeo['Volcano Name'] = dfgeo['Volcano Name'].apply(lambda x: list(set(ast.literal_eval(x))))
     else:
@@ -1292,7 +1294,7 @@ def update_radar(tect_GEOROC, thisvolcano, TASdata):
         dfgeo = pd.DataFrame({'ROCK':[], 'Volcano Name':[]}) 
     
     # format tectonic setting names
-    if len(set(tect_lst) & set([x.strip() for x in new_tectonic_settings]))>0:  
+    if len(set(tect_lst) & set([x.strip() for x in NEW_TECTONIC_SETTINGS]))>0:  
         # filter
         tect_lst = [x for x in tect_lst if (x!='all GEOROC')&(x!='PetDB')]
         dfgeo = dfgeo[dfgeo['Volcano Name'].map(lambda x: True if len(list(np.intersect1d(x, tect_lst)))>0 else False)]
@@ -1304,7 +1306,7 @@ def update_radar(tect_GEOROC, thisvolcano, TASdata):
     dfgeo['ROCK'] = dfgeo['ROCK'].apply(lambda y: ast.literal_eval(y) if type(y)==str else [])
     #  
     rlist = []
-    for tr in GEOROC_rocks:
+    for tr in GEOROC_ROCKS:
         rcount = dfgeo['ROCK'].apply(lambda y: sum([x[1] if x[0]==tr else 0 for x in y])).sum()
         rlist.append(rcount)
     
@@ -1313,7 +1315,7 @@ def update_radar(tect_GEOROC, thisvolcano, TASdata):
     if sum(rlist) > 0:
         fig.add_trace(go.Scatterpolar(
             r=[r*(100/sum(rlist)) for r in rlist],
-            theta=GEOROC_rocks,
+            theta=GEOROC_ROCKS,
             fill='toself',
             fillcolor='cadetblue',
             line_color='grey',
@@ -1330,7 +1332,7 @@ def update_radar(tect_GEOROC, thisvolcano, TASdata):
     
     rlist = []      
     if len(list(rcount.keys())) > 0:      
-        for tr in GEOROC_rocks:
+        for tr in GEOROC_ROCKS:
             if tr in rcount.keys():
                 rlist.append(rcount[tr])
             else:
@@ -1339,7 +1341,7 @@ def update_radar(tect_GEOROC, thisvolcano, TASdata):
     if sum(rlist) > 0:  
         fig.add_trace(go.Scatterpolar(
             r=[r*(100/sum(rlist)) for r in rlist],
-            theta=GEOROC_rocks,
+            theta=GEOROC_ROCKS,
             fillcolor='indianred',
             line_color='firebrick',
             fill='toself',
@@ -1372,8 +1374,8 @@ def update_afm(volcanoname,TASdata):
             dftmp = TASdata[['FEOT(WT%)','NA2O(WT%)', 'K2O(WT%)','MGO(WT%)','MATERIAL']]
         else: 
             dftmp = load_georoc(volcanoname)[['FEOT(WT%)','NA2O(WT%)', 'K2O(WT%)','MGO(WT%)','MATERIAL']]
-        dftmp['NA2O(WT%)+K2O(WT%)'] = dftmp['NA2O(WT%)']+dftmp['K2O(WT%)']
-        dftmp['MATERIAL'] = dftmp['MATERIAL'].str.split('[').str[0].str.strip()
+        dftmp.loc[:, 'NA2O(WT%)+K2O(WT%)'] = (dftmp['NA2O(WT%)']+dftmp['K2O(WT%)'])
+        dftmp.loc[:, 'MATERIAL'] = dftmp['MATERIAL'].str.split('[').str[0].str.strip()
         fig = px.scatter_ternary(dftmp, a="FEOT(WT%)", b='NA2O(WT%)+K2O(WT%)', c='MGO(WT%)', symbol='MATERIAL', symbol_map = custom_marker_symbols)
     
     fig.add_trace(

@@ -1,13 +1,24 @@
-from config_variables import *
-import plotly.graph_objs as go
-from numpy.linalg import inv
-from GVP_functions import rocks_to_color, find_new_tect_setting
-from plotly.subplots import make_subplots
-import re
-from collections import Counter
-import statistics
-import pickle
 
+import os
+import re
+import statistics
+import plotly.express as px
+import plotly.graph_objs as go
+import pandas as pd
+import numpy as np
+
+from collections import Counter
+from numpy.linalg import inv
+from plotly.subplots import make_subplots
+
+from constants.rocks import GEOROC_ROCKS, GEOROC_ROCK_COL, ROCK_COL
+from constants.chemicals import MORE_CHEMS, LBLS, LBLS2, CHEM_COLS, CHEMICALS_SETTINGS, OXIDES, COLS_ROCK, ISOTOPES
+from constants.tectonics import NEW_TECTONIC_DICT, NEW_TECTONIC_SETTINGS
+from constants.paths import GEOROC_DATASET_DIR, GEOROC_GVP_DIR, GEOROC_AROUND_GVP_FILE
+
+from functions.gvp import rocks_to_color, find_new_tect_setting
+
+from dataloader.data_loader import df_volcano, dict_GVP_Georoc, dict_Georoc_sl, dict_volcano_file, dict_Georoc_ls, df_volcano_no_eruption, grnames, dict_Georoc_GVP, df_eruption
 
 # **********************************************************************************#
 #
@@ -69,7 +80,7 @@ def load_georoc(thisvolcano):
         pathcsv = fix_pathname(pathcsv)
         # print('GEOROC file used:', pathcsv)
         
-        dftmp = pd.read_csv("../GeorocDataset/%s" % pathcsv, low_memory=False, encoding='latin1')
+        dftmp = pd.read_csv(os.path.join(GEOROC_DATASET_DIR, pathcsv), low_memory=False, encoding='latin1')
         
         if 'Inclusions_comp' in pathcsv:
             # updates columns to have the same format as dataframes from other files
@@ -78,7 +89,7 @@ def load_georoc(thisvolcano):
         # add manual samples
         elif 'ManualDataset' in pathcsv:
             # in case some columns are missing
-            for cl in ['LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME']+chemcols + colsrock + ['LOI(WT%)']:
+            for cl in ['LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME']+CHEM_COLS + COLS_ROCK + ['LOI(WT%)']:
                 if not(cl in list(dftmp)):
                     dftmp[cl] = np.nan
             # makes sure captial letters are used
@@ -89,7 +100,7 @@ def load_georoc(thisvolcano):
             
             # keep only volcanic rocks
             dftmp = dftmp[dftmp['ROCK TYPE'] == 'VOL']
-            dftmp = dftmp[['LOCATION']+['LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME'] + chemcols + colsrock + ['LOI(WT%)']]
+            dftmp = dftmp[['LOCATION']+['LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME'] + CHEM_COLS + COLS_ROCK + ['LOI(WT%)']]
           
         # dfloaded = dfloaded.append(dftmp)
         dfloaded = dftmp.copy()
@@ -158,32 +169,42 @@ def load_georoc(thisvolcano):
 
 def fix_pathname(thisarc):
     """
+    Adjusts the file path to include the correct suffix, accounting for any updates to the naming conventions.
 
     Args:
-        thisarc: file name without any suffix
+        thisarc (str): File name without any suffix.
 
-    Returns: file name with the right suffix (which contains the date of the latest download)
-
-    """    
+    Returns:
+        str: File name with the correct suffix (which contains the date of the latest download).
+    """     
     if not('ManualDataset' in thisarc):
         
+        # Extract folder and filename from the given path
         folder, filename = thisarc.split('/')
-        # lists files in the folder
-        tmp = os.listdir('../GeorocDataset/%s' % folder)
+
+        # Use the centralized GEOROC_DATASET_DIR path
+        folder_path = os.path.join(GEOROC_DATASET_DIR, folder)
+        
+        # List files in the specified folder
+        available_files = os.listdir(folder_path)
+
         # now because of the new name, needs to find the file with the right suffix
         # in fact it is worse, since they changed the concatenation of words
         # so first replace hyphen and underscores with spaces, then split with respect to spaces
-        words = filename.replace('-', ' ').replace('_', ' ').split(' ')
+        search_terms = filename.replace('-', ' ').replace('_', ' ').split(' ')
+
         # next find filenames that contain all the words
         # there could be several, it is assumed that the year comes first then the month
         # this should put the most recent file first
-        newname = sorted([x for x in tmp if all(y in x for y in words)])[::-1]
+        matched_files = sorted([x for x in available_files if all(y in x for y in search_terms)])[::-1]
+        
         # if there is no year, it will come first and it shouldn't
-        if len(newname) > 1 and not(newname[0][0].isdigit()):
+        if len(matched_files) > 1 and not matched_files[0][0].isdigit():
+
             # put the file name with no date at the end
-            newname.insert(len(newname), newname.pop(0))
+            matched_files.append(matched_files.pop(0))
        
-        thisarc = folder+'/'+newname[0]
+        thisarc = os.path.join(folder, matched_files[0])
 
     return thisarc
     
@@ -216,14 +237,14 @@ def fix_inclusion(thisdf):
         thisdf[cl] = np.nan
         
     # missing isotopes
-    for cl in isotopes:
+    for cl in ISOTOPES:
         thisdf[cl] = np.nan    
 
     # choice of columns
-    thisdf = thisdf[['LOCATION']+['LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME'] + chemcols + colsrock + ['LOI(WT%)']+isotopes]
+    thisdf = thisdf[['LOCATION']+['LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME'] + CHEM_COLS + COLS_ROCK + ['LOI(WT%)']+ISOTOPES]
             
     # some chemicals have two numbers instead of one, keeping the first one of the pair
-    for ch in chemcols:
+    for ch in CHEM_COLS:
         nofloat = [x for x in list(thisdf[ch].unique()) if (type(x) == str and '\\' in x)]
         newvalues = {}
         for x in nofloat:
@@ -249,7 +270,7 @@ def with_FEOnorm(thisdf):
 
     """    
     # cleans up, oxides include LOI
-    for col in oxides:
+    for col in OXIDES:
         # in case two measurements
         nofloat = [x for x in list(thisdf[col].unique()) if (type(x) == str and '\\' in x)]
         newvalues = {}
@@ -262,7 +283,7 @@ def with_FEOnorm(thisdf):
         thisdf[col] = thisdf[col].replace(newvalues)
     
     #  replaces missing oxides and LOI data with 0
-    thisdf[oxides] = thisdf[oxides].fillna(0).astype(float)
+    thisdf[OXIDES] = thisdf[OXIDES].fillna(0).astype(float)
     # when FEOT(WT%) is available, disregard FE2O3(WT%) and FEO(WT%)
     oxides_nofe = ['SIO2(WT%)', 'TIO2(WT%)', 'AL2O3(WT%)', 'FE2O3(WT%)', 'FEO(WT%)', 'FEOT(WT%)', 'CAO(WT%)', 'MGO(WT%)', 'MNO(WT%)', 'K2O(WT%)', 'NA2O(WT%)', 'P2O5(WT%)']
     # When FEOT(WT%) is not available or empty, then FEOT(WT%) = FE2O3(WT%)/1.111 + FEO(WT%)    
@@ -741,7 +762,7 @@ def plot_chem(thisfig, thisdf, chem1, theselbls):
                                                 color='DarkSlateGrey')),
                           selector=dict(mode='markers'))
                          
-    if theselbls == lbls2:
+    if theselbls == LBLS2:
         title = 'Chemical Rock Composition from PetDB'
     else:
         title = 'Chemical Rock Composition from Georoc'
@@ -772,15 +793,15 @@ def match_GVPdates(volcano_name, date, gvpvname):
     date_gvp = []   
     
     # retrieves dates from georoc
-    dfgeoroc = load_georoc(volcano_name)
+    dfgeoroc = load_georoc(volcano_name, dict_Georoc_sl, dict_volcano_file, dict_Georoc_ls)
     dvv = dfgeoroc[dfgeoroc['LOCATION-4'] == ' ' + volcano_name]
     dmy = dvv[['ERUPTION DAY', 'ERUPTION MONTH', 'ERUPTION YEAR']]
     dmy = dmy.dropna(how='all')
     if len(dmy.index) > 0:
         # dates from GVP
-        gvpdate = df[df['Volcano Name'] == gvpvname].drop(['Start Year', 'End Year'], axis=1)
-        gvpdate['Start Year'] = pd.to_numeric(df['Start Year'])
-        gvpdate['End Year'] = pd.to_numeric(df['End Year'])
+        gvpdate = df_eruption[df_eruption['Volcano Name'] == gvpvname].drop(['Start Year', 'End Year'], axis=1)
+        gvpdate['Start Year'] = pd.to_numeric(df_eruption['Start Year'])
+        gvpdate['End Year'] = pd.to_numeric(df_eruption['End Year'])
         # if NaN for 'End Year', uses 'Start Year'
         gvpdate['End Year'] = gvpdate.apply(
             lambda row: row['Start Year'] if pd.isnull(row['End Year']) else row['End Year'], axis=1)
@@ -882,7 +903,7 @@ def update_chemchart(thisvolcano_name, thisfig, thisdate):
     
     # not sure why I need to load again but anyway
     if not (thisvolcano_name == "start") and not(thisvolcano_name is None):
-        dfgeoroc = load_georoc(thisvolcano_name)
+        dfgeoroc = load_georoc(thisvolcano_name, dict_Georoc_sl, dict_volcano_file, dict_Georoc_ls)
     
     # checks if data is present
     if not (thisvolcano_name is None) and thisvolcano_name.upper() in grnames:
@@ -892,7 +913,7 @@ def update_chemchart(thisvolcano_name, thisfig, thisdate):
             subset=['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], how='all')
           
         # update dff to detect abnormal chemicals
-        dff = detects_chems(dff, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], morechems, lbls)   
+        dff = detects_chems(dff, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], MORE_CHEMS, LBLS)   
         
         # filter dff by dates
         dff = filter_date(thisdate, dff)       
@@ -907,11 +928,11 @@ def update_chemchart(thisvolcano_name, thisfig, thisdate):
     # adds the TAS layout
     thisfig = plot_TAS(thisfig)
     # draws the scatter plot
-    thisfig = plot_chem(thisfig, dff, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], lbls)
+    thisfig = plot_chem(thisfig, dff, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], LBLS)
     
     # take the first 4 and removes UNNAMED, if present
     majorrocks = [x for x in list(dff['ROCK'].value_counts().index[0:5]) if x != 'UNNAMED']
-    # majorrocks_geo = [GEOROC_rock_col[GEOROC_rocks.index(mr)] for mr in majorrocks]
+    # majorrocks_geo = [GEOROC_ROCK_COL[GEOROC_ROCKS.index(mr)] for mr in majorrocks]
     
     # string
     strc = ''
@@ -944,11 +965,11 @@ def update_onedropdown(thisvolcano_name):
     if not (thisvolcano_name is None) and not (thisvolcano_name == "start") and thisvolcano_name.upper() in grnames:
         # extracts by name
         # loads Georoc data based on volcano_name
-        dfgeoroc = load_georoc(thisvolcano_name)
+        dfgeoroc = load_georoc(thisvolcano_name, dict_Georoc_sl, dict_volcano_file, dict_Georoc_ls)
 
         # removes the nan rows for the 3 chemicals of interest
         dff = dfgeoroc.dropna(
-            subset=['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], how='all')[chemcols[1:4]]
+            subset=['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], how='all')[CHEM_COLS[1:4]]
         # removes the rows if no date is available, and then removes the duplicate dates
         dff = dff.dropna(subset=['ERUPTION DAY', 'ERUPTION MONTH', 'ERUPTION YEAR'],
                          how='all').astype('float').drop_duplicates().values
@@ -983,77 +1004,81 @@ def update_onedropdown(thisvolcano_name):
 
 def GEOROC_majorrocks(tect_setting): 
     """
+    Generates a dataframe containing volcano names and their corresponding GEOROC major rocks (1, 2, and 3)
+    for specified tectonic settings.
 
     Args:
-        tect_setting: 
+        tect_setting (list): List of tectonic settings.
 
-    Returns: a dataframe with volcano names and their GEOROC major rocks 1,2 and 3.
-
+    Returns:
+        pd.DataFrame: DataFrame with volcano names and their GEOROC major rocks.
     """
     
     tect_setting = [x for x in tect_setting if x != None and x != ' PetDB']
-    # GEOROC
+    
+    # Determine the tectonic settings to use for GEOROC
     if ' all GEOROC' in tect_setting and len(tect_setting)==1:
         # format tectonic setting names
-        tect_GEOROC = [x.strip().replace(' ', '_').replace('/',',') for x in new_tectonic_settings]
+        tect_GEOROC = [x.strip().replace(' ', '_').replace('/',',') for x in NEW_TECTONIC_SETTINGS]
     else: 
         # new tectonic settings
         tect_GEOROC = [x.strip().replace(' ', '_').replace('/',',') for x in tect_setting if (x !=' all GEOROC') and (x!=' PetDB')]
         
     alldf = pd.DataFrame()
         
-    # check if file exists
+    # Iterate over each tectonic setting
     for ts in tect_GEOROC:
-        # lists files in the folder
-        if ts +'.txt' in os.listdir('../GeorocDataset'):
-            # file exists, just reads it
-            thisdf = pd.read_csv('../GeorocDataset/' + str(ts)+'.txt')
-            
+        # Check if the corresponding file exists in the GEOROC dataset directory
+        if f"{ts}.txt" in os.listdir(GEOROC_DATASET_DIR):
+            # File exists, read it
+            thisdf = pd.read_csv(os.path.join(GEOROC_DATASET_DIR, f"{ts}.txt"))
         else:
             # file needs to be created    
-            tect_cases = new_tectonic_dict[ts.replace('_', ' ').replace(',','/')].split('+')
+            tect_cases = NEW_TECTONIC_DICT[ts.replace('_', ' ').replace(',','/')].split('+')
           
             if len(tect_cases) < 3: 
-                cond = dfv['Tectonic Settings'].isin(tect_cases)
+                cond = df_volcano['Tectonic Settings'].isin(tect_cases)
             elif len(tect_cases) == 3:
-                cond1 = dfv['Tectonic Settings'] == tect_cases[0]
-                cond2 = dfv['Tectonic Settings'] == tect_cases[2].split(';')[0]
-                cond3 = dfv['Subregion'].isin(tect_cases[2].split(';')[1:])
+                cond1 = df_volcano['Tectonic Settings'] == tect_cases[0]
+                cond2 = df_volcano['Tectonic Settings'] == tect_cases[2].split(';')[0]
+                cond3 = df_volcano['Subregion'].isin(tect_cases[2].split(';')[1:])
                 cond = cond1 | ((cond2)&(cond3))
             else:
-                cond1 = (dfv['Tectonic Settings'] == tect_cases[0]) | (dfv['Tectonic Settings'] == tect_cases[1])
-                cond2 = dfv['Tectonic Settings'] == tect_cases[3].split(';')[0]
-                cond3 = dfv['Subregion'].isin(tect_cases[3].split(';')[1:])
+                cond1 = (df_volcano['Tectonic Settings'] == tect_cases[0]) | (df_volcano['Tectonic Settings'] == tect_cases[1])
+                cond2 = df_volcano['Tectonic Settings'] == tect_cases[3].split(';')[0]
+                cond3 = df_volcano['Subregion'].isin(tect_cases[3].split(';')[1:])
                 cond = cond1 | ((cond2)&(cond3))
-            volcanoesbyts = dfv[cond]['Volcano Name'].unique()
-            # make sure there is a matching GEOROC volcano
+            
+            # Filter volcanoes by tectonic settings and ensure a matching GEOROC volcano exists
+            volcanoesbyts = df_volcano[cond]['Volcano Name'].unique()
             volcanoesbyts = [v for v in  volcanoesbyts if v in dict_GVP_Georoc.keys()]
     
             all_majorrocks = []
             
             for thisvolcano in volcanoesbyts:
-                # from GVP to GEOROC
+                # Map GVP volcano name to GEOROC name
                 thisvolcano = dict_GVP_Georoc[thisvolcano]
-                thisdf = load_georoc(thisvolcano)
+                thisdf = load_georoc(thisvolcano, dict_Georoc_sl, dict_volcano_file, dict_Georoc_ls)
                 
                 for mat in ['WR', 'GL', 'INC']:   
                     thisdftmp = thisdf[thisdf['MATERIAL'].str.contains(mat)]
                     
                     totalsamples = len(thisdftmp.index)    
-                    # removes UNNAMED, if present
-                    allrocks = [x for x in list(thisdftmp['ROCK'].value_counts().index[0:]) if x != 'UNNAMED']
+                    # Remove 'UNNAMED' rocks if present
+                    allrocks = [x for x in list(thisdftmp['ROCK'].value_counts().index) if x != 'UNNAMED']
                     # computes percentage
-                    allrocksvalues = [thisdftmp['ROCK'].value_counts()[r] for r in allrocks]
                     allrocksvaluesperc = [round(100*(thisdftmp['ROCK'].value_counts()[r]/totalsamples),1) for r in allrocks]
-                    #
+                    
                     majorrocks = []
                     cnts = []
-                    # >= 10% to qualify as major rock
-                    for r, rv, cnt in zip(allrocks, allrocksvaluesperc, allrocksvalues):
+
+                    # Identify major rocks (>= 10% to qualify)
+                    for r, rv, cnt in zip(allrocks, allrocksvaluesperc):
                         if rv >= 10:
                             majorrocks += [r]
-                            cnts+= [cnt]
-                    # 
+                            cnts.append(thisdftmp['ROCK'].value_counts()[r])
+                    
+                    # Ensure at least 5 rocks are listed
                     if len(majorrocks) >= 5:
                         majorrocks = majorrocks[0:5]
                         cnts = cnts[0:5]
@@ -1064,14 +1089,18 @@ def GEOROC_majorrocks(tect_setting):
                         cnts = cnts[0:5]
 
                     all_majorrocks.append([thisvolcano]+[mat]+majorrocks+cnts)
-                  
+
+            # Create dataframe and replace rock names based on a central dictionary (GEOROC_ROCKS)   
             thisdf = pd.DataFrame(all_majorrocks, columns = ['Volcano Name', 'material', 'GEOROC Major Rock 1', 'GEOROC Major Rock 2', 'GEOROC Major Rock 3', 'GEOROC Major Rock 4', 'GEOROC Major Rock 5', 'cnt 1', 'cnt 2', 'cnt 3', 'cnt 4', 'cnt 5'])
+            
             for col in ['GEOROC Major Rock 1', 'GEOROC Major Rock 2', 'GEOROC Major Rock 3', 'GEOROC Major Rock 4', 'GEOROC Major Rock 5']:
                 newcol = col.split('GEOROC ')[1]
-                thisdf[newcol] = thisdf[col].replace(GEOROC_rocks, GEOROC_rock_col)
+                thisdf[newcol] = thisdf[col].replace(GEOROC_ROCKS, GEOROC_ROCK_COL)
                 
-            thisdf.to_csv( '../GeorocDataset/'+str(ts)+'.txt')
-        alldf = alldf.append(thisdf)     
+            # Save the newly created file to the GEOROC dataset directory
+            thisdf.to_csv(os.path.join(GEOROC_DATASET_DIR, f"{ts}.txt"), index=False)
+
+        alldf = pd.concat([alldf, thisdf])     
 
     return alldf
 
@@ -1082,15 +1111,17 @@ def update_GEOrockchart(thisdf, db):
     Args:
         thisdf: output of GEOROC_majorrocks 
         db: specifies whether GEOROC and/or PetDB is used
-    Returns: sunburst chart with GEOROC major rocks
+
+    Returns: 
+        sunburst chart with GEOROC major rocks
 
     """
     this_discrete_map = {}
-    for r in GEOROC_rocks:
+    for r in GEOROC_ROCKS:
         # from GEOROC to GVP rock name
-        rgvp = GEOROC_rock_col[GEOROC_rocks.index(r)] 
-        z = [0] * len(rock_col)
-        z[rock_col.index(rgvp)] = 1
+        rgvp = GEOROC_ROCK_COL[GEOROC_ROCKS.index(r)] 
+        z = [0] * len(ROCK_COL)
+        z[ROCK_COL.index(rgvp)] = 1
         this_discrete_map[r] = 'rgb' + str(rocks_to_color(z))
     
     if 'PetDB' in db and not('GEOROC' in db):
@@ -1101,7 +1132,7 @@ def update_GEOrockchart(thisdf, db):
         thistitle = '<b>Rock Composition from GEOROC and PetDB</b> <br>'
         dfpdb = thisdf[thisdf['db'] == 'PetDB'] 
         dfgeo = thisdf[thisdf['db'] == 'GEOROC']
-        dfgeo['Volcano Name'] = dfgeo['Volcano Name'].apply(lambda x: dict_Georoc_GVP[x])
+        dfgeo.loc[:, 'Volcano Name'] = dfgeo['Volcano Name'].apply(lambda x: dict_Georoc_GVP[x])
         mr1 = []
         mr2 = []
         mr3 = []
@@ -1181,36 +1212,38 @@ def update_GEOrockchart(thisdf, db):
     
 def createGEOROCaroundGVP():
     """
+    Recreates the file GEOROCaroundGVP.csv and returns its content as a DataFrame.
 
-    Args:
-        none
-
-    Returns: recreates the file GEOROCaroundGVP.csv and returns its content as df
-
+    Returns:
+        pd.DataFrame: DataFrame containing the GEOROC samples matching GVP volcanoes.
     """
-    gvp_names = dfv[['Volcano Name', 'Latitude', 'Longitude']]
-    gvp_names = gvp_names.append(dfvne[['Volcano Name', 'Latitude', 'Longitude']])
-    # removes unnamed
-    gvp_names = gvp_names[gvp_names['Volcano Name'] != 'Unnamed']
 
-    # list all file names, takes the folder names from the Mapping folder to have only folders
+    # Combine volcano names and coordinates from erupted and non-erupted data
+    gvp_names = df_volcano[['Volcano Name', 'Latitude', 'Longitude']]
+    gvp_names = gvp_names.append(df_volcano_no_eruption[['Volcano Name', 'Latitude', 'Longitude']])
+    gvp_names = gvp_names[gvp_names['Volcano Name'] != 'Unnamed'] # removes unnamed
+
+    # List all folders in the GEOROC-GVP mapping directory
+    path_for_arcs = os.listdir(GEOROC_GVP_DIR)
     lst_arcs = []
-    path_for_arcs = os.listdir('../GeorocGVPmapping')
     
+    # Initialize an empty DataFrame to store GEOROC data
     df_GEOROC = pd.DataFrame()
 
     for folder in path_for_arcs:
-        # lists files in each folder, takes names from the Mapping folder in case different copies of the csv exist
-        tmp = os.listdir('../GeorocGVPmapping/%s' % folder)
-        # adds the path to include directory 
-        lst_arcs += ['%s' % folder + '/' + f[:-4] + '.csv' for f in tmp]
+        # List all files in each folder, only consider .csv files, takes names from the Mapping folder in case different copies of the csv exist
+        tmp = os.listdir(os.path.join(GEOROC_GVP_DIR, folder))
+        lst_arcs += [f"{folder}/{f[:-4]}.csv" for f in tmp]
         
     for arc in lst_arcs:
+
         # this finds the latest file
         newarc = fix_pathname(arc)
+
         # reads the file
-        dftmp = pd.read_csv('../GeorocDataset/%s' %newarc, low_memory=False, encoding='latin1')
-        if not('Inclusions_comp' in arc) and not('ManualDataset' in arc):
+        dftmp = pd.read_csv(os.path.join(GEOROC_DATASET_DIR, newarc), low_memory=False, encoding='latin1')
+        
+        if 'Inclusions_comp' not in arc and 'ManualDataset' not in arc:
             # keeps only volcanic rocks
             dfvol = dftmp[dftmp["ROCK TYPE"] == 'VOL']
             dfvol = dfvol.drop('ROCK TYPE', 1)
@@ -1227,7 +1260,7 @@ def createGEOROCaroundGVP():
                     dfvol[cl] = np.nan   
         
         # gathers the GEOROC data of interest (to be displayed on the map, and before that, for computing rocks)   
-        dfvol = dfvol[['LOCATION', 'LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME', 'MATERIAL'] + oxides + ['PB206_PB204', 'PB207_PB204', 'PB208_PB204', 'SR87_SR86', 'ND143_ND144']]
+        dfvol = dfvol[['LOCATION', 'LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME', 'MATERIAL'] + OXIDES + ['PB206_PB204', 'PB207_PB204', 'PB208_PB204', 'SR87_SR86', 'ND143_ND144']]
         dfvol['arc'] = [arc]*len(dfvol.index)
         df_GEOROC = df_GEOROC.append(dfvol)
         
@@ -1244,7 +1277,7 @@ def createGEOROCaroundGVP():
     gvp_lat = gvp_names['Latitude']
     gvp_long = gvp_names['Longitude']
 
-    colgr = ['LOCATION', 'LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME', 'ROCK', 'ROCK no inc', 'arc'] + chemicals_settings[0:1]
+    colgr = ['LOCATION', 'LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME', 'ROCK', 'ROCK no inc', 'arc'] + CHEMICALS_SETTINGS[0:1]
     colgvp = ['Volcano Name', 'Latitude', 'Longitude']
 
     # initializes dataframe to contatin the GEOROC samples matching GVP volcanoes
@@ -1254,32 +1287,40 @@ def createGEOROCaroundGVP():
         lt_cond = (df_GEOROC['LATITUDE MIN'].astype(float)-.5 <= lt) & (df_GEOROC['LATITUDE MAX'].astype(float)+.5 >= lt)
         lg_cond = (df_GEOROC['LONGITUDE MIN'].astype(float)-.5 <= lg) & (df_GEOROC['LONGITUDE MAX'].astype(float)+.5 >= lg)
         dfgeo = df_GEOROC[(lt_cond) & (lg_cond)][colgr]
-        if len(dfgeo.index) > 0:
+
+        if not dfgeo.empty:
             dfgeo['Volcano Name'] = [nm]*len(dfgeo.index)
             dfgeo['Latitude'] = [lt]*len(dfgeo.index)
             dfgeo['Longitude'] = [lg]*len(dfgeo.index)
             match = match.append(dfgeo)
 
+    # Remove duplicate entries
     match = match.drop_duplicates()
+
     # group sample names when same location
     matchgroup = match.groupby(['LOCATION', 'LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'arc']).agg(lambda x: list(x))
     matchgroup = matchgroup.drop(columns=['Latitude', 'Longitude'])
+
     # attaches a new tectonic setting 
-    matchgroup['Volcano Name'] = matchgroup['Volcano Name'].apply(lambda x: list(set([find_new_tect_setting(y) for y in x])))     
+    matchgroup['Volcano Name'] = matchgroup['Volcano Name'].apply(lambda x: list(set([find_new_tect_setting(y, df_volcano, df_volcano_no_eruption) for y in x])))     
+    
     # sometimes the same sample is found in the intersection of several volcanoes
     matchgroup['SAMPLE NAME'] = matchgroup['SAMPLE NAME'].apply(lambda x: list(set([y.split('/')[0].split('[')[0] for y in x])))
+    
     # this shortens and keeps only the first 3 samples 
     matchgroup['SAMPLE NAME'] = matchgroup['SAMPLE NAME'].apply(lambda x: x if len(x) <= 3 else list(set(x[0:3]))+['+'+str(len(x)-3)])
+    
     # this creates a single string out of different sample names attached to one location
     matchgroup['SAMPLE NAME'] = matchgroup['SAMPLE NAME'].apply(lambda x: " ".join(x))
-    # 
     matchgroup['ROCK'] = matchgroup['ROCK'].apply(lambda x: list(Counter(x).items()))
     matchgroup['ROCK no inc'] = matchgroup['ROCK no inc'].apply(lambda x: list(Counter(x).items()))
     
-    for c in chemicals_settings[0:1]:
+    for c in CHEMICALS_SETTINGS[0:1]:
         # matchgroup[c] = matchgroup[c].apply(lambda x: np.histogram(x, bins=np.linspace(30,80,6))[0])
         matchgroup[c+'mean'] = matchgroup[c].apply(lambda x: statistics.mean(x))
-    matchgroup.to_csv('../GeorocDataset/GEOROCaroundGVP.csv')
+    
+    # Save the resulting DataFrame to a CSV file
+    matchgroup.to_csv(GEOROC_AROUND_GVP_FILE, index=False)
     
     return matchgroup
     
@@ -1451,9 +1492,9 @@ def perc_rock():
     for l, n in zip(lstTASall, lstall):
         rcks = [x for x in l[11]]
         rckscnt = Counter(rcks) 
-        rckperc = [0 for x in GEOROC_rocks]
+        rckperc = [0 for x in GEOROC_ROCKS]
         idx = 0
-        for rt in GEOROC_rocks:
+        for rt in GEOROC_ROCKS:
             if rt in rckscnt.keys():
                 rckperc[idx] = rckscnt[rt] 
             idx += 1

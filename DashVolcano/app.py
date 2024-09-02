@@ -1,25 +1,29 @@
-# **************************************************************************** #
+# ************************************************************************************* #
 #
-# DashVolcano contains several pages. This file creates the multipage layout.
-# It also creates a menu on top of each page to navigate to the other pages.
-# There are 4 pages: they are page-2, page-5, page-3 and page-4.
-# Their respective pages are in the folder /pages.
+# This file creates and start the app DashVolcano.
 #
 # Author: F. Oggier
-# Last update: 23 Sept 2023
-# **************************************************************************** #
+# Last update: 23 Sep 2023
+# ************************************************************************************* #
 
 
-import dash
-from dash import dcc
-from dash import html
-from dash.dependencies import Input, Output
-import dash_bootstrap_components as dbc
-
-from app import app
-# content from the separate pages inside the folder pages
+import dash_bootstrap_components as dbc        
+from dash import Dash, dcc, html, callback, Input, Output
 from pages import page_2, page_4, page_5, page_3
+import dataloader.data_loader as data_loader
 
+# ****************************#
+#
+# create a class instance
+#
+# ***************************#
+
+app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
+
+app.title = "Volcano Analytics"
+
+# Ensure that data is loaded before the app layout is set
+data_loader.load_data()  # Load data to initialize global variables
 
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
@@ -27,10 +31,10 @@ app.layout = html.Div([
     # since it is displayed before the page content
     dbc.Row([
         dbc.Col([
-            dcc.Link('Map | ', href='/page-4', className='menu-link'),
+            dcc.Link('Map', href='/page-4', className='menu-link'),
             ], width=2),
         dbc.Col([
-            dcc.Link('TAS and Harker Diagrams |', href='/page-2', className='menu-link'),
+            dcc.Link('TAS and Harker Diagrams', href='/page-2', className='menu-link'),
             ], width=2),
         dbc.Col([
             dcc.Link('TAS Diagrams and Chronogram', href='/page-5', className='menu-link'),
@@ -44,7 +48,7 @@ app.layout = html.Div([
 ])
 
 
-@app.callback(
+@callback(
     Output(
         component_id='page-content',
         component_property='children',
@@ -54,6 +58,7 @@ app.layout = html.Div([
         component_property='pathname',
         )]
 )
+
 def display_page(pathname):
     if pathname == '/page-2':
         return page_2.layout
@@ -63,4 +68,7 @@ def display_page(pathname):
         return page_3.layout
     else:
         return page_4.layout
-        
+
+
+if __name__ == '__main__':
+    app.run_server(debug=True, host='0.0.0.0')
