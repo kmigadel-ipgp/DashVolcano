@@ -129,3 +129,9 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Ini files
+*.ini
+
+# Notebook files
+*.ipynb

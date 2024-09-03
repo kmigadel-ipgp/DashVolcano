@@ -140,6 +140,13 @@ layout = html.Div([
     ),
 ])
 
+def calculate_matrix(data):
+    rows = []
+    for r1 in data:
+        row = [np.square(np.subtract(np.array(r1), np.array(r2))).sum() / 2 for r2 in data]
+        rows.append(row)
+    return np.matrix(rows)
+
 
 # **************************************************************#
 # Call backs
@@ -160,14 +167,6 @@ layout = html.Div([
         Input("Gvp-names-dropdown", "value"),
     ],
 )
-
-
-def calculate_matrix(data):
-    rows = []
-    for r1 in data:
-        row = [np.square(np.subtract(np.array(r1), np.array(r2))).sum() / 2 for r2 in data]
-        rows.append(row)
-    return np.matrix(rows)
 
 def update_charts(features, thresh, volcano_name):
     """

@@ -227,7 +227,7 @@ def update_chronogram(thesevolcanoes, period):
             return go.Figure()
 
         # events
-        dff = dff.merge(fix_events(thisdf, False, df_events), on='Eruption Number', how='left')
+        dff = dff.merge(fix_events(thisdf, False), on='Eruption Number', how='left')
         # plots the timeline
         thisfig = px.timeline(dff, x_start="Start Date", x_end="End Date", y="Volcano Name",
                               color='Color', color_discrete_map=event_discrete_map,
@@ -270,7 +270,7 @@ def update_chronogram(thesevolcanoes, period):
             return go.Figure()
 
         # events
-        earlydff = earlydff.merge(fix_events(earlydf, True, df_events), on='Eruption Number', how='left')
+        earlydff = earlydff.merge(fix_events(earlydf, True), on='Eruption Number', how='left')
 
         thisfig = go.Figure()
         for i in range(len(thesevolcanoes)):

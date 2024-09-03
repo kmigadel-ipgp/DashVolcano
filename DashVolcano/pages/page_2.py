@@ -210,7 +210,7 @@ def set_date_options2(volcano_name2):
     Returns:  Updates eruption dates choice based on volcano name
 
     """
-    opts2 = update_onedropdown(volcano_name2, grnames, dict_Georoc_sl, dict_volcano_file, dict_Georoc_ls)
+    opts2 = update_onedropdown(volcano_name2)
 
     return opts2, 'all'
 
