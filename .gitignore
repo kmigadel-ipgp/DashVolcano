@@ -130,7 +130,7 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-# Ini files
+# Init files
 *.ini
 
 # Notebook files
@@ -138,4 +138,3 @@ dist
 
 # Python cache files
 *.pyc
-__pycache__/

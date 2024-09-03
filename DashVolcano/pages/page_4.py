@@ -23,7 +23,6 @@ import pandas as pd
 import numpy as np
 import ast
 
-
 from dash import dcc, html, callback, Input, Output
 from shapely.geometry import Polygon
 
@@ -349,8 +348,7 @@ def set_tectonic_options(country_name):
         # from drop down
         Input("country-filter", "value"),
         # from check list
-        Input("rocksopt", "value"),
-        
+        Input("rocksopt", "value"), 
     ],
 )
 

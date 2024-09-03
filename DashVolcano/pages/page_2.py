@@ -29,6 +29,8 @@ from functions.georoc import update_onedropdown, update_chemchart, add_alkaline_
 
 from constants.rocks import ALL_ROCKS, ROCK_COL
 
+
+
 # *************************#
 #
 # create a layout
@@ -181,6 +183,7 @@ layout = html.Div([
     Output("erup-filter", "value"),
     # from drop down
     Input("region-filter", "value"),
+
 )
 def set_date_options(volcano_name):
     """

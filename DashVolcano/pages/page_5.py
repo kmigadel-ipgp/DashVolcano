@@ -20,7 +20,6 @@ from plotly.subplots import make_subplots
 import pandas as pd
 import numpy as np
 
-
 # import variables common to all files
 # this includes loading the dataframes
 from dataloader.data_loader import df_eruption, grnames, dict_Georoc_sl, dict_Georoc_GVP
@@ -249,7 +248,6 @@ def set_date_options2(volcano_name2):
         Input("period-button", 'value'),
          #
         Input("GEOROCsample-filter", 'value'),
-        
     ],
 )
 def update_charts_rock_vei(volcano_name, date, period_choice, addGEOROC):

@@ -148,7 +148,6 @@ def calculate_matrix(data):
         rows.append(row)
     return np.matrix(rows)
 
-
 # **************************************************************#
 # Call backs
 # **************************************************************#
@@ -294,6 +293,7 @@ def update_charts(features, thresh, volcano_name):
         dff['Close'] = clsecol
              
         if not dff.empty:
+
             customlabels = {}
             for c in list(dff):
                 customlabels[c] = c.lower()[0:8] +'<br>'+ c.lower()[8:]
