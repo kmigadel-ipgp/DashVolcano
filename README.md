@@ -120,11 +120,11 @@ Once the app is set up, only 2 steps are required. From inside the DashVolcano f
 
 > DashVolcano$ source venv/bin/activate
 
-> DashVolcano$ python run.py
+> DashVolcano$ python app.py
 
 Once the app runs successfully, a message appears in the terminal window, something like
 
-> Dash is running on http://127.0.0.1:8050/
+> Dash is running on http://0.0.0.0:8050/
 
 and some statistics are displayed, e.g., (the actual numbers may vary, depending on the dates at which the data was downloaded):
 
