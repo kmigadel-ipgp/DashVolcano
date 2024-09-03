@@ -1,29 +1,29 @@
 #***********************************************************#
 # WARNING: this page is still under construction
-# last update: July 26 2024
 # Author: F. Oggier
+# Editor: K. Migadel
+# Last update: September 03 2024
 #************************************************************#
 
-import dash
-from dash import dcc
-from dash import html
 import dash_bootstrap_components as dbc
 import plotly.graph_objs as go
 import plotly.express as px
-from plotly.subplots import make_subplots
 import pickle
+import pandas as pd
+import numpy as np
+import os
 
-# links to the main app 
-from app import app
+from dash import dcc, html, callback, Input, Output
 
 # import variables common to all files
 # this includes loading the dataframes
-from config_variables import *
+from dataloader.data_loader import df_eruption, lst_names
 
 # import functions to process GVP and GEOROC data
-from GVP_functions import *
-from Georoc_functions import *
+from functions.gvp import compute_eruptionperiods, update_chronogram
+from functions.georoc import perc_rock
 
+from constants.rocks import GEOROC_ROCKS
 
 # *************************#
 #
@@ -141,26 +141,33 @@ layout = html.Div([
     ),
 ])
 
+def calculate_matrix(data):
+    rows = []
+    for r1 in data:
+        row = [np.square(np.subtract(np.array(r1), np.array(r2))).sum() / 2 for r2 in data]
+        rows.append(row)
+    return np.matrix(rows)
 
 # **************************************************************#
 # Call backs
 # **************************************************************#
-@app.callback(
+@callback(
     # cautious that using [] means a list, which causes error with a single argument
     [
-        dash.dependencies.Output("rock-vei-chart", "figure"),
-        dash.dependencies.Output("rock-vei-chart-thresh", "figure"),
-        dash.dependencies.Output("rock-vei-chart-samples", "figure"),
+        Output("rock-vei-chart", "figure"),
+        Output("rock-vei-chart-thresh", "figure"),
+        Output("rock-vei-chart-samples", "figure"),
     ],
     [
         # from checkbox features
-        dash.dependencies.Input("check-features", "value"),
+        Input("check-features", "value"),
         # from input
-        dash.dependencies.Input("threshold", "value"),
+        Input("threshold", "value"),
         # from Gvp name slider
-        dash.dependencies.Input("Gvp-names-dropdown", "value"),
+        Input("Gvp-names-dropdown", "value"),
     ],
 )
+
 def update_charts(features, thresh, volcano_name):
     """
     """
@@ -172,8 +179,7 @@ def update_charts(features, thresh, volcano_name):
     vperc = perc_rock()
     
     # index of chosen volcano
-    if not(volcano_name is None):
-        idx = list(vperc.keys()).index(volcano_name)  
+    idx = list(vperc.keys()).index(volcano_name) if volcano_name else None 
        
     # total correlation matrix
     C = np.zeros((len(vperc.keys()), len(vperc.keys())))   
@@ -183,30 +189,13 @@ def update_charts(features, thresh, volcano_name):
     
     if 'Rocks' in features:
         # computes percentage of rocks
-        rckb = []
-        nosmples = []
-        for k in vperc.keys():
-            rckb.append([x/sum(vperc[k]) for x in vperc[k]])
-            nosmples.append(sum(vperc[k]))
+        rckb = [[x/sum(vperc[k]) for x in vperc[k]] for k in vperc.keys()]
+        nosmples = [sum(vperc[k]) for k in vperc.keys()]
         # updates dataframe
-        dff = pd.DataFrame(rckb, columns=GEOROC_rocks)    
+        dff = pd.DataFrame(rckb, columns=GEOROC_ROCKS)    
     
         # correlation matrix
-        if not("cr" in os.listdir('.')):
-            rows = []
-
-            for r1 in rckb:
-                row = []
-                for r2 in rckb:
-                    mse = np.square(np.subtract(np.array(r1), np.array(r2))).sum()/2
-                    row.append(mse)
-                rows.append(row)
-            Cr = np.matrix(rows)
-            with open("Cr", "wb") as cr:   
-                pickle.dump(Cr, cr)  
-        else:
-           with open("cr", "rb") as cr:   
-               Cr = pickle.load(cr)   
+        Cr = calculate_matrix(rckb)
         
         # max Cr = 1       
         C = C + Cr
@@ -219,20 +208,19 @@ def update_charts(features, thresh, volcano_name):
         dfd, dfr = compute_eruptionperiods(vperc.keys())
         
         # computes the no of short, long and medium eruptions
-        dfgrp = dfd[['Volcano Name', 'Eruption Number']].groupby('Volcano Name').count().reset_index()
-        dfgrptmp = dfd[['Volcano Name', 'long eruption']].groupby('Volcano Name').sum().reset_index()
-        dfgrp = dfgrp.merge(dfgrptmp, on='Volcano Name', how='left')
-        dfgrptmp = dfd[['Volcano Name', 'medium eruption']].groupby('Volcano Name').sum().reset_index()
-        dfgrp = dfgrp.merge(dfgrptmp, on='Volcano Name', how='left')
-        dfgrptmp = dfd[['Volcano Name', 'short eruption']].groupby('Volcano Name').sum().reset_index()
-        dfgrp = dfgrp.merge(dfgrptmp, on='Volcano Name', how='left')
+        dfgrp = (dfd[['Volcano Name', 'Eruption Number']]
+                    .groupby('Volcano Name')
+                    .count()
+                    .reset_index()
+                    .merge(dfd[['Volcano Name', 'long eruption']].groupby('Volcano Name').sum().reset_index(), on='Volcano Name', how='left')
+                    .merge(dfd[['Volcano Name', 'medium eruption']].groupby('Volcano Name').sum().reset_index(), on='Volcano Name', how='left')
+                    .merge(dfd[['Volcano Name', 'short eruption']].groupby('Volcano Name').sum().reset_index(), on='Volcano Name', how='left'))
        
         # gathers frequency data
         freq = []
         for k1 in vperc.keys():
             n1 = dfgrp[dfgrp['Volcano Name'] == k1]['Eruption Number']
             if len(n1.index) > 0:
-                n1 = float(n1.iloc[0])
                 # eruptions
                 d1 = dfgrp[dfgrp['Volcano Name'] == k1].values[0]
                 # repose
@@ -245,29 +233,15 @@ def update_charts(features, thresh, volcano_name):
                 freq.append([x/(2*d1[1]) for x in d1[2:]]+[drll, drlm, drls])    
             else:
                 freq.append([0,0,0,0,0,0])
+
         dffreq = pd.DataFrame(freq, columns = ['long eruption', 'medium eruption', 'short eruption', 'long repose', 'medium repose', 'short repose']).round(3)
-        dictfreq = dffreq.T.to_dict('list')
     
         # update dataframe
-        for i in ['long eruption', 'medium eruption', 'short eruption', 'long repose', 'medium repose', 'short repose']:
-            dff[i] = dffreq[i]
+        dff = pd.concat([dff, dffreq], axis=1)
+
         
         # correlation matrix
-        if not("cf" in os.listdir('.')):
-            rows = []
-
-            for r1 in freq:
-                row = []
-                for r2 in freq:
-                    mse = np.square(np.subtract(np.array(r1), np.array(r2))).sum()/2
-                    row.append(mse)
-                rows.append(row)
-            Cf = np.matrix(rows)
-            with open("Cf", "wb") as cf:   
-                pickle.dump(Cf, cf)  
-        else:
-           with open("cf", "rb") as cf:   
-               Cf = pickle.load(cf)   
+        Cf = calculate_matrix(freq)
         
         # max 0.46       
         C = C + Cf
@@ -275,49 +249,26 @@ def update_charts(features, thresh, volcano_name):
         
     if 'VEI' in features:
         # computes VEI frequency
-        dftmp = df[['Volcano Name', 'VEI']]
-        dftmp = dftmp.groupby('Volcano Name')['VEI'].apply(list).reset_index(name='VEI')
+        dftmp = df_eruption.groupby('Volcano Name')['VEI'].apply(list).reset_index(name='VEI')
         dictVEI = dftmp.set_index('Volcano Name').T.to_dict('list')
         
         # gather vei data
         veis = []
        
         for k1 in vperc.keys():
-            row = []
             r1 = dictVEI[k1][0]
             r1 = [int(i) for i in r1 if type(i)==str]
-            r1c = []
-            if len(r1) == 0:
-                for i in range(8):
-                    r1c.append(0) 
-            else: 
-                for i in range(8):
-                    r1c.append(len([r for r in r1 if r==i])/len(r1))
+            r1c = [r1.count(i) / len(r1) if len(r1) != 0 else 0 for i in range(8)]
             veis.append(r1c)           
         
         # updates dataframe
         dfvei = pd.DataFrame(veis, columns = [str(i) for i in range(8)]) 
     
         # update dataframe
-        for i in [str(i) for i in range(8)]:
-            dff[i] = dfvei[i]
-                    
+        dff = pd.concat([dff, dfvei], axis=1)
+        
         # correlation matrix
-        if not("cv" in os.listdir('.')):
-            rows = []
-
-            for r1 in veis:
-                row = []
-                for r2 in veis:
-                    mse = np.square(np.subtract(np.array(r1), np.array(r2))).sum()/2
-                    row.append(mse)
-                rows.append(row)
-            Cv = np.matrix(rows)
-            with open("Cv", "wb") as cv:   
-                pickle.dump(Cv, cv)  
-        else:
-           with open("cv", "rb") as cv:   
-               Cv = pickle.load(cv)   
+        Cv = calculate_matrix(veis)
         
         # max Cv = 1 
         C = C + Cv/2
@@ -341,7 +292,8 @@ def update_charts(features, thresh, volcano_name):
         clsecol = [0 if not(x in clse) else 1 for x in range(len(vperc.keys()))]  
         dff['Close'] = clsecol
              
-        if len(dff.index) > 0:
+        if not dff.empty:
+
             customlabels = {}
             for c in list(dff):
                 customlabels[c] = c.lower()[0:8] +'<br>'+ c.lower()[8:]
@@ -357,7 +309,7 @@ def update_charts(features, thresh, volcano_name):
                         dfc = pd.DataFrame( {'samples': [nosmples[i] for i in clse],
                                  'dist': [lv[i] for i in clse], 
                                  'name': [list(vperc.keys())[i] for i in clse],
-                                 'erup': [dictfreq[i] for i in clse], 
+                                 'erup': [dffreq.iloc[i].tolist() for i in clse], 
                                  'VEI': [dictVEI[list(vperc.keys())[i]] for i in clse],})
                         hoverdata['erup'] = True
                     else:
@@ -370,7 +322,7 @@ def update_charts(features, thresh, volcano_name):
                     if 'Eruption Frequency' in features:
                         dfc = pd.DataFrame( {'samples': [nosmples[i] for i in clse],
                                  'dist': [lv[i] for i in clse], 
-                                 'erup': [dictfreq[i] for i in clse], 
+                                 'erup': [dffreq.iloc[i].tolist() for i in clse], 
                                  'name': [list(vperc.keys())[i] for i in clse]})
                         hoverdata['erup'] = True
                     else:
@@ -400,7 +352,7 @@ def update_charts(features, thresh, volcano_name):
                     if 'Eruption Frequency' in features:
                         dfc = pd.DataFrame( { 'VEI': [dictVEI[list(vperc.keys())[i]] for i in clse],
                                  'dist': [lv[i] for i in clse], 
-                                 'erup': [dictfreq[i] for i in clse], 
+                                 'erup': [dffreq.iloc[i].tolist() for i in clse], 
                                  'name': [list(vperc.keys())[i] for i in clse]})
                         hoverdata = ['dist', 'name', 'VEI', 'erup']    
                     else: 
@@ -412,7 +364,7 @@ def update_charts(features, thresh, volcano_name):
                     if 'Eruption Frequency' in features:
                         dfc = pd.DataFrame( {
                                  'dist': [lv[i] for i in clse], 
-                                 'erup': [dictfreq[i] for i in clse], 
+                                 'erup': [dffreq.iloc[i].tolist() for i in clse], 
                                  'name': [list(vperc.keys())[i] for i in clse]})
                         hoverdata = ['dist', 'name', 'erup']            
                     else:             
@@ -438,25 +390,23 @@ def update_charts(features, thresh, volcano_name):
             fig2.update_layout(legend_title="Volcano", xaxis_title="", yaxis_title="",)  
             fig2.update_xaxes(tickangle=45)                       
        
-    # fig.update_layout(title='<b>Similarities</b> <br>', )
     fig1.update_layout(title='<b>Threshold</b> <br>', )
     fig1.update_xaxes(tickangle=45) 
-    # fig2.update_layout(title='<b>Samples</b> <br>', )
     
 
     return fig, fig1, fig2
 
 
-@app.callback(
+@callback(
     # cautious that using [] means a list, which causes error with a single argument
-    dash.dependencies.Output("chrono", "figure"),
+    Output("chrono", "figure"),
     [
         # from Gvp name slider
-        dash.dependencies.Input("Gvp-names-dropdown", "value"),
+        Input("Gvp-names-dropdown", "value"),
         # from rock-vei-chart
-        dash.dependencies.Input("rock-vei-chart-thresh", "hoverData"),
+        Input("rock-vei-chart-thresh", "hoverData"),
         # from radio button periods
-        dash.dependencies.Input("period-button", 'value')
+        Input("period-button", 'value')
     ],
 )
 def update_chronogram_chart(volcano_name, hoverdata, period_choice):

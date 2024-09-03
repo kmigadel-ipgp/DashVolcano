@@ -7,31 +7,28 @@
 # 2) update_oxyde: creates the Harker diagrams
 #
 # Author: F. Oggier
-# Last update: 23 Sep 2023 
+# Editor: K. Migadel
+# Last update: September 03 2024
 # ************************************************************************************* #
 
 
-import dash
-from dash import dcc
-from dash import html
+from dash import dcc, html, callback, Input, Output
 import dash_bootstrap_components as dbc
 import plotly.graph_objs as go
-import plotly.express as px
 from plotly.subplots import make_subplots
 
 import pandas as pd
-import numpy as np
-
-# links to the main app
-from app import app
 
 # import variables common to all files
 # this includes loading the dataframes
-from config_variables import *
+from dataloader.data_loader import grnames, dict_Georoc_sl, dict_volcano_file, dict_Georoc_ls, dict_Georoc_GVP, lst_names, df_eruption, df_volcano
 
 # import functions to process GVP and GEOROC data
-from GVP_functions import *
-from Georoc_functions import *
+from functions.gvp import retrieve_vinfo
+from functions.georoc import update_onedropdown, update_chemchart, add_alkaline_line, add_alkaline_series, update_subtitle, rocks_to_color, match_GVPdates 
+
+from constants.rocks import ALL_ROCKS, ROCK_COL
+
 
 
 # *************************#
@@ -181,11 +178,12 @@ layout = html.Div([
 #
 # ************************************#
 # part 1
-@app.callback(
-    dash.dependencies.Output("erup-filter", "options"),
-    dash.dependencies.Output("erup-filter", "value"),
+@callback(
+    Output("erup-filter", "options"),
+    Output("erup-filter", "value"),
     # from drop down
-    dash.dependencies.Input("region-filter", "value"),
+    Input("region-filter", "value"),
+
 )
 def set_date_options(volcano_name):
     """
@@ -201,11 +199,11 @@ def set_date_options(volcano_name):
     return opts, 'all'
 
 # part 2
-@app.callback(
-    dash.dependencies.Output("erup-filter2", "options"),
-    dash.dependencies.Output("erup-filter2", "value"),
+@callback(
+    Output("erup-filter2", "options"),
+    Output("erup-filter2", "value"),
     # from drop down
-    dash.dependencies.Input("region-filter2", "value"),
+    Input("region-filter2", "value"),
 )
 def set_date_options2(volcano_name2):
     """
@@ -227,19 +225,19 @@ def set_date_options2(volcano_name2):
 #
 # ************************************#
 # part 1
-@app.callback(
+@callback(
     # to the dcc.Graph with id='chem-chart-georoc'
     # cautious that using [] means a list, which causes error with a single argument
     [
-        dash.dependencies.Output("chem-chart-georoc", "figure"),
-        dash.dependencies.Output("vei-chart", "figure"),
-        dash.dependencies.Output('oxyde-chart','figure'),
+        Output("chem-chart-georoc", "figure"),
+        Output("vei-chart", "figure"),
+        Output('oxyde-chart','figure'),
     ],
     [
         # from drop down
-        dash.dependencies.Input("region-filter", "value"),
+        Input("region-filter", "value"),
         # from date drop down
-        dash.dependencies.Input("erup-filter", "value"),
+        Input("erup-filter", "value"),
     ],
 )
 def update_charts_rock_vei(volcano_name, date):
@@ -268,22 +266,22 @@ def update_charts_rock_vei(volcano_name, date):
     return fig, fig2, figa
     
 
-@app.callback(
+@callback(
     [
-    dash.dependencies.Output("store", "data"),
-    dash.dependencies.Output("tas-title", "children")
+    Output("store", "data"),
+    Output("tas-title", "children")
     ],
     [
      # from drop down
-     dash.dependencies.Input("region-filter", "value"),
+     Input("region-filter", "value"),
      # from date drop down
-     dash.dependencies.Input("erup-filter", "value"),
+     Input("erup-filter", "value"),
      #
-     dash.dependencies.Input("chem-chart-georoc", "figure"),
+     Input("chem-chart-georoc", "figure"),
      #
-     dash.dependencies.Input("store", "data"),
+     Input("store", "data"),
      #
-     dash.dependencies.Input("chem-chart-georoc", "restyleData"),
+     Input("chem-chart-georoc", "restyleData"),
     ]
 )
 def update_store(volcanoname, date, currentfig, store, restyle):
@@ -301,19 +299,19 @@ def update_store(volcanoname, date, currentfig, store, restyle):
 
 
 # part 2
-@app.callback(
+@callback(
     # to the dcc.Graph with id='chem-chart-georoc'
     # cautious that using [] means a list, which causes error with a single argument
     [
-        dash.dependencies.Output("chem-chart-georoc2", "figure"),
-        dash.dependencies.Output("vei-chart2", "figure"),
-        dash.dependencies.Output('oxyde-chart2','figure'),
+        Output("chem-chart-georoc2", "figure"),
+        Output("vei-chart2", "figure"),
+        Output('oxyde-chart2','figure'),
     ],
     [
         # from drop down
-        dash.dependencies.Input("region-filter2", "value"),
+        Input("region-filter2", "value"),
         # from date drop down
-        dash.dependencies.Input("erup-filter2", "value"),
+        Input("erup-filter2", "value"),
     ]
 )
 def update_charts_rock_vei2(volcano_name2, date2):
@@ -342,22 +340,22 @@ def update_charts_rock_vei2(volcano_name2, date2):
 
     return fig, fig2, figa
 
-@app.callback(
+@callback(
     [
-    dash.dependencies.Output("store2", "data"),
-    dash.dependencies.Output("tas-title2", "children")
+    Output("store2", "data"),
+    Output("tas-title2", "children")
     ],
     [
      # from drop down
-     dash.dependencies.Input("region-filter2", "value"),
+     Input("region-filter2", "value"),
      # from date drop down
-     dash.dependencies.Input("erup-filter2", "value"),
+     Input("erup-filter2", "value"),
      #
-     dash.dependencies.Input("chem-chart-georoc2", "figure"),
+     Input("chem-chart-georoc2", "figure"),
      #
-     dash.dependencies.Input("store2", "data"),
+     Input("store2", "data"),
      #
-     dash.dependencies.Input("chem-chart-georoc2", "restyleData"),
+     Input("chem-chart-georoc2", "restyleData"),
     ]
 )
 def update_store2(volcanoname2, date2, currentfig2, store2, restyle2):
@@ -411,7 +409,7 @@ def update_veichart(thisvolcano_name, thisfig, thisdate):
             n = thisvolcano_name.title()
         # looks for the name in the eruption list of GVP
         if n in lst_names:
-            datav = retrieve_vinfo(n, dfv, df, allrocks)
+            datav = retrieve_vinfo(n, df_volcano, df_eruption, ALL_ROCKS)
             c_r, c_g, c_b = rocks_to_color(datav[2])
             thiscolor = (c_r, c_g, c_b)
 
@@ -521,12 +519,12 @@ def update_veichart(thisvolcano_name, thisfig, thisdate):
             hasminor = False
             for i in range(1, 10):
                 if i in datav2 and i <= 4:
-                    strc += 'Major Rock ' + str(i) + ': ' + str(rock_col[datav2.index(i)]) + ' '
+                    strc += 'Major Rock ' + str(i) + ': ' + str(ROCK_COL[datav2.index(i)]) + ' '
                 if i in datav2 and i >= 5:
                     if hasminor == False:
                         strc += '<br>'
                         hasminor = True
-                    strc += ' Minor Rock ' + str(i) + ': ' + str(rock_col[datav2.index(i)])
+                    strc += ' Minor Rock ' + str(i) + ': ' + str(ROCK_COL[datav2.index(i)])
 
             thisfig.update_layout(
                 title=go.layout.Title(

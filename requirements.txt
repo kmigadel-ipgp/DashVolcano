@@ -10,3 +10,4 @@ pandas
 plotly
 werkzeug==2.0.1
 rtree
+uwsgi

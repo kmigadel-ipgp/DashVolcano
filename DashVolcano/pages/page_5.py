@@ -7,32 +7,28 @@
 # 2) add_chems: superimpose chemicals on chronogram
 #
 # Author: F. Oggier
-# Last update: 23 Sep 2023 
+# Editor: K. Migadel
+# Last update: September 03 2024
 # ************************************************************************************* #
 
 
-import dash
-from dash import dcc
-from dash import html
+from dash import dcc, html, callback, Input, Output
 import dash_bootstrap_components as dbc
 import plotly.graph_objs as go
-import plotly.express as px
 from plotly.subplots import make_subplots
 
 import pandas as pd
 import numpy as np
-from datetime import datetime
-
-# links to the main app
-from app import app
 
 # import variables common to all files
 # this includes loading the dataframes
-from config_variables import *
+from dataloader.data_loader import df_eruption, grnames, dict_Georoc_sl, dict_Georoc_GVP
 
 # import functions to process GVP and GEOROC data
-from GVP_functions import *
-from Georoc_functions import *
+from functions.gvp import update_chronogram
+from functions.georoc import update_onedropdown, load_georoc, update_chemchart, plot_TAS, plot_chem, match_GVPdates
+
+from constants.chemicals import LBLS
 
 
 # *************************#
@@ -186,10 +182,10 @@ layout = html.Div([
 #
 # ************************************#
 # part 1
-@app.callback(
-    dash.dependencies.Output("erup-filter3", "options"),
+@callback(
+    Output("erup-filter3", "options"),
     # from drop down
-    dash.dependencies.Input("region-filter", "value"),
+    Input("region-filter", "value"),
 )
 def set_date_options(volcano_name):
     """
@@ -206,10 +202,10 @@ def set_date_options(volcano_name):
     return opts
 
 # part 2
-@app.callback(
-    dash.dependencies.Output("erup-filter4", "options"),
+@callback(
+    Output("erup-filter4", "options"),
     # from drop down
-    dash.dependencies.Input("region-filter", "value"),
+    Input("region-filter", "value"),
 )
 def set_date_options2(volcano_name2):
     """
@@ -235,24 +231,23 @@ def set_date_options2(volcano_name2):
 #
 # ************************************#
 
-@app.callback(
+@callback(
     # to the dcc.Graph with id='chem-chart-georoc3'
     # cautious that using [] means a list, which causes error with a single argument
     [
-        dash.dependencies.Output("chem-chart-georoc3", "figure"),
-        dash.dependencies.Output("vei-chart3", "figure"),
-        dash.dependencies.Output("chem-chart-georoc4", "figure"),
+        Output("chem-chart-georoc3", "figure"),
+        Output("vei-chart3", "figure"),
+        Output("chem-chart-georoc4", "figure"),
     ],
     [
         # from drop down
-        dash.dependencies.Input("region-filter", "value"),
+        Input("region-filter", "value"),
         # from date drop down
-        dash.dependencies.Input("erup-filter3", "value"),
+        Input("erup-filter3", "value"),
         # from radio button periods
-        dash.dependencies.Input("period-button", 'value'),
+        Input("period-button", 'value'),
          #
-        dash.dependencies.Input("GEOROCsample-filter", 'value'),
-        
+        Input("GEOROCsample-filter", 'value'),
     ],
 )
 def update_charts_rock_vei(volcano_name, date, period_choice, addGEOROC):
@@ -330,7 +325,7 @@ def update_joint_chemchart(thisvolcano_name, thisdf, thisfig, thisdate):
                 n = thisvolcano_name.title()
                 
             # loads volcano data    
-            dfmatchv = df[df['Volcano Name'] == n]
+            dfmatchv = df_eruption[df_eruption['Volcano Name'] == n]
             
             # makes sure there is data
             if len(dfmatchv.index) > 0:
@@ -402,7 +397,7 @@ def update_joint_chemchart(thisvolcano_name, thisdf, thisfig, thisdate):
     # adds the TAS layout
     thisfig = plot_TAS(thisfig)
     # draws the scatter plot
-    thisfig = plot_chem(thisfig, dff, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], lbls)
+    thisfig = plot_chem(thisfig, dff, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], LBLS)
     # change title
     thisfig.update_layout(title='<b>Chemical Rock Composition from Georoc (with known eruptions)</b> <br>', )
 
@@ -440,7 +435,7 @@ def add_chems(thisdf,thisfig,thisperiod):
     thisdf['NA2O(WT%)'] = thisdf['NA2O(WT%)'].astype(float).apply(lambda x: round(x, 2)) 
     thisdf['SIO2(WT%)'] = thisdf['SIO2(WT%)'].astype(float).apply(lambda x: round(x, 2))   
               
-    for lbl in lbls:
+    for lbl in LBLS:
        
         # selects rows based on rocks of interest
         dffc = thisdf[thisdf['color'] == lbl]

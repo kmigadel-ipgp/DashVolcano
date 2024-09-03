@@ -1,37 +1,32 @@
 # DashVolcano
 This is a project about volcano data analytics, done in collaboration with the Earth Observatory of Singapore (see also <a href= https://researchdata.ntu.edu.sg/dataverse/dashvolcano> here </a>) and the Institut de Physique du Globe de Paris.
 
-DashVolcano is an app, to be downloaded and ran locally on one's computer.
-It creates a visual interface, to jointly display volcanic data from two major databases:
+DashVolcano is an website, it creates a visual interface, to jointly display volcanic data from two major databases:
 (1) the Geochemistry of Rocks of the Oceans and  Continents (GEOROC, https://georoc.eu/georoc/new-start.asp) of the Digital Geochemistry Infrastructure (DIGIS), and 
 (2) the Volcanoes of the World (VOTW) of the Smithsonian’s Global Volcanism Program (GVP, https://volcano.si.edu/). 
 
 # 1. Set-up and Directory structure
 
-
-To install DashVolcano on your computer, the DashVolcano repository should be downloaded from github to your computer. It contains the folders DashVolcano.1.0, GeorocGVPmapping, GeorocDataset and the files GVP_Eruption_Results.xlsx, GVP_Volcano_List.xlsx. The folder DashVolcano could be placed inside the folder Documents of your computer (we will provide an example for this case), or elsewhere (it can be placed anywhere you want, but some adjustement to the example may be needed). 
+To install DashVolcano on your computer, the DashVolcano repository should be downloaded from github to your computer. It contains the folders DashVolcano, GeorocGVPmapping, GeorocDataset and the files GVP_Eruption_Results.xlsx, GVP_Volcano_List.xlsx. The folder DashVolcano could be placed inside the folder Documents of your computer (we will provide an example for this case), or elsewhere (it can be placed anywhere you want, but some adjustement to the example may be needed). 
 
 The resulting directory structure will thus be: 
 
-DashVolcano, containing the 3 folders (DashVolcano.1.0, GeorocGVPmapping, GeorocDataset) and the 2 excel files (GVP_Eruption_Results.xlsx, GVP_Volcano_List.xlsx).
+DashVolcano, containing the 3 folders (DashVolcano, GeorocGVPmapping, GeorocDataset) and the 2 excel files (GVP_Eruption_Results.xlsx, GVP_Volcano_List.xlsx).
 
 **Example** The folder DashVolcano is placed inside Documents, inside which the 3 folders and the two files are found.
 
 <img src="screenshots/ss1.png" width="500">
 
-DashVolcano is written in python, you thus need python3 installed on your computer (this should be the case for Mac OS and Linux, instructions are provided for Windows 10 below). 
-DashVolcano was tested with: Python 3.7.4 on Ubuntu 20.04.4 LTS, and Python 3.8.3 on Mac OS Monterey version 12.5.1. 
-See below for specific instructions for Mac OS and Linux, and for Windows 10.
+DashVolcano is written in python, you thus need python3 installed on your computer.
+DashVolcano was tested with: Python 3.8.10 on Ubuntu 20.04.4 LTS.
 
-
-## 1.1. Set-up: Mac OS and Linux
-
+## 1.1. Set-up: Linux
 
 It is suggested to set up a python virtual environment, to make sure the dependencies are consistent, and to avoid conflicting with possible other existing python set-ups. To do so, open a terminal window, and using the command line in the terminal window, go into the folder DashVolcano.1.0, using the command cd (change directory), the command works as follows, where pathto depends on where you created DashVolcano:
 
-> $ cd pathto/DashVolcano/DashVolcano.1.0.
+> $ cd pathto/DashVolcano/DashVolcano
 
-**Example** In the previous example, the folder DashVolcano/DashVolcano.1.0 was put inside the folder Documents, to go inside the folder DashVolcano.1.0, the command cd is used to go into Dashvolcano.1.0 through Documents, then DashVolcano:
+**Example** In the previous example, the folder DashVolcano/DashVolcano was put inside the folder Documents, to go inside the folder DashVolcano, the command cd is used to go into Dashvolcano through Documents, then DashVolcano:
 
 <img src="screenshots/ss2.png" width="500">
 
@@ -39,7 +34,7 @@ Create the virtual environment:
 
 > $ python3 -m venv venv
 
-**Example** From within the DashVolcano.1.0 folder, create the virtual environment.
+**Example** From within the DashVolcano folder, create the virtual environment.
 
 <img src="screenshots/ss6.png" width="500">
 
@@ -70,88 +65,20 @@ You can tell whether the environment is activated by checking before your comput
 
 <img src="screenshots/ss7.png" width="500">
 
-
-## 1.2. Set-up: Windows
-
-
-This set-up was tested with Windows 10 and python 3.10.7. 
-**Install Python.** Open a command prompt (next to the windows start icon, search for "command prompt" and click on the command prompt icon). Type python. If python is installed, you will see something like that:
-
-> C:\Users\yourusername>python
-
-> Python 3.10.7
-
-Then you can type quit, all set, python is installed.
-
-> quit()
-
-If python is not installed, you need to install it, e.g. you can download the windows installer from  www.python.org. Once you have downloaded the installer and you open it, you will have options for the installation. It is suggested to tick both boxes ("Install launchers for all users" and "Add Python to PATH") and to go for the customize option "Customize installation". Have all the Optional Features ticked, for the Advanced Options, tick (at least) "Install for all users", "Associates files with Python", "Create shortcuts for installed applications", "Add Python to environment variables". Please **pay attention** to where Python is installed, it should look like
-
-> C:\Program Files\Python310
-
-Once done, open again a command prompt and type python, if the installation is successful, you should see python start.
-
-It is suggested to set up a python virtual environment, to make sure the dependencies are consistent, and to avoid conflicting with possible other existing python set-ups. To do so, first install virtualenv through pip (which should be installed). You can check that pip is installed through the command prompt, by asking which version is present:
-
-> C:\Users\yourusername>pip -V
-
-To install virtualenv through pip, in the command prompt, type pip install virtualenv:
-
-> C:\Users\yourusername>pip install virtualenv
-
-You are likely to see a warning of the kind:
-WARNING: The script virtualenv.exe is installed in 'C:\Users\yourusername\AppData\Roaming\Python\Python310\Scripts' which is not on PATH.
-This is not a problem, however please **pay attention** to the path indicated in this message.
-
-Then using the command prompt, go into the folder DashVolcano.1.0:
-
-> $ cd DashVolcano.1.0.
-
-and create the virtual environment. Note that the first term is the path to the virtualenv.exe script (the same one discussed in the warning above), then the command --python, followed by the path to python (the same one discussed in the installation guide above) followed by venv: 
-
-> C:\Users\yourusername\DashVolcano.1.0.> C:\Users\myusername\AppData\Roaming\Python\Python310\Scripts\virtualenv.exe --python "C:\Program Files\Python310\python.exe" venv
-
-If successful, you will see a new folder named venv inside the folder DashVolcano.1.0.
-
-Once the virtual python environment is created (this is done only once), it needs to be activated (this is needed every time the command prompt is opened again):
-
-> C:\Users\yourusername\DashVolcano.1.0.>.venv\Scripts\activate
-
-You can tell whether the environment is activated by checking before your user name:
-
-> (venv) C:\Users\yourusername\DashVolcano.1.0.>
-
 # 2. Installing Packages
 
 The purpose of creating a virtual environment is so that you can then install specific versions of python packages, which will not interfere with other setups your computer may be using. Also python packages are often updated, and new versions may cause compatibility issues. Specific tested versions of packages will be installed in your virtual environment, to ensure the app runs smoothly.
 
-To install a python package, still being within the DashVolcanon.1.0. folder with the virtual environment activated, the synthax is as follows for Mac OS, Linux and Windows:
+To install all the python packages, from the DashVolcano folder with the virtual environment activated, execute the following command:
 
-> python -m pip install packagename==version
-
-For example, to install the package dash, version 2.0.0, type the following command:
-
-> python -m pip install dash==2.0.0
-
-The following packages are likely to be needed, please install each of them using the same synthax (replace packagename==version by items in the list below, one by one):
-* dash==2.0.0
-* dash-bootstrap-components==1.0.0
-* dash-core-components==2.0.0
-* dash-html-components==2.0.0
-* flask ==2.0.0
-* geopandas==0.10.2
-* numpy==1.20.3
-* openpyxl==3.0.7
-* pandas==1.3.5
-* plotly==5.3.1
-* werkzeug==2.0.1
+> python -m pip install -r requirements.txt
 
 If a message appears to suggest to upgrade pip, whether you do it or not should not impact the app.
 
 For the app to run, you need to have the GEOROC data ready, as explained next.
 
 
-# 3. Downloading the GVP and GEOROC datasets
+# 3. Downloading the GVP and GEOROC datasets (need to be updated)
 
 
 The GVP data is provided into two excel files: GVP_Eruption_Results.xlsx (Global Volcanism Program, 2013. Volcanoes of the World, v. 4.9.3 (1 Feb 2021 ). Venzke, E (ed.). Smithsonian Institution. Downloaded 19 October 2021), GVP_Volcano_List.xlsx (Global Volcanism Program, 2013. Volcanoes of the World, v. 4.10.3 (15 Oct 2021 ). Venzke, E (ed.). Smithsonian Institution. Downloaded 24 February 2021). There is no need to download further data. 
@@ -180,29 +107,20 @@ The folder GeorocDataset contains 13 folders (12 folders from GEOROC + 1 folder 
 # 4. Running the app for the first time
 
 So you have downloaded the DashVolcano repository, set-up your python virtual environment and you have the GEOROC dataset. 
-To start the app for the first time, make sure you are within the DashVolcano.1.0. folder, that your virtual environment is activated, and type the following command (you need the data to be available before you use the app for the first time, as explained above in, Downloading the GVP and GEOROC datasets):
+To start the app for the first time, make sure you are within the DashVolcano folder, that your virtual environment is activated, and type the following command (you need the data to be available before you use the app for the first time, as explained above in, Downloading the GVP and GEOROC datasets):
 
-> python run.py
-
-This is the same command for Mac OS, Linux and Windows.
+> python app.py
 
 All required packages that are needed to run the app should have been installed. If a package is still missing, the app will not start, instead an error message will appear, giving the name of the package that is not found. In this case, just install the missing package, whose name is given in the error message, using the same synthax as explained in "Installing Packages" above.
 
 
 # 5. Running the app
 
-Once the app is set up, only 2 steps are required. From inside the DashVolcano.1.0 folder, activate the virtual environment and launch the app.
-For Mac OS and Linux:
+Once the app is set up, only 2 steps are required. From inside the DashVolcano folder, activate the virtual environment and launch the app.
 
-> DashVolcano.1.0$ source venv/bin/activate
+> DashVolcano$ source venv/bin/activate
 
-> DashVolcano.1.0$ python run.py
-
-For Windows 10:
-
-> C:\Users\yourusername\DashVolcano.1.0.>.venv\Scripts\activate
-
-> C:\Users\yourusername\DashVolcano.1.0.> python run.py
+> DashVolcano$ python run.py
 
 Once the app runs successfully, a message appears in the terminal window, something like
 
@@ -225,7 +143,7 @@ To lauch the app, write the url
 
 in the browser of your choice (e.g, chrome, firefox, safari).
 
-# 5. Updating the data
+# 5. Updating the data (need to be updated)
 
 
 The instructions below are for more advanced usages of the app. You can run the app without looking at what comes next.
