@@ -7,7 +7,8 @@
 # 2) update_oxyde: creates the Harker diagrams
 #
 # Author: F. Oggier
-# Last update: 23 Sep 2023 
+# Editor: K. Migadel
+# Last update: September 03 2024
 # ************************************************************************************* #
 
 

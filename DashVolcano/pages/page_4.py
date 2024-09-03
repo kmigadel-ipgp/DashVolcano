@@ -8,7 +8,8 @@
 # 4) download_tasdata: downloads the TAS data
 #
 # Author: F. Oggier
-# Last update: Sep 3 2022
+# Editor: K. Migadel
+# Last update: September 03 2024
 # ************************************************************************************* #
 
 import os

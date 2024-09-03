@@ -1,19 +1,3 @@
-import os
-import pandas as pd
-import numpy as np
-import plotly.express as px
-import plotly.graph_objs as go
-
-from itertools import groupby
-from datetime import datetime
-
-from constants.rocks import ROCK_COL, ROCK_SORTED
-from constants.tectonics import ALL_TECTONIC_SETTINGS, GEOROC_TECTONIC_SETTINGS
-from constants.paths import TECTONIC_ZONES_DIR
-
-
-from dataloader.data_loader import df_volcano, df_events, df_eruption, dict_GVP_Georoc, dict_volcano_file, df_volcano_no_eruption
-
 # **********************************************************************************#
 #
 # This contains functions to manipulate GVP data.
@@ -34,10 +18,25 @@ from dataloader.data_loader import df_volcano, df_events, df_eruption, dict_GVP_
 # * compute_eruptionperiods:
 #
 # Author: F. Oggier
-# Last update: Feb 2 2024
+# Editor: K. Migadel
+# Last update: September 03 2024
 # **********************************************************************************#
 
-# **********************************************************************************#
+import os
+import pandas as pd
+import numpy as np
+import plotly.express as px
+import plotly.graph_objs as go
+
+from itertools import groupby
+from datetime import datetime
+
+from constants.rocks import ROCK_COL, ROCK_SORTED
+from constants.tectonics import ALL_TECTONIC_SETTINGS, GEOROC_TECTONIC_SETTINGS
+from constants.paths import TECTONIC_ZONES_DIR
+
+
+from dataloader.data_loader import df_volcano, df_events, df_eruption, dict_GVP_Georoc, dict_volcano_file, df_volcano_no_eruption
 
 
 def retrieve_vinfo(name, df1, df2, whichrocks):
@@ -674,7 +673,8 @@ def read_gmt(file_name):
                 Y.append([float(x[1]) for x in rs[0:id1]])
                 X.append([float(x[0]) for x in rs[id2:]])
                 Y.append([float(x[1]) for x in rs[id2:]])
-                names.append([on, on])
+                names.append(on)
+                names.append(on)
             elif len(fnd2) > 0:
                 Xtemp = [float(x[0]) for x in rs]
                 id1 = Xtemp.index(179.9024)
@@ -683,8 +683,8 @@ def read_gmt(file_name):
                 Y.append([float(x[1]) for x in rs[0:id1]])
                 X.append([float(x[0]) for x in rs[id2:]])
                 Y.append([float(x[1]) for x in rs[id2:]])
-                names.append([on, on])
-
+                names.append(on)
+                names.append(on)
             else:
                 X.append([float(x[0]) for x in rs])
                 Y.append([float(x[1]) for x in rs])
@@ -703,7 +703,9 @@ def read_gmt(file_name):
                 Y.append([float(x[1]) for x in rs[0:id1]])
                 X.append([float(x[0]) for x in rs[id2:]])
                 Y.append([float(x[1]) for x in rs[id2:]])
-                names.append([on, on])
+                names.append(on)
+                names.append(on)
+            
             else:
                 X.append([float(x[0]) for x in rs])
                 Y.append([float(x[1]) for x in rs])

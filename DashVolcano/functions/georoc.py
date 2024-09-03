@@ -1,25 +1,3 @@
-
-import os
-import re
-import statistics
-import plotly.express as px
-import plotly.graph_objs as go
-import pandas as pd
-import numpy as np
-
-from collections import Counter
-from numpy.linalg import inv
-from plotly.subplots import make_subplots
-
-from constants.rocks import GEOROC_ROCKS, GEOROC_ROCK_COL, ROCK_COL
-from constants.chemicals import MORE_CHEMS, LBLS, LBLS2, CHEM_COLS, CHEMICALS_SETTINGS, OXIDES, COLS_ROCK, ISOTOPES
-from constants.tectonics import NEW_TECTONIC_DICT, NEW_TECTONIC_SETTINGS
-from constants.paths import GEOROC_DATASET_DIR, GEOROC_GVP_DIR, GEOROC_AROUND_GVP_FILE
-
-from functions.gvp import rocks_to_color, find_new_tect_setting
-
-from dataloader.data_loader import df_volcano, dict_GVP_Georoc, dict_Georoc_sl, dict_volcano_file, dict_Georoc_ls, df_volcano_no_eruption, grnames, dict_Georoc_GVP, df_eruption
-
 # **********************************************************************************#
 #
 # This contains functions to manipulate Georoc data.
@@ -51,8 +29,31 @@ from dataloader.data_loader import df_volcano, dict_GVP_Georoc, dict_Georoc_sl, 
 #
 #
 # Author: F. Oggier
-# Last update: 25 April 2024
+# Editor: K. Migadel
+# Last update: September 03 2024
 # **********************************************************************************#
+
+
+import os
+import re
+import statistics
+import plotly.express as px
+import plotly.graph_objs as go
+import pandas as pd
+import numpy as np
+
+from collections import Counter
+from numpy.linalg import inv
+from plotly.subplots import make_subplots
+
+from constants.rocks import GEOROC_ROCKS, GEOROC_ROCK_COL, ROCK_COL
+from constants.chemicals import MORE_CHEMS, LBLS, LBLS2, CHEM_COLS, CHEMICALS_SETTINGS, OXIDES, COLS_ROCK, ISOTOPES
+from constants.tectonics import NEW_TECTONIC_DICT, NEW_TECTONIC_SETTINGS
+from constants.paths import GEOROC_DATASET_DIR, GEOROC_GVP_DIR, GEOROC_AROUND_GVP_FILE
+
+from functions.gvp import rocks_to_color, find_new_tect_setting
+
+from dataloader.data_loader import df_volcano, dict_GVP_Georoc, dict_Georoc_sl, dict_volcano_file, dict_Georoc_ls, df_volcano_no_eruption, grnames, dict_Georoc_GVP, df_eruption
 
 def load_georoc(thisvolcano):
     """
@@ -793,7 +794,7 @@ def match_GVPdates(volcano_name, date, gvpvname):
     date_gvp = []   
     
     # retrieves dates from georoc
-    dfgeoroc = load_georoc(volcano_name, dict_Georoc_sl, dict_volcano_file, dict_Georoc_ls)
+    dfgeoroc = load_georoc(volcano_name)
     dvv = dfgeoroc[dfgeoroc['LOCATION-4'] == ' ' + volcano_name]
     dmy = dvv[['ERUPTION DAY', 'ERUPTION MONTH', 'ERUPTION YEAR']]
     dmy = dmy.dropna(how='all')
@@ -903,7 +904,7 @@ def update_chemchart(thisvolcano_name, thisfig, thisdate):
     
     # not sure why I need to load again but anyway
     if not (thisvolcano_name == "start") and not(thisvolcano_name is None):
-        dfgeoroc = load_georoc(thisvolcano_name, dict_Georoc_sl, dict_volcano_file, dict_Georoc_ls)
+        dfgeoroc = load_georoc(thisvolcano_name)
     
     # checks if data is present
     if not (thisvolcano_name is None) and thisvolcano_name.upper() in grnames:
@@ -965,7 +966,7 @@ def update_onedropdown(thisvolcano_name):
     if not (thisvolcano_name is None) and not (thisvolcano_name == "start") and thisvolcano_name.upper() in grnames:
         # extracts by name
         # loads Georoc data based on volcano_name
-        dfgeoroc = load_georoc(thisvolcano_name, dict_Georoc_sl, dict_volcano_file, dict_Georoc_ls)
+        dfgeoroc = load_georoc(thisvolcano_name)
 
         # removes the nan rows for the 3 chemicals of interest
         dff = dfgeoroc.dropna(
@@ -1058,7 +1059,7 @@ def GEOROC_majorrocks(tect_setting):
             for thisvolcano in volcanoesbyts:
                 # Map GVP volcano name to GEOROC name
                 thisvolcano = dict_GVP_Georoc[thisvolcano]
-                thisdf = load_georoc(thisvolcano, dict_Georoc_sl, dict_volcano_file, dict_Georoc_ls)
+                thisdf = load_georoc(thisvolcano)
                 
                 for mat in ['WR', 'GL', 'INC']:   
                     thisdftmp = thisdf[thisdf['MATERIAL'].str.contains(mat)]

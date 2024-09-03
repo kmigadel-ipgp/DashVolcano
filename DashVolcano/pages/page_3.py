@@ -1,7 +1,8 @@
 #***********************************************************#
 # WARNING: this page is still under construction
-# last update: July 26 2024
 # Author: F. Oggier
+# Editor: K. Migadel
+# Last update: September 03 2024
 #************************************************************#
 
 import dash_bootstrap_components as dbc
@@ -196,24 +197,9 @@ def update_charts(features, thresh, volcano_name):
     
         # correlation matrix
         Cr = calculate_matrix(rckb)
-        # if not("cr" in os.listdir('.')):
-        #     rows = []
-
-        #     for r1 in rckb:
-        #         row = []
-        #         for r2 in rckb:
-        #             mse = np.square(np.subtract(np.array(r1), np.array(r2))).sum()/2
-        #             row.append(mse)
-        #         rows.append(row)
-        #     Cr = np.matrix(rows)
-        #     with open("Cr", "wb") as cr:   
-        #         pickle.dump(Cr, cr)  
-        # else:
-        #    with open("cr", "rb") as cr:   
-        #        Cr = pickle.load(cr)   
         
         # max Cr = 1       
-        C += Cr
+        C = C + Cr
         
     if 'Eruption Frequency' in features:
         # short repose = < 1 year
@@ -223,13 +209,6 @@ def update_charts(features, thresh, volcano_name):
         dfd, dfr = compute_eruptionperiods(vperc.keys())
         
         # computes the no of short, long and medium eruptions
-        # dfgrp = dfd[['Volcano Name', 'Eruption Number']].groupby('Volcano Name').count().reset_index()
-        # dfgrptmp = dfd[['Volcano Name', 'long eruption']].groupby('Volcano Name').sum().reset_index()
-        # dfgrp = dfgrp.merge(dfgrptmp, on='Volcano Name', how='left')
-        # dfgrptmp = dfd[['Volcano Name', 'medium eruption']].groupby('Volcano Name').sum().reset_index()
-        # dfgrp = dfgrp.merge(dfgrptmp, on='Volcano Name', how='left')
-        # dfgrptmp = dfd[['Volcano Name', 'short eruption']].groupby('Volcano Name').sum().reset_index()
-        # dfgrp = dfgrp.merge(dfgrptmp, on='Volcano Name', how='left')
         dfgrp = (dfd[['Volcano Name', 'Eruption Number']]
                     .groupby('Volcano Name')
                     .count()
@@ -257,34 +236,16 @@ def update_charts(features, thresh, volcano_name):
                 freq.append([0,0,0,0,0,0])
 
         dffreq = pd.DataFrame(freq, columns = ['long eruption', 'medium eruption', 'short eruption', 'long repose', 'medium repose', 'short repose']).round(3)
-        # dictfreq = dffreq.T.to_dict('list')
     
         # update dataframe
-        # for i in ['long eruption', 'medium eruption', 'short eruption', 'long repose', 'medium repose', 'short repose']:
-        #     dff[i] = dffreq[i]
         dff = pd.concat([dff, dffreq], axis=1)
 
         
         # correlation matrix
         Cf = calculate_matrix(freq)
-        # if not("cf" in os.listdir('.')):
-        #     rows = []
-
-        #     for r1 in freq:
-        #         row = []
-        #         for r2 in freq:
-        #             mse = np.square(np.subtract(np.array(r1), np.array(r2))).sum()/2
-        #             row.append(mse)
-        #         rows.append(row)
-        #     Cf = np.matrix(rows)
-        #     with open("Cf", "wb") as cf:   
-        #         pickle.dump(Cf, cf)  
-        # else:
-        #    with open("cf", "rb") as cf:   
-        #        Cf = pickle.load(cf)   
         
         # max 0.46       
-        C += Cf
+        C = C + Cf
         
         
     if 'VEI' in features:
@@ -298,13 +259,6 @@ def update_charts(features, thresh, volcano_name):
         for k1 in vperc.keys():
             r1 = dictVEI[k1][0]
             r1 = [int(i) for i in r1 if type(i)==str]
-            # r1c = []
-            # if len(r1) == 0:
-            #     for i in range(8):
-            #         r1c.append(0) 
-            # else: 
-            #     for i in range(8):
-            #         r1c.append(len([r for r in r1 if r==i])/len(r1))
             r1c = [r1.count(i) / len(r1) if len(r1) != 0 else 0 for i in range(8)]
             veis.append(r1c)           
         
@@ -312,35 +266,18 @@ def update_charts(features, thresh, volcano_name):
         dfvei = pd.DataFrame(veis, columns = [str(i) for i in range(8)]) 
     
         # update dataframe
-        # for i in [str(i) for i in range(8)]:
-        #     dff[i] = dfvei[i]
         dff = pd.concat([dff, dfvei], axis=1)
         
         # correlation matrix
         Cv = calculate_matrix(veis)
-        # if not("cv" in os.listdir('.')):
-        #     rows = []
-
-        #     for r1 in veis:
-        #         row = []
-        #         for r2 in veis:
-        #             mse = np.square(np.subtract(np.array(r1), np.array(r2))).sum()/2
-        #             row.append(mse)
-        #         rows.append(row)
-        #     Cv = np.matrix(rows)
-        #     with open("Cv", "wb") as cv:   
-        #         pickle.dump(Cv, cv)  
-        # else:
-        #    with open("cv", "rb") as cv:   
-        #        Cv = pickle.load(cv)   
         
         # max Cv = 1 
-        C += Cv/2
+        C = C + Cv/2
         
     # normalize C
     nofeat = len([x for x in features if not(x is None)] )
     if nofeat > 0:
-        C /= nofeat
+        C = C/nofeat
         
     if not(volcano_name is None) and np.any(C):
         # find similar volcanoes
@@ -453,10 +390,8 @@ def update_charts(features, thresh, volcano_name):
             fig2.update_layout(legend_title="Volcano", xaxis_title="", yaxis_title="",)  
             fig2.update_xaxes(tickangle=45)                       
        
-    # fig.update_layout(title='<b>Similarities</b> <br>', )
     fig1.update_layout(title='<b>Threshold</b> <br>', )
     fig1.update_xaxes(tickangle=45) 
-    # fig2.update_layout(title='<b>Samples</b> <br>', )
     
 
     return fig, fig1, fig2

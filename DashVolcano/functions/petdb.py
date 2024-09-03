@@ -1,3 +1,15 @@
+# **********************************************************************************#
+#
+# This contains functions to manipulate Georoc data.
+# --------------------------------------------------
+# * load_PetDB
+# * createPetDBaroundGVP
+# * PetDB_majorrocks: computes/loads rock data from PetDB
+#
+# Author: F. Oggier
+# Editor: K. Migadel
+# Last update: September 03 2024
+# **********************************************************************************#
 
 import os
 import statistics
@@ -17,18 +29,6 @@ from functions.georoc import with_FEOnorm, guess_rock
 
 from dataloader.data_loader import df_volcano
 from dataloader.data_loader_petdb import load_and_preprocess_PetDB_data
-
-# **********************************************************************************#
-#
-# This contains functions to manipulate Georoc data.
-# --------------------------------------------------
-# * load_PetDB
-# * createPetDBaroundGVP
-# * PetDB_majorrocks: computes/loads rock data from PetDB
-#
-# Author: F. Oggier
-# Last update: 25 April 2024
-# **********************************************************************************#
 
 
 def createPetDBaroundGVP():

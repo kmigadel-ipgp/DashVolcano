@@ -25,7 +25,8 @@
 # a meaningful name.
 #
 # Author: F. Oggier
-# Last update: April 25 2024
+# Editor: K. Migadel
+# Last update: September 03 2024
 # ************************************************************************************* #
 
 
