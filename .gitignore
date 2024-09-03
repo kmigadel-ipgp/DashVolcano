@@ -135,3 +135,6 @@ dist
 
 # Notebook files
 *.ipynb
+
+# Python cache files
+*.pyc
