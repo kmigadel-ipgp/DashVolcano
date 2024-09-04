@@ -1,0 +1,34 @@
+,Volcano Name,material,PetDB Major Rock 1,PetDB Major Rock 2,PetDB Major Rock 3,PetDB Major Rock 4,PetDB Major Rock 5,cnt 1,cnt 2,cnt 3,cnt 4,cnt 5
+0,Mauna Loa,WR,ANDESITE,FOIDITE,BASALTIC ANDESITE,No Data,No Data,357,264,94,0,0
+1,Mauna Loa,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+2,Mauna Loa,INC,BASALTIC ANDESITE,BASALT,No Data,No Data,No Data,1,1,0,0,0
+3,"Fournaise, Piton de la",WR,BASALT,No Data,No Data,No Data,No Data,26,0,0,0,0
+4,"Fournaise, Piton de la",GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+5,"Fournaise, Piton de la",INC,PICROBASALT,BASALT,No Data,No Data,No Data,15,7,0,0,0
+6,Kilauea,WR,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,22,0,0,0,0
+7,Kilauea,GL,PICROBASALT,No Data,No Data,No Data,No Data,1,0,0,0,0
+8,Kilauea,INC,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+9,La Palma,WR,BASALT,BASALTIC TRACHYANDESITE,TRACHYBASALT,BASALTIC ANDESITE,No Data,27,25,20,13,0
+10,La Palma,GL,TEPHRI-PHONOLITE,TRACHYANDESITE,BASALTIC TRACHYANDESITE,No Data,No Data,1,1,1,0,0
+11,La Palma,INC,FOIDITE,TEPHRITE/BASANITE,No Data,No Data,No Data,2,2,0,0,0
+12,Hierro,WR,BASALT,No Data,No Data,No Data,No Data,14,0,0,0,0
+13,Hierro,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+14,Hierro,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+15,Kama'ehuakanaloa,WR,BASALTIC ANDESITE,ANDESITE,No Data,No Data,No Data,62,49,0,0,0
+16,Kama'ehuakanaloa,GL,BASALT,No Data,No Data,No Data,No Data,3,0,0,0,0
+17,Kama'ehuakanaloa,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+18,Tenerife,WR,FOIDITE,No Data,No Data,No Data,No Data,2,0,0,0,0
+19,Tenerife,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+20,Tenerife,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+21,Hualalai,WR,ANDESITE,BASALTIC ANDESITE,No Data,No Data,No Data,48,24,0,0,0
+22,Hualalai,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+23,Hualalai,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+24,Haleakala,WR,FOIDITE,TEPHRITE/BASANITE,TRACHYBASALT,No Data,No Data,12,11,4,0,0
+25,Haleakala,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+26,Haleakala,INC,PICROBASALT,FOIDITE,No Data,No Data,No Data,1,1,0,0,0
+27,Mauna Kea,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+28,Mauna Kea,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+29,Mauna Kea,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+30,Madeira,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+31,Madeira,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+32,Madeira,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0

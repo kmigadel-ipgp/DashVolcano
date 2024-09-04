@@ -129,3 +129,12 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Init files
+*.ini
+
+# Notebook files
+*.ipynb
+
+# Python cache files
+*.pyc

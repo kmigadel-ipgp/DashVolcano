@@ -1,0 +1,121 @@
+,Volcano Name,material,PetDB Major Rock 1,PetDB Major Rock 2,PetDB Major Rock 3,PetDB Major Rock 4,PetDB Major Rock 5,cnt 1,cnt 2,cnt 3,cnt 4,cnt 5
+0,Fagradalsfjall,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+1,Fagradalsfjall,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+2,Fagradalsfjall,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+3,Wolf,WR,BASALT,No Data,No Data,No Data,No Data,92,0,0,0,0
+4,Wolf,GL,BASALT,No Data,No Data,No Data,No Data,10,0,0,0,0
+5,Wolf,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+6,Fernandina,WR,BASALT,PICROBASALT,No Data,No Data,No Data,22,17,0,0,0
+7,Fernandina,GL,BASALT,TEPHRITE/BASANITE,PICROBASALT,No Data,No Data,32,26,9,0,0
+8,Fernandina,INC,BASALT,No Data,No Data,No Data,No Data,75,0,0,0,0
+9,"Negra, Sierra",WR,BASALT,No Data,No Data,No Data,No Data,36,0,0,0,0
+10,"Negra, Sierra",GL,BASALT,No Data,No Data,No Data,No Data,12,0,0,0,0
+11,"Negra, Sierra",INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+12,Bardarbunga,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+13,Bardarbunga,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+14,Bardarbunga,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+15,"Azul, Cerro-Galapagos Islands",WR,BASALT,PICROBASALT,No Data,No Data,No Data,31,26,0,0,0
+16,"Azul, Cerro-Galapagos Islands",GL,BASALT,No Data,No Data,No Data,No Data,9,0,0,0,0
+17,"Azul, Cerro-Galapagos Islands",INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+18,"Tair, Jebel at",WR,BASALT,No Data,No Data,No Data,No Data,1,0,0,0,0
+19,"Tair, Jebel at",GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+20,"Tair, Jebel at",INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+21,Hekla,WR,RHYOLITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+22,Hekla,GL,RHYOLITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+23,Hekla,INC,FOIDITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+24,Terceira,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+25,Terceira,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+26,Terceira,INC,BASALT,No Data,No Data,No Data,No Data,1,0,0,0,0
+27,Alcedo,WR,BASALT,PICROBASALT,RHYOLITE,No Data,No Data,12,8,6,0,0
+28,Alcedo,GL,TRACHYTE/TRACHYDACITE,No Data,No Data,No Data,No Data,3,0,0,0,0
+29,Alcedo,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+30,Socorro,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+31,Socorro,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+32,Socorro,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+33,Marchena,WR,TEPHRITE/BASANITE,No Data,No Data,No Data,No Data,3,0,0,0,0
+34,Marchena,GL,BASALT,No Data,No Data,No Data,No Data,1,0,0,0,0
+35,Marchena,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+36,Jan Mayen,WR,TEPHRITE/BASANITE,No Data,No Data,No Data,No Data,2,0,0,0,0
+37,Jan Mayen,GL,PICROBASALT,No Data,No Data,No Data,No Data,1,0,0,0,0
+38,Jan Mayen,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+39,Askja,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+40,Askja,GL,PICROBASALT,No Data,No Data,No Data,No Data,17,0,0,0,0
+41,Askja,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+42,Fayal,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+43,Fayal,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+44,Fayal,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+45,Pinta,WR,TEPHRITE/BASANITE,No Data,No Data,No Data,No Data,7,0,0,0,0
+46,Pinta,GL,BASALT,No Data,No Data,No Data,No Data,4,0,0,0,0
+47,Pinta,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+48,Katla,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+49,Katla,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+50,Katla,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+51,Santiago,WR,TEPHRITE/BASANITE,BASALTIC ANDESITE,PICROBASALT,BASALT,No Data,19,14,12,11,0
+52,Santiago,GL,BASALT,No Data,No Data,No Data,No Data,1,0,0,0,0
+53,Santiago,INC,BASALT,No Data,No Data,No Data,No Data,46,0,0,0,0
+54,Sao Jorge,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+55,Sao Jorge,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+56,Sao Jorge,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+57,Sete Cidades,WR,FOIDITE,TEPHRITE/BASANITE,PICROBASALT,No Data,No Data,1,1,1,0,0
+58,Sete Cidades,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+59,Sete Cidades,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+60,Reykjanes,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+61,Reykjanes,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+62,Reykjanes,INC,BASALT,No Data,No Data,No Data,No Data,1,0,0,0,0
+63,Darwin,WR,BASALT,TEPHRITE/BASANITE,No Data,No Data,No Data,5,3,0,0,0
+64,Darwin,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+65,Darwin,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+66,Oraefajokull,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+67,Oraefajokull,GL,RHYOLITE,No Data,No Data,No Data,No Data,2,0,0,0,0
+68,Oraefajokull,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+69,Pico,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+70,Pico,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+71,Pico,INC,FOIDITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+72,Picos Fissural Volcanic System,WR,FOIDITE,No Data,No Data,No Data,No Data,3,0,0,0,0
+73,Picos Fissural Volcanic System,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+74,Picos Fissural Volcanic System,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+75,Furnas,WR,FOIDITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+76,Furnas,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+77,Furnas,INC,BASALT,TEPHRITE/BASANITE,BASALTIC ANDESITE,No Data,No Data,2,1,1,0,0
+78,Agua de Pau,WR,TEPHRITE/BASANITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+79,Agua de Pau,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+80,Agua de Pau,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+81,Ascension,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+82,Ascension,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+83,Ascension,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+84,Torfajokull,WR,PICROBASALT,RHYOLITE,TRACHYTE/TRACHYDACITE,No Data,No Data,5,4,4,0,0
+85,Torfajokull,GL,RHYOLITE,TRACHYTE/TRACHYDACITE,No Data,No Data,No Data,5,3,0,0,0
+86,Torfajokull,INC,BASALT,PICROBASALT,No Data,No Data,No Data,5,4,0,0,0
+87,Brennisteinsfjoll,WR,BASALT,No Data,No Data,No Data,No Data,7,0,0,0,0
+88,Brennisteinsfjoll,GL,BASALT,No Data,No Data,No Data,No Data,1,0,0,0,0
+89,Brennisteinsfjoll,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+90,Krysuvik-Trolladyngja,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+91,Krysuvik-Trolladyngja,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+92,Krysuvik-Trolladyngja,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+93,Ecuador,WR,TEPHRITE/BASANITE,BASALT,PICROBASALT,No Data,No Data,120,29,19,0,0
+94,Ecuador,GL,BASALT,No Data,No Data,No Data,No Data,16,0,0,0,0
+95,Ecuador,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+96,Ljosufjoll,WR,BASALT,No Data,No Data,No Data,No Data,1,0,0,0,0
+97,Ljosufjoll,GL,DACITE,RHYOLITE,No Data,No Data,No Data,2,1,0,0,0
+98,Ljosufjoll,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+99,Oddnyjarhnjukur-Langjokull,WR,BASALT,No Data,No Data,No Data,No Data,19,0,0,0,0
+100,Oddnyjarhnjukur-Langjokull,GL,BASALT,No Data,No Data,No Data,No Data,13,0,0,0,0
+101,Oddnyjarhnjukur-Langjokull,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+102,Snaefellsjokull,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+103,Snaefellsjokull,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+104,Snaefellsjokull,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+105,Hengill,WR,BASALT,No Data,No Data,No Data,No Data,17,0,0,0,0
+106,Hengill,GL,BASALT,No Data,No Data,No Data,No Data,2,0,0,0,0
+107,Hengill,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+108,Theistareykir,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+109,Theistareykir,GL,BASALT,PICROBASALT,No Data,No Data,No Data,3,1,0,0,0
+110,Theistareykir,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+111,Fremrinamar,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+112,Fremrinamar,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+113,Fremrinamar,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+114,Prestahnukur,WR,BASALT,No Data,No Data,No Data,No Data,58,0,0,0,0
+115,Prestahnukur,GL,BASALT,RHYOLITE,No Data,No Data,No Data,10,5,0,0,0
+116,Prestahnukur,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+117,Grimsnes,WR,BASALT,No Data,No Data,No Data,No Data,30,0,0,0,0
+118,Grimsnes,GL,BASALT,No Data,No Data,No Data,No Data,8,0,0,0,0
+119,Grimsnes,INC,BASALT,PICROBASALT,No Data,No Data,No Data,37,12,0,0,0

@@ -1,0 +1,550 @@
+,Volcano Name,material,PetDB Major Rock 1,PetDB Major Rock 2,PetDB Major Rock 3,PetDB Major Rock 4,PetDB Major Rock 5,cnt 1,cnt 2,cnt 3,cnt 4,cnt 5
+0,Ulawun,WR,DACITE,BASALT,No Data,No Data,No Data,1,1,0,0,0
+1,Ulawun,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+2,Ulawun,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+3,Ambae,WR,BASALT,No Data,No Data,No Data,No Data,10,0,0,0,0
+4,Ambae,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+5,Ambae,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+6,Chikurachki,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+7,Chikurachki,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+8,Chikurachki,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+9,Lascar,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+10,Lascar,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+11,Lascar,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+12,Etna,WR,BASALTIC TRACHYANDESITE,BASALTIC ANDESITE,No Data,No Data,No Data,16,11,0,0,0
+13,Etna,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+14,Etna,INC,BASALTIC TRACHYANDESITE,TRACHYBASALT,BASALTIC ANDESITE,BASALT,No Data,6,4,2,2,0
+15,Klyuchevskoy,WR,BASALT,No Data,No Data,No Data,No Data,17,0,0,0,0
+16,Klyuchevskoy,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+17,Klyuchevskoy,INC,BASALTIC ANDESITE,BASALT,No Data,No Data,No Data,2,1,0,0,0
+18,San Miguel,WR,BASALT,BASALTIC ANDESITE,No Data,No Data,No Data,9,2,0,0,0
+19,San Miguel,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+20,San Miguel,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+21,Chirinkotan,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+22,Chirinkotan,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+23,Chirinkotan,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+24,Alaid,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+25,Alaid,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+26,Alaid,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+27,Turrialba,WR,BASALTIC TRACHYANDESITE,BASALT,No Data,No Data,No Data,2,2,0,0,0
+28,Turrialba,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+29,Turrialba,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+30,Ebeko,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+31,Ebeko,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+32,Ebeko,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+33,Gaua,WR,PICROBASALT,BASALT,TRACHYBASALT,No Data,No Data,2,2,2,0,0
+34,Gaua,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+35,Gaua,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+36,Poas,WR,BASALT,BASALTIC ANDESITE,No Data,No Data,No Data,12,4,0,0,0
+37,Poas,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+38,Poas,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+39,Purace,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+40,Purace,GL,RHYOLITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+41,Purace,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+42,Pinatubo,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+43,Pinatubo,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+44,Pinatubo,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+45,Asosan,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+46,Asosan,GL,RHYOLITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+47,Asosan,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+48,Pavlof,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+49,Pavlof,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+50,Pavlof,INC,BASALT,BASALTIC ANDESITE,DACITE,No Data,No Data,1,1,1,0,0
+51,Rincon de la Vieja,WR,BASALTIC ANDESITE,BASALT,No Data,No Data,No Data,15,8,0,0,0
+52,Rincon de la Vieja,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+53,Rincon de la Vieja,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+54,Krakatau,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+55,Krakatau,GL,DACITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+56,Krakatau,INC,TRACHYANDESITE,DACITE,ANDESITE,No Data,No Data,2,2,1,0,0
+57,Great Sitkin,WR,TEPHRITE/BASANITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+58,Great Sitkin,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+59,Great Sitkin,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+60,Telica,WR,BASALT,BASALTIC ANDESITE,ANDESITE,No Data,No Data,18,4,4,0,0
+61,Telica,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+62,Telica,INC,BASALTIC ANDESITE,TRACHYTE/TRACHYDACITE,DACITE,No Data,No Data,2,1,1,0,0
+63,Merapi,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+64,Merapi,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+65,Merapi,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+66,San Cristobal-Nicaragua,WR,BASALT,ANDESITE,BASALTIC ANDESITE,No Data,No Data,5,4,2,0,0
+67,San Cristobal-Nicaragua,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+68,San Cristobal-Nicaragua,INC,BASALT,BASALTIC ANDESITE,ANDESITE,No Data,No Data,3,2,1,0,0
+69,Cleveland,WR,ANDESITE,BASALTIC ANDESITE,BASALT,No Data,No Data,6,2,1,0,0
+70,Cleveland,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+71,Cleveland,INC,DACITE,BASALT,ANDESITE,No Data,No Data,7,6,6,0,0
+72,Sarychev Peak,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+73,Sarychev Peak,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+74,Sarychev Peak,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+75,Shishaldin,WR,BASALT,No Data,No Data,No Data,No Data,14,0,0,0,0
+76,Shishaldin,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+77,Shishaldin,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+78,Raikoke,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+79,Raikoke,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+80,Raikoke,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+81,Colima,WR,TRACHYBASALT,BASALTIC ANDESITE,PHONO-TEPHRITE,No Data,No Data,3,2,1,0,0
+82,Colima,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+83,Colima,INC,TRACHYBASALT,PHONO-TEPHRITE,BASALTIC ANDESITE,BASALTIC TRACHYANDESITE,No Data,4,3,2,2,0
+84,Planchon-Peteroa,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+85,Planchon-Peteroa,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+86,Planchon-Peteroa,INC,ANDESITE,DACITE,No Data,No Data,No Data,1,1,0,0,0
+87,Agung,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+88,Agung,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+89,Agung,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+90,Bogoslof,WR,TRACHYTE/TRACHYDACITE,TRACHYANDESITE,BASALT,No Data,No Data,1,1,1,0,0
+91,Bogoslof,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+92,Bogoslof,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+93,Bezymianny,WR,BASALT,BASALTIC TRACHYANDESITE,TRACHYBASALT,No Data,No Data,3,1,1,0,0
+94,Bezymianny,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+95,Bezymianny,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+96,Rinjani,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+97,Rinjani,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+98,Rinjani,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+99,Momotombo,WR,ANDESITE,PICROBASALT,BASALTIC ANDESITE,No Data,No Data,3,1,1,0,0
+100,Momotombo,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+101,Momotombo,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+102,Masaya,WR,BASALT,BASALTIC ANDESITE,No Data,No Data,No Data,16,5,0,0,0
+103,Masaya,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+104,Masaya,INC,BASALTIC ANDESITE,BASALT,No Data,No Data,No Data,6,1,0,0,0
+105,Hakoneyama,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+106,Hakoneyama,GL,RHYOLITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+107,Hakoneyama,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+108,Pacaya,WR,BASALT,No Data,No Data,No Data,No Data,3,0,0,0,0
+109,Pacaya,GL,RHYOLITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+110,Pacaya,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+111,Villarrica,WR,BASALT,No Data,No Data,No Data,No Data,5,0,0,0,0
+112,Villarrica,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+113,Villarrica,INC,BASALTIC ANDESITE,ANDESITE,No Data,No Data,No Data,2,1,0,0,0
+114,"Ruiz, Nevado del",WR,ANDESITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+115,"Ruiz, Nevado del",GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+116,"Ruiz, Nevado del",INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+117,Rabaul,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+118,Rabaul,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+119,Rabaul,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+120,Etorofu-Yakeyama [Grozny Group],WR,ANDESITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+121,Etorofu-Yakeyama [Grozny Group],GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+122,Etorofu-Yakeyama [Grozny Group],INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+123,Tungurahua,WR,ANDESITE,No Data,No Data,No Data,No Data,3,0,0,0,0
+124,Tungurahua,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+125,Tungurahua,INC,TRACHYANDESITE,DACITE,TRACHYTE/TRACHYDACITE,ANDESITE,No Data,9,5,5,3,0
+126,Tolbachik,WR,BASALTIC TRACHYANDESITE,BASALT,No Data,No Data,No Data,10,5,0,0,0
+127,Tolbachik,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+128,Tolbachik,INC,FOIDITE,BASALT,BASALTIC ANDESITE,No Data,No Data,3,2,1,0,0
+129,Tongariro,WR,ANDESITE,No Data,No Data,No Data,No Data,6,0,0,0,0
+130,Tongariro,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+131,Tongariro,INC,DACITE,No Data,No Data,No Data,No Data,4,0,0,0,0
+132,Galeras,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+133,Galeras,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+134,Galeras,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+135,Kanaga,WR,ANDESITE,No Data,No Data,No Data,No Data,2,0,0,0,0
+136,Kanaga,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+137,Kanaga,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+138,Puyehue-Cordon Caulle,WR,BASALT,No Data,No Data,No Data,No Data,1,0,0,0,0
+139,Puyehue-Cordon Caulle,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+140,Puyehue-Cordon Caulle,INC,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+141,Kizimen,WR,BASALT,BASALTIC ANDESITE,No Data,No Data,No Data,6,2,0,0,0
+142,Kizimen,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+143,Kizimen,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+144,Ekarma,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+145,Ekarma,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+146,Ekarma,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+147,Concepcion,WR,BASALT,No Data,No Data,No Data,No Data,21,0,0,0,0
+148,Concepcion,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+149,Concepcion,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+150,Redoubt,WR,BASALT,ANDESITE,No Data,No Data,No Data,2,1,0,0,0
+151,Redoubt,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+152,Redoubt,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+153,Koryaksky,WR,BASALT,No Data,No Data,No Data,No Data,3,0,0,0,0
+154,Koryaksky,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+155,Koryaksky,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+156,Okmok,WR,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,2,0,0,0,0
+157,Okmok,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+158,Okmok,INC,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,2,0,0,0,0
+159,Chaiten,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+160,Chaiten,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+161,Chaiten,INC,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+162,Llaima,WR,BASALT,No Data,No Data,No Data,No Data,8,0,0,0,0
+163,Llaima,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+164,Llaima,INC,BASALTIC ANDESITE,BASALT,No Data,No Data,No Data,25,10,0,0,0
+165,Ruapehu,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+166,Ruapehu,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+167,Ruapehu,INC,RHYOLITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+168,Ritter Island,WR,BASALT,PICROBASALT,No Data,No Data,No Data,18,4,0,0,0
+169,Ritter Island,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+170,Ritter Island,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+171,Atka Volcanic Complex,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+172,Atka Volcanic Complex,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+173,Atka Volcanic Complex,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+174,Fourpeaked,WR,ANDESITE,BASALTIC ANDESITE,No Data,No Data,No Data,13,2,0,0,0
+175,Fourpeaked,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+176,Fourpeaked,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+177,Augustine,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+178,Augustine,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+179,Augustine,INC,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+180,Santa Ana,WR,BASALT,No Data,No Data,No Data,No Data,20,0,0,0,0
+181,Santa Ana,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+182,Santa Ana,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+183,Popocatepetl,WR,DACITE,ANDESITE,BASALTIC ANDESITE,No Data,No Data,14,9,5,0,0
+184,Popocatepetl,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+185,Popocatepetl,INC,BASALTIC TRACHYANDESITE,TEPHRITE/BASANITE,RHYOLITE,No Data,No Data,4,1,1,0,0
+186,Fuego,WR,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,9,0,0,0,0
+187,Fuego,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+188,Fuego,INC,BASALTIC ANDESITE,BASALTIC TRACHYANDESITE,BASALT,TRACHYANDESITE,No Data,15,10,9,9,0
+189,Avachinsky,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+190,Avachinsky,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+191,Avachinsky,INC,BASALTIC ANDESITE,DACITE,No Data,No Data,No Data,6,5,0,0,0
+192,Mutnovsky,WR,BASALT,BASALTIC ANDESITE,ANDESITE,No Data,No Data,25,17,6,0,0
+193,Mutnovsky,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+194,Mutnovsky,INC,ANDESITE,BASALT,BASALTIC ANDESITE,TRACHYTE/TRACHYDACITE,RHYOLITE,3,1,1,1,1
+195,Moyorodake [Medvezhia],WR,ANDESITE,BASALTIC ANDESITE,No Data,No Data,No Data,2,1,0,0,0
+196,Moyorodake [Medvezhia],GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+197,Moyorodake [Medvezhia],INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+198,Sheveluch,WR,BASALT,BASALTIC ANDESITE,ANDESITE,No Data,No Data,24,12,6,0,0
+199,Sheveluch,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+200,Sheveluch,INC,RHYOLITE,DACITE,No Data,No Data,No Data,14,3,0,0,0
+201,"Negro, Cerro",WR,BASALT,PICROBASALT,No Data,No Data,No Data,6,2,0,0,0
+202,"Negro, Cerro",GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+203,"Negro, Cerro",INC,BASALTIC ANDESITE,BASALT,TEPHRI-PHONOLITE,No Data,No Data,19,7,5,0,0
+204,Ijen,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+205,Ijen,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+206,Ijen,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+207,Akademia Nauk,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+208,Akademia Nauk,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+209,Akademia Nauk,INC,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,2,0,0,0,0
+210,Makushin,WR,ANDESITE,BASALTIC ANDESITE,BASALT,No Data,No Data,26,18,8,0,0
+211,Makushin,GL,DACITE,ANDESITE,BASALTIC ANDESITE,No Data,No Data,30,17,8,0,0
+212,Makushin,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+213,Seguam,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+214,Seguam,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+215,Seguam,INC,BASALT,No Data,No Data,No Data,No Data,1,0,0,0,0
+216,Westdahl,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+217,Westdahl,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+218,Westdahl,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+219,Izu-Tobu,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+220,Izu-Tobu,GL,RHYOLITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+221,Izu-Tobu,INC,BASALT,No Data,No Data,No Data,No Data,9,0,0,0,0
+222,Lonquimay,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+223,Lonquimay,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+224,Lonquimay,INC,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,2,0,0,0,0
+225,Tupungatito,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+226,Tupungatito,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+227,Tupungatito,INC,TRACHYANDESITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+228,Galunggung,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+229,Galunggung,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+230,Galunggung,INC,BASALT,No Data,No Data,No Data,No Data,1,0,0,0,0
+231,Chachadake [Tiatia],WR,ANDESITE,No Data,No Data,No Data,No Data,3,0,0,0,0
+232,Chachadake [Tiatia],GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+233,Chachadake [Tiatia],INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+234,Mahawu,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+235,Mahawu,GL,RHYOLITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+236,Mahawu,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+237,Irazu,WR,BASALTIC TRACHYANDESITE,BASALT,TRACHYBASALT,No Data,No Data,6,4,3,0,0
+238,Irazu,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+239,Irazu,INC,TRACHYANDESITE,BASALT,TRACHYTE/TRACHYDACITE,No Data,No Data,1,1,1,0,0
+240,Trident,WR,ANDESITE,DACITE,BASALTIC ANDESITE,No Data,No Data,31,11,10,0,0
+241,Trident,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+242,Trident,INC,RHYOLITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+243,Kolokol Group,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+244,Kolokol Group,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+245,Kolokol Group,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+246,Acatenango,WR,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,9,0,0,0,0
+247,Acatenango,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+248,Acatenango,INC,BASALTIC ANDESITE,BASALTIC TRACHYANDESITE,BASALT,TRACHYANDESITE,No Data,15,10,9,9,0
+249,Arenal,WR,BASALT,No Data,No Data,No Data,No Data,2,0,0,0,0
+250,Arenal,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+251,Arenal,INC,BASALTIC ANDESITE,DACITE,ANDESITE,No Data,No Data,3,1,1,0,0
+252,"Azul, Cerro-Central Chile and Argentina",WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+253,"Azul, Cerro-Central Chile and Argentina",GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+254,"Azul, Cerro-Central Chile and Argentina",INC,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,2,0,0,0,0
+255,Izalco,WR,BASALT,No Data,No Data,No Data,No Data,20,0,0,0,0
+256,Izalco,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+257,Izalco,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+258,"Pilas, Las",WR,BASALT,PICROBASALT,No Data,No Data,No Data,6,2,0,0,0
+259,"Pilas, Las",GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+260,"Pilas, Las",INC,BASALTIC ANDESITE,BASALT,TEPHRI-PHONOLITE,No Data,No Data,19,7,5,0,0
+261,Maly Semyachik,WR,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,2,0,0,0,0
+262,Maly Semyachik,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+263,Maly Semyachik,INC,ANDESITE,BASALTIC ANDESITE,No Data,No Data,No Data,1,1,0,0,0
+264,Santorini,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+265,Santorini,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+266,Santorini,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+267,Miravalles,WR,BASALTIC ANDESITE,BASALT,ANDESITE,No Data,No Data,13,9,3,0,0
+268,Miravalles,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+269,Miravalles,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+270,Michoacan-Guanajuato,WR,BASALTIC ANDESITE,ANDESITE,No Data,No Data,No Data,1,1,0,0,0
+271,Michoacan-Guanajuato,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+272,Michoacan-Guanajuato,INC,BASALTIC ANDESITE,BASALTIC TRACHYANDESITE,BASALT,No Data,No Data,13,5,4,0,0
+273,Perbakti-Gagak,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+274,Perbakti-Gagak,GL,RHYOLITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+275,Perbakti-Gagak,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+276,Nemo Peak,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+277,Nemo Peak,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+278,Nemo Peak,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+279,Mocho-Choshuenco,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+280,Mocho-Choshuenco,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+281,Mocho-Choshuenco,INC,BASALT,BASALTIC ANDESITE,No Data,No Data,No Data,1,1,0,0,0
+282,Stromboli,WR,BASALT,BASALTIC ANDESITE,No Data,No Data,No Data,1,1,0,0,0
+283,Stromboli,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+284,Stromboli,INC,BASALT,BASALTIC ANDESITE,No Data,No Data,No Data,4,2,0,0,0
+285,Etorofu-Atosanupuri [Atosanupuri],WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+286,Etorofu-Atosanupuri [Atosanupuri],GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+287,Etorofu-Atosanupuri [Atosanupuri],INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+288,Zheltovsky,WR,BASALT,No Data,No Data,No Data,No Data,1,0,0,0,0
+289,Zheltovsky,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+290,Zheltovsky,INC,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+291,Kronotsky,WR,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+292,Kronotsky,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+293,Kronotsky,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+294,Santa Maria,WR,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,2,0,0,0,0
+295,Santa Maria,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+296,Santa Maria,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+297,Sumbing,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+298,Sumbing,GL,RHYOLITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+299,Sumbing,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+300,Iwatesan,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+301,Iwatesan,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+302,Iwatesan,INC,BASALT,BASALTIC ANDESITE,No Data,No Data,No Data,4,2,0,0,0
+303,San Salvador,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+304,San Salvador,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+305,San Salvador,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+306,Tinguiririca,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+307,Tinguiririca,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+308,Tinguiririca,INC,ANDESITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+309,Lassen Volcanic Center,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+310,Lassen Volcanic Center,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+311,Lassen Volcanic Center,INC,BASALT,RHYOLITE,No Data,No Data,No Data,2,1,0,0,0
+312,Vesuvius,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+313,Vesuvius,GL,TEPHRITE/BASANITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+314,Vesuvius,INC,TEPHRITE/BASANITE,PHONO-TEPHRITE,No Data,No Data,No Data,1,1,0,0,0
+315,Katmai,WR,RHYOLITE,DACITE,No Data,No Data,No Data,1,1,0,0,0
+316,Katmai,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+317,Katmai,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+318,Novarupta,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+319,Novarupta,GL,RHYOLITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+320,Novarupta,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+321,Maipo,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+322,Maipo,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+323,Maipo,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+324,Maruyama,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+325,Maruyama,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+326,Maruyama,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+327,Lamongan,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+328,Lamongan,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+329,Lamongan,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+330,Ushkovsky,WR,BASALT,BASALTIC TRACHYANDESITE,No Data,No Data,No Data,5,1,0,0,0
+331,Ushkovsky,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+332,Ushkovsky,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+333,Vulcano,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+334,Vulcano,GL,RHYOLITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+335,Vulcano,INC,BASALT,No Data,No Data,No Data,No Data,4,0,0,0,0
+336,Baker,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+337,Baker,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+338,Baker,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+339,Ilopango,WR,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,5,0,0,0,0
+340,Ilopango,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+341,Ilopango,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+342,Sinarka,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+343,Sinarka,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+344,Sinarka,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+345,Ceboruco,WR,TRACHYTE/TRACHYDACITE,ANDESITE,RHYOLITE,TRACHYANDESITE,No Data,4,3,2,1,0
+346,Ceboruco,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+347,Ceboruco,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+348,Antuco,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+349,Antuco,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+350,Antuco,INC,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,2,0,0,0,0
+351,Osorno,WR,BASALT,No Data,No Data,No Data,No Data,2,0,0,0,0
+352,Osorno,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+353,Osorno,INC,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,2,0,0,0,0
+354,Cosiguina,WR,BASALTIC ANDESITE,BASALT,No Data,No Data,No Data,6,3,0,0,0
+355,Cosiguina,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+356,Cosiguina,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+357,Guntur,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+358,Guntur,GL,RHYOLITE,No Data,No Data,No Data,No Data,4,0,0,0,0
+359,Guntur,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+360,"Orizaba, Pico de",WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+361,"Orizaba, Pico de",GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+362,"Orizaba, Pico de",INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+363,Tromen Volcanic Plateau,WR,BASALT,No Data,No Data,No Data,No Data,1,0,0,0,0
+364,Tromen Volcanic Plateau,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+365,Tromen Volcanic Plateau,INC,BASALT,No Data,No Data,No Data,No Data,1,0,0,0,0
+366,Almolonga,WR,ANDESITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+367,Almolonga,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+368,Almolonga,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+369,Antisana,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+370,Antisana,GL,RHYOLITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+371,Antisana,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+372,Ichinsky,WR,BASALTIC ANDESITE,BASALT,DACITE,ANDESITE,No Data,5,4,2,2,0
+373,Ichinsky,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+374,Ichinsky,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+375,"Bravo, Cerro",WR,TRACHYANDESITE,No Data,No Data,No Data,No Data,2,0,0,0,0
+376,"Bravo, Cerro",GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+377,"Bravo, Cerro",INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+378,Fujisan,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+379,Fujisan,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+380,Fujisan,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+381,Takawangha,WR,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+382,Takawangha,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+383,Takawangha,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+384,Krasheninnikov,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+385,Krasheninnikov,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+386,Krasheninnikov,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+387,Baru,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+388,Baru,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+389,Baru,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+390,Campi Flegrei,WR,TRACHYTE/TRACHYDACITE,No Data,No Data,No Data,No Data,5,0,0,0,0
+391,Campi Flegrei,GL,TRACHYANDESITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+392,Campi Flegrei,INC,TRACHYTE/TRACHYDACITE,PHONO-TEPHRITE,No Data,No Data,No Data,5,1,0,0,0
+393,Iraya,WR,PHONOLITE,No Data,No Data,No Data,No Data,4,0,0,0,0
+394,Iraya,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+395,Iraya,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+396,Kostakan,WR,BASALT,ANDESITE,No Data,No Data,No Data,12,2,0,0,0
+397,Kostakan,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+398,Kostakan,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+399,Ischia,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+400,Ischia,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+401,Ischia,INC,BASALT,TEPHRITE/BASANITE,TRACHYBASALT,No Data,No Data,9,9,6,0,0
+402,Yasur,WR,TRACHYTE/TRACHYDACITE,TRACHYANDESITE,No Data,No Data,No Data,10,5,0,0,0
+403,Yasur,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+404,Yasur,INC,TRACHYANDESITE,BASALTIC TRACHYANDESITE,BASALTIC ANDESITE,No Data,No Data,5,1,1,0,0
+405,Shasta,WR,ANDESITE,BASALTIC ANDESITE,FOIDITE,No Data,No Data,2,1,1,0,0
+406,Shasta,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+407,Shasta,INC,ANDESITE,BASALTIC ANDESITE,No Data,No Data,No Data,19,10,0,0,0
+408,Lipari,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+409,Lipari,GL,RHYOLITE,No Data,No Data,No Data,No Data,2,0,0,0,0
+410,Lipari,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+411,Yokodake,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+412,Yokodake,GL,RHYOLITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+413,Yokodake,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+414,Cofre de Perote,WR,BASALT,No Data,No Data,No Data,No Data,10,0,0,0,0
+415,Cofre de Perote,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+416,Cofre de Perote,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+417,Medicine Lake,WR,BASALTIC ANDESITE,RHYOLITE,BASALT,ANDESITE,No Data,5,2,2,2,0
+418,Medicine Lake,GL,RHYOLITE,No Data,No Data,No Data,No Data,4,0,0,0,0
+419,Medicine Lake,INC,BASALT,BASALTIC ANDESITE,No Data,No Data,No Data,13,9,0,0,0
+420,Nejapa-Miraflores,WR,BASALT,PICROBASALT,No Data,No Data,No Data,5,4,0,0,0
+421,Nejapa-Miraflores,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+422,Nejapa-Miraflores,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+423,Komarov,WR,BASALT,No Data,No Data,No Data,No Data,5,0,0,0,0
+424,Komarov,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+425,Komarov,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+426,Naruko,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+427,Naruko,GL,DACITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+428,Naruko,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+429,Newberry,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+430,Newberry,GL,RHYOLITE,No Data,No Data,No Data,No Data,5,0,0,0,0
+431,Newberry,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+432,Blue Lake Crater,WR,BASALT,No Data,No Data,No Data,No Data,4,0,0,0,0
+433,Blue Lake Crater,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+434,Blue Lake Crater,INC,BASALT,BASALTIC ANDESITE,No Data,No Data,No Data,2,2,0,0,0
+435,Belknap,WR,BASALTIC ANDESITE,BASALT,No Data,No Data,No Data,2,1,0,0,0
+436,Belknap,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+437,Belknap,INC,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,3,0,0,0,0
+438,Three Sisters,WR,BASALT,BASALTIC ANDESITE,No Data,No Data,No Data,1,1,0,0,0
+439,Three Sisters,GL,RHYOLITE,No Data,No Data,No Data,No Data,2,0,0,0,0
+440,Three Sisters,INC,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,2,0,0,0,0
+441,Chichinautzin,WR,ANDESITE,No Data,No Data,No Data,No Data,57,0,0,0,0
+442,Chichinautzin,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+443,Chichinautzin,INC,BASALTIC ANDESITE,BASALTIC TRACHYANDESITE,TRACHYBASALT,No Data,No Data,3,2,1,0,0
+444,Quetrupillan,WR,BASALT,No Data,No Data,No Data,No Data,1,0,0,0,0
+445,Quetrupillan,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+446,Quetrupillan,INC,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+447,Apoyeque,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+448,Apoyeque,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+449,Apoyeque,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+450,"Maule, Laguna del",WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+451,"Maule, Laguna del",GL,RHYOLITE,No Data,No Data,No Data,No Data,4,0,0,0,0
+452,"Maule, Laguna del",INC,ANDESITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+453,Muria,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+454,Muria,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+455,Muria,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+456,Cayutue-La Vigueria,WR,BASALT,No Data,No Data,No Data,No Data,1,0,0,0,0
+457,Cayutue-La Vigueria,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+458,Cayutue-La Vigueria,INC,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+459,Methana,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+460,Methana,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+461,Methana,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+462,Meager,WR,BASALTIC ANDESITE,TRACHYANDESITE,No Data,No Data,No Data,2,1,0,0,0
+463,Meager,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+464,Meager,INC,BASALT,BASALTIC ANDESITE,No Data,No Data,No Data,2,1,0,0,0
+465,Mageik,WR,RHYOLITE,No Data,No Data,No Data,No Data,2,0,0,0,0
+466,Mageik,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+467,Mageik,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+468,Gamchen,WR,BASALT,No Data,No Data,No Data,No Data,7,0,0,0,0
+469,Gamchen,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+470,Gamchen,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+471,Vysoky,WR,ANDESITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+472,Vysoky,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+473,Vysoky,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+474,Bakening,WR,ANDESITE,BASALT,No Data,No Data,No Data,16,15,0,0,0
+475,Bakening,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+476,Bakening,INC,BASALT,No Data,No Data,No Data,No Data,1,0,0,0,0
+477,Apagado,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+478,Apagado,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+479,Apagado,INC,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+480,Zavaritsky,WR,BASALT,No Data,No Data,No Data,No Data,8,0,0,0,0
+481,Zavaritsky,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+482,Zavaritsky,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+483,Tecuamburro,WR,BASALT,BASALTIC ANDESITE,No Data,No Data,No Data,1,1,0,0,0
+484,Tecuamburro,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+485,Tecuamburro,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+486,"Malinche, La",WR,TRACHYANDESITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+487,"Malinche, La",GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+488,"Malinche, La",INC,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+489,"Toluca, Nevado de",WR,ANDESITE,No Data,No Data,No Data,No Data,3,0,0,0,0
+490,"Toluca, Nevado de",GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+491,"Toluca, Nevado de",INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+492,Moffett,WR,BASALT,No Data,No Data,No Data,No Data,5,0,0,0,0
+493,Moffett,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+494,Moffett,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+495,Griggs,WR,ANDESITE,BASALTIC ANDESITE,No Data,No Data,No Data,57,17,0,0,0
+496,Griggs,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+497,Griggs,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+498,Megata,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+499,Megata,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+500,Megata,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+501,Crater Lake,WR,ANDESITE,RHYOLITE,No Data,No Data,No Data,2,1,0,0,0
+502,Crater Lake,GL,RHYOLITE,DACITE,No Data,No Data,No Data,8,3,0,0,0
+503,Crater Lake,INC,BASALT,No Data,No Data,No Data,No Data,1,0,0,0,0
+504,Zitacuaro-Valle de Bravo,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+505,Zitacuaro-Valle de Bravo,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+506,Zitacuaro-Valle de Bravo,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+507,Kaguyak,WR,ANDESITE,BASALTIC ANDESITE,DACITE,No Data,No Data,33,8,5,0,0
+508,Kaguyak,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+509,Kaguyak,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+510,"Cumbres,  Las",WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+511,"Cumbres,  Las",GL,RHYOLITE,No Data,No Data,No Data,No Data,3,0,0,0,0
+512,"Cumbres,  Las",INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+513,"Humeros, Los",WR,TRACHYANDESITE,BASALT,No Data,No Data,No Data,1,1,0,0,0
+514,"Humeros, Los",GL,RHYOLITE,No Data,No Data,No Data,No Data,3,0,0,0,0
+515,"Humeros, Los",INC,BASALTIC ANDESITE,TRACHYBASALT,No Data,No Data,No Data,1,1,0,0,0
+516,Cherpuk Group,WR,BASALT,TEPHRITE/BASANITE,TRACHYBASALT,ANDESITE,No Data,4,3,2,1,0
+517,Cherpuk Group,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+518,Cherpuk Group,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+519,Caburgua-Huelemolle,WR,BASALT,No Data,No Data,No Data,No Data,32,0,0,0,0
+520,Caburgua-Huelemolle,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+521,Caburgua-Huelemolle,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+522,Piip,WR,BASALTIC ANDESITE,BASALT,DACITE,No Data,No Data,11,6,2,0,0
+523,Piip,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+524,Piip,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+525,Payun Matru,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+526,Payun Matru,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+527,Payun Matru,INC,TEPHRITE/BASANITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+528,Pali-Aike Volcanic Field,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+529,Pali-Aike Volcanic Field,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+530,Pali-Aike Volcanic Field,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+531,Bachelor,WR,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+532,Bachelor,GL,RHYOLITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+533,Bachelor,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+534,Barva,WR,BASALT,TRACHYBASALT,No Data,No Data,No Data,10,2,0,0,0
+535,Barva,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+536,Barva,INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+537,Moekeshiwan [Lvinaya Past],WR,ANDESITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+538,Moekeshiwan [Lvinaya Past],GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+539,Moekeshiwan [Lvinaya Past],INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+540,Roundtop,WR,BASALT,No Data,No Data,No Data,No Data,1,0,0,0,0
+541,Roundtop,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+542,Roundtop,INC,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,1,0,0,0,0
+543,"Yojoa, Lago",WR,TEPHRITE/BASANITE,BASALT,TRACHYBASALT,No Data,No Data,3,1,1,0,0
+544,"Yojoa, Lago",GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+545,"Yojoa, Lago",INC,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+546,Garibaldi,WR,DACITE,No Data,No Data,No Data,No Data,2,0,0,0,0
+547,Garibaldi,GL,No Data,No Data,No Data,No Data,No Data,0,0,0,0,0
+548,Garibaldi,INC,BASALTIC ANDESITE,No Data,No Data,No Data,No Data,2,0,0,0,0
