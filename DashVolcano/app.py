@@ -12,7 +12,8 @@ import dash_bootstrap_components as dbc
 from dash import Dash, dcc, html, callback, Input, Output
 from pages import page_2, page_4, page_5, page_3
 import dataloader.data_loader as data_loader
-
+import os 
+from waitress import serve
 # ****************************#
 #
 # create a class instance
@@ -20,6 +21,8 @@ import dataloader.data_loader as data_loader
 # ***************************#
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
+
+server = app.server
 
 app.title = "Volcano Analytics"
 
@@ -72,4 +75,10 @@ def display_page(pathname):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True, host='0.0.0.0')
+    if os.getenv("FLASK_ENV") == "development":
+        # Development mode
+        app.run_server(debug=True, host='0.0.0.0', port=8050)
+    else:
+        # Production mode
+        from waitress import serve
+        serve(server, host='0.0.0.0', port=8050)
