@@ -107,7 +107,9 @@ The folder GeorocDataset contains 13 folders (12 folders from GEOROC + 1 folder 
 # 4. Running the app for the first time
 
 So you have downloaded the DashVolcano repository, set-up your python virtual environment and you have the GEOROC dataset. 
-To start the app for the first time, make sure you are within the DashVolcano folder, that your virtual environment is activated, and type the following command (you need the data to be available before you use the app for the first time, as explained above in, Downloading the GVP and GEOROC datasets):
+To start the app for the first time, make sure you are within the DashVolcano folder, that your virtual environment is activated, precise if you want development or production mode and type the following command (you need the data to be available before you use the app for the first time, as explained above in, Downloading the GVP and GEOROC datasets):
+
+> export FLASK_ENV=development or export FLASK_ENV=production 
 
 > python app.py
 
@@ -116,9 +118,11 @@ All required packages that are needed to run the app should have been installed.
 
 # 5. Running the app
 
-Once the app is set up, only 2 steps are required. From inside the DashVolcano folder, activate the virtual environment and launch the app.
+Once the app is set up, only 3 steps are required. From inside the DashVolcano folder, activate the virtual environment, precise if you want development or production mode and launch the app.
 
 > DashVolcano$ source venv/bin/activate
+
+> DashVolcano$ export FLASK_ENV=development or export FLASK_ENV=production 
 
 > DashVolcano$ python app.py
 
