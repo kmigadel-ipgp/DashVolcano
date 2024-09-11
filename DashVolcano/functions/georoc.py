@@ -3,6 +3,7 @@
 # This contains functions to manipulate Georoc data.
 # --------------------------------------------------
 # * load_georoc: loads data for a given volcano
+# * load_refs: loads references
 # * fix_pathname
 # * fix_inclusion
 # * with_FEOnorm: handles FEOT and normalizes oxides 
@@ -30,7 +31,7 @@
 #
 # Author: F. Oggier
 # Editor: K. Migadel
-# Last update: September 03 2024
+# Last update: September 10 2024
 # **********************************************************************************#
 
 
@@ -82,7 +83,10 @@ def load_georoc(thisvolcano):
         # print('GEOROC file used:', pathcsv)
         
         dftmp = pd.read_csv(os.path.join(GEOROC_DATASET_DIR, pathcsv), low_memory=False, encoding='latin1')
-        
+
+        # adds citations
+        dftmp = load_refs(dftmp)
+
         if 'Inclusions_comp' in pathcsv:
             # updates columns to have the same format as dataframes from other files
             dftmp = fix_inclusion(dftmp)
@@ -90,7 +94,7 @@ def load_georoc(thisvolcano):
         # add manual samples
         elif 'ManualDataset' in pathcsv:
             # in case some columns are missing
-            for cl in ['LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME']+CHEM_COLS + COLS_ROCK + ['LOI(WT%)']:
+            for cl in ['LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME', 'CITATIONS']+CHEM_COLS + COLS_ROCK + ['LOI(WT%)']:
                 if not(cl in list(dftmp)):
                     dftmp[cl] = np.nan
             # makes sure captial letters are used
@@ -101,7 +105,7 @@ def load_georoc(thisvolcano):
             
             # keep only volcanic rocks
             dftmp = dftmp[dftmp['ROCK TYPE'] == 'VOL']
-            dftmp = dftmp[['LOCATION']+['LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME'] + CHEM_COLS + COLS_ROCK + ['LOI(WT%)']]
+            dftmp = dftmp[['LOCATION']+['LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME', 'CITATIONS'] + CHEM_COLS + COLS_ROCK + ['LOI(WT%)']]
           
         # dfloaded = dfloaded.append(dftmp)
         dfloaded = dftmp.copy()
@@ -168,6 +172,40 @@ def load_georoc(thisvolcano):
     return dfloaded
 
 
+def load_refs(dftmp):
+ 
+    if 'CITATIONS' in list(dftmp):
+        dftmp['CITATIONS'] = dftmp['CITATIONS'].fillna(' ')
+        # finds where the references start in the excel file
+        idx = list(dftmp[dftmp['CITATIONS']=='References:'].index)[0]
+        # extracts references 
+        refs = list(dftmp.iloc[idx+1:]['CITATIONS'].values)
+        # creates dictionary of refs
+        dictrefs = {}
+        for key, value in zip([r.split(' ')[0] for r in refs], [r.split(' ', 1)[1] for r in refs]):
+            dictrefs[key] = value
+        # now we need to account for possibly multiple citations
+        # \ to escape special characters, underneath regexp
+        splt = dftmp['CITATIONS'].str.split('\]\[', expand=True).fillna("").astype(str)
+        # removes white spaces and adds missing bracket
+        splt = splt.applymap(lambda x: x.strip()+']' if not(']' in x) and len(x)>0 else x)
+        splt = splt.applymap(lambda x: '['+x.strip() if not('[' in x) and len(x)>0 else x)
+        # replaces with authors and papers
+        splt = splt.replace(dictrefs)
+        # recomposes the refs
+        refcol = splt[list(splt)[0]] 
+        for c in list(splt)[1:]:
+            cc = np.where( splt[c]=='', '', '+')
+            refcol+= cc + splt[c]                    
+
+        dftmp['CITATIONS'] = refcol
+        
+    else:
+        # inclusions
+        dftmp['CITATION'] = dftmp['CITATION'].str.split(']').str[1]    
+    return dftmp
+
+
 def fix_pathname(thisarc):
     """
     Adjusts the file path to include the correct suffix, accounting for any updates to the naming conventions.
@@ -232,17 +270,18 @@ def fix_inclusion(thisdf):
     thisdf = thisdf.rename({'LATITUDE (MAX.)': 'LATITUDE MAX'}, axis='columns')
     thisdf = thisdf.rename({'LONGITUDE (MIN.)': 'LONGITUDE MIN'}, axis='columns')
     thisdf = thisdf.rename({'LONGITUDE (MAX.)': 'LONGITUDE MAX'}, axis='columns')
+    thisdf = thisdf.rename({'CITATION': 'CITATIONS'}, axis='columns')
             
     # missing chemical columns
-    for cl in ['H2OT(WT%)', 'CL2(WT%)', 'CO1(WT%)', 'CH4(WT%)', 'SO4(WT%)', 'P2O5(WT%)']:
-        thisdf[cl] = np.nan
+    # for cl in ['H2OT(WT%)', 'CL2(WT%)', 'CO1(WT%)', 'CH4(WT%)', 'SO4(WT%)', 'P2O5(WT%)']:
+    #    thisdf[cl] = np.nan
         
     # missing isotopes
     for cl in ISOTOPES:
         thisdf[cl] = np.nan    
 
     # choice of columns
-    thisdf = thisdf[['LOCATION']+['LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME'] + CHEM_COLS + COLS_ROCK + ['LOI(WT%)']+ISOTOPES]
+    thisdf = thisdf[['LOCATION']+['LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME', 'CITATIONS'] + CHEM_COLS + COLS_ROCK + ['LOI(WT%)']+ISOTOPES]
             
     # some chemicals have two numbers instead of one, keeping the first one of the pair
     for ch in CHEM_COLS:
@@ -1245,23 +1284,28 @@ def createGEOROCaroundGVP():
         dftmp = pd.read_csv(os.path.join(GEOROC_DATASET_DIR, newarc), low_memory=False, encoding='latin1')
         
         if 'Inclusions_comp' not in arc and 'ManualDataset' not in arc:
+            # adds citations
+            dftmp = load_refs(dftmp)
             # keeps only volcanic rocks
             dfvol = dftmp[dftmp["ROCK TYPE"] == 'VOL']
             dfvol = dfvol.drop('ROCK TYPE', 1)
+
         else:
-            dfvol = dftmp
-            
-            if 'Inclusions_comp' in arc: 
+            if 'Inclusions_comp' in arc:
+                # adds citations
+                dftmp = load_refs(dftmp)
+                dfvol = dftmp
                 # different names
                 dfvol = fix_inclusion(dfvol)
                 dfvol['MATERIAL'] = 'INC'
             else:
+                dfvol = dftmp
                 # missing isotopes
-                for cl in ['PB206_PB204', 'PB207_PB204', 'PB208_PB204', 'SR87_SR86', 'ND143_ND144']:
-                    dfvol[cl] = np.nan   
+                # for cl in ['PB206_PB204', 'PB207_PB204', 'PB208_PB204', 'SR87_SR86', 'ND143_ND144']:
+                #   dfvol[cl] = np.nan
         
         # gathers the GEOROC data of interest (to be displayed on the map, and before that, for computing rocks)   
-        dfvol = dfvol[['LOCATION', 'LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME', 'MATERIAL'] + OXIDES + ['PB206_PB204', 'PB207_PB204', 'PB208_PB204', 'SR87_SR86', 'ND143_ND144']]
+        dfvol = dfvol[['LOCATION', 'LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME', 'CITATIONS', 'MATERIAL'] + OXIDES + ['PB206_PB204', 'PB207_PB204', 'PB208_PB204', 'SR87_SR86', 'ND143_ND144']]
         dfvol['arc'] = [arc]*len(dfvol.index)
         df_GEOROC = df_GEOROC.append(dfvol)
         

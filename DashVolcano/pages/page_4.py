@@ -482,7 +482,9 @@ def create_map_samples(db, thisvolcano, tect_GVP, tect_GEOROC, country):
         
     dfgeo = dfgeo.rename(columns={"LATITUDE": "Latitude", "LONGITUDE": "Longitude"})
     dfgeo['db'] = ['PetDB']*len(dfgeo.index)
-    dfgeo = dfgeo.rename(columns={'SAMPLE ID': thisname})    
+    dfgeo = dfgeo.rename(columns={'SAMPLE ID': thisname})
+    # add citations
+    dfgeo['refs'] = ['refs'] * len(dfgeo.index)
     
     # loads GEOROC
     # lists files in the folder
@@ -493,7 +495,7 @@ def create_map_samples(db, thisvolcano, tect_GVP, tect_GEOROC, country):
             dfgeo2['Volcano Name'] = dfgeo2['Volcano Name'].apply(lambda x: list(set(ast.literal_eval(x))))
         else:
             # ROCK or ROCK no inc
-            dfgeo2 = pd.DataFrame({'LATITUDE MIN': [], 'LATITUDE MAX': [], 'LONGITUDE MIN': [], 'LONGITUDE MAX': [], 'SAMPLE NAME': [], 'ROCK no inc': [], 'SIO2(WT%)mean': [], 'Volcano Name': [] })
+            dfgeo2 = pd.DataFrame({'LATITUDE MIN': [], 'LATITUDE MAX': [], 'LONGITUDE MIN': [], 'LONGITUDE MAX': [], 'SAMPLE NAME': [], 'CITATIONS': [], 'ROCK no inc': [], 'SIO2(WT%)mean': [], 'Volcano Name': [] })
     else:
         # creates the file anyway
         dfgeo2 = createGEOROCaroundGVP()
@@ -505,9 +507,16 @@ def create_map_samples(db, thisvolcano, tect_GVP, tect_GEOROC, country):
     dfgeo2['Longitude'] = (dfgeo2['LONGITUDE MIN'] + dfgeo2['LONGITUDE MAX'])/2
     dfgeo2['db'] = ['Georoc']*len(dfgeo2.index)
     dfgeo2 = dfgeo2.rename(columns={'SAMPLE NAME': thisname})
+    # add citations
+    dfgeo2 = dfgeo2.rename(columns={'CITATIONS': 'refs'})
+    # cut the text... # 31567 strings in total, 10002 are less than 500, 17409 are less than 1000
+    for i in range(1, 11):
+        dfgeo2['refs'] = dfgeo2['refs'].apply(lambda x: x[:i*80]+'<br>'+x[i*80:] if len(x)>i*80 else x)
+    dfgeo2['refs'] = dfgeo2['refs'].apply(lambda x: x if len(x)<800 else x[:800]+'(...)')    
+    
     
     # ROCK or ROCK no inc
-    dfgeo = pd.concat([dfgeo, dfgeo2[['Latitude', 'Longitude', 'db', 'Volcano Name', thisname, 'ROCK no inc']+[s+'mean' for s in CHEMICALS_SETTINGS[0:1]]]])
+    dfgeo = pd.concat([dfgeo, dfgeo2[['Latitude', 'Longitude', 'db', 'Volcano Name', thisname, 'refs', 'ROCK no inc']+[s+'mean' for s in CHEMICALS_SETTINGS[0:1]]]])
     
     # format tectonic setting names
     if len(set(tect_lst) & set([x.strip() for x in NEW_TECTONIC_SETTINGS])) > 0:
@@ -563,6 +572,8 @@ def create_map_samples(db, thisvolcano, tect_GVP, tect_GEOROC, country):
         
     dfgeo3.loc[:, 'db'] = ['GVP with eruptions']*len(dfgeo3.index)
     dfgeo3 = dfgeo3.rename(columns={'Volcano Name': thisname})
+    # add citations
+    dfgeo3['refs'] = ['Global Volcanism Program, Smithsonian Institution'] * len(dfgeo3.index)
     dfgeo = pd.concat([dfgeo, dfgeo3])
     
     # GVP without eruption
@@ -576,6 +587,8 @@ def create_map_samples(db, thisvolcano, tect_GVP, tect_GEOROC, country):
     
     dfgeo4.loc[:, 'db'] = ['GVP no eruption']*len(dfgeo4.index)
     dfgeo4 = dfgeo4.rename(columns={'Volcano Name': thisname})
+    # add citations
+    dfgeo4['refs'] = ['Global Volcanism Program, Smithsonian Institution'] * len(dfgeo4.index)
     dfgeo = pd.concat([dfgeo, dfgeo4])
     
     # choose which Db(s) to display
@@ -682,7 +695,7 @@ def displays_map_samples(thisdf, thiszoom, thiscenter, db, tect_GVP, tect_GEOROC
                              lon=thisdf["Longitude"],
                              mode="markers",
                              # showlegend=False,
-                             customdata=thisdf['Latitude'].astype(str)+', '+thisdf['Longitude'].astype(str)+', '+thisdf['Name']+', '+thisdf['db'],
+                             customdata=thisdf['Latitude'].astype(str)+', '+thisdf['Longitude'].astype(str)+', '+thisdf['Name']+', '+thisdf['db'] + thisdf['refs'],
                              hovertemplate='%{customdata}',
                              marker={
                                       "color": thiscolormap,
@@ -701,7 +714,7 @@ def displays_map_samples(thisdf, thiszoom, thiscenter, db, tect_GVP, tect_GEOROC
             height = 1000,
             width = 1350,
             zoom = thiszoom,
-            hover_data = ['Latitude', 'Longitude', 'Name', 'db'],
+            hover_data = ['Latitude', 'Longitude', 'Name', 'db', 'refs'],
             center = thiscenter,
             #title = ''
             )
