@@ -77,7 +77,7 @@ def createPetDBaroundGVP():
     pdb_long_rad = pdb['LONGITUDE'].astype('float')*pi/180
 
     # keep only columns of interest
-    pdb = pdb[['LATITUDE', 'LONGITUDE', 'MATERIAL', 'SAMPLE ID']+OXIDES]
+    pdb = pdb[['LATITUDE', 'LONGITUDE', 'MATERIAL', 'REFERENCES', 'SAMPLE ID']+OXIDES]
 
     dfgeo = pd.DataFrame()
 
@@ -128,7 +128,7 @@ def createPetDBaroundGVP():
     dfgeo.loc[dfgeo['MATERIAL'] == 'INCLUSION', 'ROCK no inc'] = ''
 
     # Keeps only the necessary
-    dfgeo = dfgeo[['LATITUDE', 'LONGITUDE', 'MATERIAL', 'SAMPLE ID', 'SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)', 'CAO(WT%)','FEOT(WT%)','MGO(WT%)', 'ROCK', 'ROCK no inc', 'Volcano Name']]
+    dfgeo = dfgeo[['LATITUDE', 'LONGITUDE', 'REFERENCES', 'MATERIAL', 'SAMPLE ID', 'SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)', 'CAO(WT%)','FEOT(WT%)','MGO(WT%)', 'ROCK', 'ROCK no inc', 'Volcano Name']]
     
     # group sample names when same location
     matchgroup = dfgeo.groupby(['LATITUDE', 'LONGITUDE']).agg(lambda x: list(x))

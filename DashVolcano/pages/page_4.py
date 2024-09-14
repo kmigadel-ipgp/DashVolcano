@@ -475,7 +475,7 @@ def create_map_samples(db, thisvolcano, tect_GVP, tect_GEOROC, country):
             dfgeo['Volcano Name'] = dfgeo['Volcano Name'].apply(lambda x: [find_new_tect_setting(y) for y in x if y != ''] )
         else:
             # ROCK or ROCK no inc
-            dfgeo = pd.DataFrame({'LATITUDE': [], 'LONGITUDE': [], 'SAMPLE ID': [], 'ROCK no inc': [], 'SIO2(WT%)mean': [], 'Volcano Name': []})
+            dfgeo = pd.DataFrame({'LATITUDE': [], 'LONGITUDE': [], 'SAMPLE ID': [], 'REFERENCES': [], 'ROCK no inc': [], 'SIO2(WT%)mean': [], 'Volcano Name': []})
     else:
         # creates the file anyway
         dfgeo = createPetDBaroundGVP()
@@ -483,8 +483,8 @@ def create_map_samples(db, thisvolcano, tect_GVP, tect_GEOROC, country):
     dfgeo = dfgeo.rename(columns={"LATITUDE": "Latitude", "LONGITUDE": "Longitude"})
     dfgeo['db'] = ['PetDB']*len(dfgeo.index)
     dfgeo = dfgeo.rename(columns={'SAMPLE ID': thisname})
-    # add citations
-    dfgeo['refs'] = ['refs'] * len(dfgeo.index)
+    # add references
+    dfgeo = dfgeo.rename(columns={'REFERENCES': 'refs'})
     
     # loads GEOROC
     # lists files in the folder
@@ -513,8 +513,7 @@ def create_map_samples(db, thisvolcano, tect_GVP, tect_GEOROC, country):
     for i in range(1, 11):
         dfgeo2['refs'] = dfgeo2['refs'].apply(lambda x: x[:i*80]+'<br>'+x[i*80:] if len(x)>i*80 else x)
     dfgeo2['refs'] = dfgeo2['refs'].apply(lambda x: x if len(x)<800 else x[:800]+'(...)')    
-    
-    
+
     # ROCK or ROCK no inc
     dfgeo = pd.concat([dfgeo, dfgeo2[['Latitude', 'Longitude', 'db', 'Volcano Name', thisname, 'refs', 'ROCK no inc']+[s+'mean' for s in CHEMICALS_SETTINGS[0:1]]]])
     
@@ -658,7 +657,7 @@ def displays_map_samples(thisdf, thiszoom, thiscenter, db, tect_GVP, tect_GEOROC
                                    'Volcano with known eruption data (GVP)': 'maroon',
                                    'Volcano with no known eruption data (GVP)': 'black',
                                    'Matching rock sample (GEOROC)': 'cornflowerblue'}
-                       
+
     if len(list(set(rocksopt) & set(GEOROC_ROCKS)))>0 and len([c for c in tect_GEOROC if c is not None])>0:
         # reads list format from a list in string format
         # ROCK for all rocks, and ROCK no inc to remove inclusions
