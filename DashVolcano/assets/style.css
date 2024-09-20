@@ -4,6 +4,13 @@ body {
 
 .intro {
     background-color: #000000;
+    color: #FFFFFF;
+    text-align: center;
+}
+
+.page {
+    display: flex;
+    flex-direction: column;
 }
 
 .title {
@@ -38,13 +45,13 @@ body {
 
 /* makes check boxes horizontal */
 .check {
-    height: 30px;
-    width: 680px;
+    height: 500px;
     display: flex;
     justify-content: left;
     padding-top: 20px;
     margin: 0px 0px 0px 0px;
     background-color: #FFFFFF;
+    display: block;
 }
 
 /* makes a shadow below the box */

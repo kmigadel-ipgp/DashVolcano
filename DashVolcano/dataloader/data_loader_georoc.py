@@ -26,14 +26,41 @@
 #
 # Author: F. Oggier
 # Editor: K. Migadel
-# Last update: September 03 2024
+# Last update: September 20 2024
 # ************************************************************************************* #
 
 
 import os
 import pandas as pd
+import ast
 
-from constants.paths import GEOROC_GVP_DIR
+from constants.paths import GEOROC_GVP_DIR, GEOROC_DATASET_DIR, GEOROC_AROUND_GVP_FILE
+
+from helpers.helpers import process_lat_lon
+
+from functions.georoc import createGEOROCaroundGVP
+
+def empty_georoc_df():
+    return pd.DataFrame({'LATITUDE MIN': [], 'LATITUDE MAX': [], 'LONGITUDE MIN': [], 'LONGITUDE MAX': [], 'SAMPLE NAME': [], 'CITATIONS': [], 'ROCK no inc': [], 'SIO2(WT%)mean': [], 'Volcano Name': [] })
+
+
+def load_georoc_data(tect_georoc):
+    """
+    Loads and processes GEOROC data.
+    """
+    if 'GEOROCaroundGVP.csv' in os.listdir(GEOROC_DATASET_DIR) and 'all GEOROC' in tect_georoc:
+        dfgeo2 = pd.read_csv(GEOROC_AROUND_GVP_FILE)
+        dfgeo2['Volcano Name'] = dfgeo2['Volcano Name'].apply(lambda x: list(set(ast.literal_eval(x))))
+    else:
+        dfgeo2 = createGEOROCaroundGVP() if 'all GEOROC' in tect_georoc else empty_georoc_df()
+    dfgeo2 = process_lat_lon(dfgeo2)
+    dfgeo2['db'] = ['Georoc']*len(dfgeo2.index)
+    dfgeo2 = dfgeo2.rename(columns={'SAMPLE NAME': 'Name'})
+    dfgeo2 = dfgeo2.rename(columns={'CITATIONS': 'refs'})
+    for i in range(1, 11):
+        dfgeo2['refs'] = dfgeo2['refs'].apply(lambda x: x[:i*80]+'<br>'+x[i*80:] if len(x)>i*80 else x)
+    dfgeo2['refs'] = dfgeo2['refs'].apply(lambda x: x if len(x)<800 else x[:800]+'(...)')  
+    return dfgeo2
 
 
 def load_and_preprocess_georoc_data():
@@ -41,11 +68,11 @@ def load_and_preprocess_georoc_data():
     Loads and preprocesses Georoc data, including volcano name mappings between Georoc and GVP datasets.
     Returns:
         dict_volcano_file (dict): Dictionary mapping Georoc volcano names to data files.
-        dict_Georoc_GVP (dict): Dictionary mapping Georoc names to GVP names.
-        dict_GVP_Georoc (dict): Reverse dictionary mapping GVP names to Georoc names.
+        dict_georoc_gvp (dict): Dictionary mapping Georoc names to GVP names.
+        dict_gvp_georoc (dict): Reverse dictionary mapping GVP names to Georoc names.
         grnames (list): Sorted list of Georoc names for drop-down menus.
-        dict_Georoc_sl (dict): Mapping of short names to long Georoc names.
-        dict_Georoc_ls (dict): Reverse mapping of long Georoc names to short names.
+        dict_georoc_sl (dict): Mapping of short names to long Georoc names.
+        dict_georoc_ls (dict): Reverse mapping of long Georoc names to short names.
     """
     # Collect all arcs files in the mapping directory
     lst_arcs_ = []
@@ -60,7 +87,7 @@ def load_and_preprocess_georoc_data():
 
     # Initialize dictionaries
     dict_volcano_file = {}
-    dict_Georoc_GVP = {}
+    dict_georoc_gvp = {}
 
     for fname in lst_arcs_:
         fnameext = fname + '.txt'
@@ -79,17 +106,17 @@ def load_and_preprocess_georoc_data():
 
                 # if new value (that is GVP name) is already in dictionary
                 # this happens when one volcano has data in different arc files
-                if newvalue in dict_Georoc_GVP.values():
+                if newvalue in dict_georoc_gvp.values():
 
                     # updates Georoc_GVP
                     # find old (existing key)
-                    old_key = [k for k in dict_Georoc_GVP.keys() if dict_Georoc_GVP[k] == newvalue][0]
+                    old_key = [k for k in dict_georoc_gvp.keys() if dict_georoc_gvp[k] == newvalue][0]
                     
                     # append Georoc rock names and removes duplicates
                     new_key = ','.join(sorted(set((old_key + ',' + nn).split(','))))  
                     
                     # add new key/value
-                    dict_Georoc_GVP[new_key] = dict_Georoc_GVP.pop(old_key)
+                    dict_georoc_gvp[new_key] = dict_georoc_gvp.pop(old_key)
 
                     # removes the old key (only if different, otherwise this deletes the record)
                     if new_key != old_key:
@@ -112,20 +139,20 @@ def load_and_preprocess_georoc_data():
                 # just add new key and new value      
                 else:
                     dict_volcano_file[nn] = [fname + '.csv']
-                    dict_Georoc_GVP[nn] = newvalue
+                    dict_georoc_gvp[nn] = newvalue
             
             else:
-                if newvalue in dict_Georoc_GVP.values():
+                if newvalue in dict_georoc_gvp.values():
                     # GVP data appears in more than one file, so update the file paths
                     dict_volcano_file[nn].append(fname + '.csv')
                 else:
                     print("double key", nn)
 
     # between GVP (keys) and Georoc (value)
-    dict_GVP_Georoc = {v: k for k, v in dict_Georoc_GVP.items()}
+    dict_gvp_georoc = {v: k for k, v in dict_georoc_gvp.items()}
 
     # Handle long names
-    longnames = [x for x in dict_Georoc_GVP.keys() if len(x) >= 80 and len(x.split(',')) >= 2]
+    longnames = [x for x in dict_georoc_gvp.keys() if len(x) >= 80 and len(x.split(',')) >= 2]
     mostcommon = []
     for x in longnames:
         longstrip = [y.strip() for y in x.replace('-', ',').split(',')]
@@ -148,13 +175,13 @@ def load_and_preprocess_georoc_data():
             print('missing name for', longstrip)
             mostcommon.append(smallword)
 
-    dict_Georoc_sl = {y.strip() + ' ('+ str(len(x.split(','))) + ' SITES)': x for x, y in zip(longnames, mostcommon)}
-    dict_Georoc_ls = {lng: shrt for shrt, lng in dict_Georoc_sl.items()}
+    dict_georoc_sl = {y.strip() + ' ('+ str(len(x.split(','))) + ' SITES)': x for x, y in zip(longnames, mostcommon)}
+    dict_georoc_ls = {lng: shrt for shrt, lng in dict_georoc_sl.items()}
 
-    grnames = list(dict_Georoc_GVP.keys())
-    for kk, value in dict_Georoc_sl.items():
+    grnames = list(dict_georoc_gvp.keys())
+    for kk, value in dict_georoc_sl.items():
         grnames[grnames.index(value)] = kk
 
     grnames = sorted(grnames)
 
-    return dict_volcano_file, dict_Georoc_GVP, dict_GVP_Georoc, grnames, dict_Georoc_sl, dict_Georoc_ls
+    return dict_volcano_file, dict_georoc_gvp, dict_gvp_georoc, grnames, dict_georoc_sl, dict_georoc_ls

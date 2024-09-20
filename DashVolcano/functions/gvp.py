@@ -19,7 +19,7 @@
 #
 # Author: F. Oggier
 # Editor: K. Migadel
-# Last update: September 03 2024
+# Last update: September 20 2024
 # **********************************************************************************#
 
 import os
@@ -36,7 +36,7 @@ from constants.tectonics import ALL_TECTONIC_SETTINGS, GEOROC_TECTONIC_SETTINGS
 from constants.paths import TECTONIC_ZONES_DIR
 
 
-from dataloader.data_loader import df_volcano, df_events, df_eruption, dict_GVP_Georoc, dict_volcano_file, df_volcano_no_eruption
+from constants.shared_data import df_volcano, df_events, df_eruption, dict_gvp_georoc, dict_volcano_file
 
 
 def retrieve_vinfo(name, df1, df2, whichrocks):
@@ -116,7 +116,7 @@ def rocks_to_color(rid):
     return cc_r, cc_g, cc_b
 
 
-def extract_by_filter(countryname, tectonicsetting):
+def extract_by_filter(countryname, tectonicsetting, df_volcano):
     """
 
     Args:
@@ -131,9 +131,11 @@ def extract_by_filter(countryname, tectonicsetting):
     else:
         dftmp = df_volcano[df_volcano['Country'] == countryname]
 
-    lst_tect = [tt.strip() for tt in tectonicsetting if not (tt == 'start') and not (tt is None)]
+    lst_tect = [tt.strip() for tt in tectonicsetting if tt != 'start' and tt is not None]
+
     if len(lst_tect) > 0:
         dftmp = dftmp[dftmp['Tectonic Settings'].isin(lst_tect)]
+
     lst_byfilter = list(set(dftmp['Volcano Name'].unique()))
 
     return lst_byfilter
@@ -175,7 +177,7 @@ def extract_by_event(lstvolc, lstev):
     return dfevent
     
     
-def update_chronogram(thesevolcanoes, period):
+def update_chronogram(thesevolcanoes, period, df_eruption, df_events):
     """ 
     Args:
         thesevolcanoes: a list of volcanoes
@@ -226,7 +228,7 @@ def update_chronogram(thesevolcanoes, period):
             return go.Figure()
 
         # events
-        dff = dff.merge(fix_events(thisdf, False), on='Eruption Number', how='left')
+        dff = dff.merge(fix_events(thisdf, False, df_events), on='Eruption Number', how='left')
         # plots the timeline
         thisfig = px.timeline(dff, x_start="Start Date", x_end="End Date", y="Volcano Name",
                               color='Color', color_discrete_map=event_discrete_map,
@@ -269,7 +271,7 @@ def update_chronogram(thesevolcanoes, period):
             return go.Figure()
 
         # events
-        earlydff = earlydff.merge(fix_events(earlydf, True), on='Eruption Number', how='left')
+        earlydff = earlydff.merge(fix_events(earlydf, True, df_events), on='Eruption Number', how='left')
 
         thisfig = go.Figure()
         for i in range(len(thesevolcanoes)):
@@ -287,7 +289,6 @@ def update_chronogram(thesevolcanoes, period):
                        base=i - .4,
                        marker_color=thisdfv['Color'],
                        hovertemplate=thisdfv['Recorded start'] + '<br>' + thisdfv['Recorded end']+'<br>' + thisdfv['Event List'],
-                       width=duration,
                        showlegend=False,
                        name='',
                        )
@@ -501,7 +502,7 @@ def fix_dates_VEI(df_missing, thisdict_names, bns):
     return df3
 
 
-def fix_events(df_be, bns):
+def fix_events(df_be, bns, df_events):
     """ 
     Args:
         bns = before nanoseconds (before 1678)
@@ -561,7 +562,7 @@ def fix_events(df_be, bns):
     return df4
 
 
-def update_rockchart(thisvolcanolist, thisfig):
+def update_rockchart(thisvolcanolist, thisfig, df_volcano):
     """
 
     Args:
@@ -643,8 +644,6 @@ def read_gmt(file_name):
 
     # reads gmt file
     with open(file_path) as gmtf:
-        # data = gmtf.readlines()
-        # data = [line.rstrip() for line in data]
         for line in gmtf:
             data.append(line)
  
@@ -666,9 +665,9 @@ def read_gmt(file_name):
             fnd2 = [x for x in rs if (float(x[0]) == 179.9024)]
 
             if len(fnd1) > 0:
-                Xtemp = [float(x[0]) for x in rs]
-                id1 = Xtemp.index(179.935)
-                id2 = Xtemp.index(-179.77)
+                x_tmp = [float(x[0]) for x in rs]
+                id1 = x_tmp.index(179.935)
+                id2 = x_tmp.index(-179.77)
                 X.append([float(x[0]) for x in rs[0:id1]])
                 Y.append([float(x[1]) for x in rs[0:id1]])
                 X.append([float(x[0]) for x in rs[id2:]])
@@ -676,9 +675,9 @@ def read_gmt(file_name):
                 names.append(on)
                 names.append(on)
             elif len(fnd2) > 0:
-                Xtemp = [float(x[0]) for x in rs]
-                id1 = Xtemp.index(179.9024)
-                id2 = Xtemp.index(-179.9401)
+                x_tmp = [float(x[0]) for x in rs]
+                id1 = x_tmp.index(179.9024)
+                id2 = x_tmp.index(-179.9401)
                 X.append([float(x[0]) for x in rs[0:id1]])
                 Y.append([float(x[1]) for x in rs[0:id1]])
                 X.append([float(x[0]) for x in rs[id2:]])
@@ -696,9 +695,9 @@ def read_gmt(file_name):
             fnd1 = [x for x in rs if (float(x[0]) == -179.7613)]
 
             if len(fnd1) > 0:
-                Xtemp = [float(x[0]) for x in rs]
-                id1 = Xtemp.index(-179.7613)
-                id2 = Xtemp.index(179.8569)
+                x_tmp = [float(x[0]) for x in rs]
+                id1 = x_tmp.index(-179.7613)
+                id2 = x_tmp.index(179.8569)
                 X.append([float(x[0]) for x in rs[0:id1]])
                 Y.append([float(x[1]) for x in rs[0:id1]])
                 X.append([float(x[0]) for x in rs[id2:]])
@@ -723,7 +722,7 @@ def read_gmt(file_name):
     return X, Y, names
 
     
-def update_tectonicmenu(thiscountry):
+def update_tectonicmenu(thiscountry, df_volcano):
     """  Updates tectonic setting menu based on country
     """
     disable_here = {}
@@ -733,7 +732,7 @@ def update_tectonicmenu(thiscountry):
 
     if thiscountry != 'all' and thiscountry != 'start':
         lst_ts = list(df_volcano[df_volcano['Country'] == thiscountry]['Tectonic Settings'].unique())
-        lst_not_ts = [x for x in ALL_TECTONIC_SETTINGS if not (x.strip() in lst_ts)]
+        lst_not_ts = [x for x in ALL_TECTONIC_SETTINGS if x.strip() not in lst_ts]
         for ts in lst_not_ts:
             disable_here[ts] = True
 
@@ -744,35 +743,35 @@ def update_tectonicmenu(thiscountry):
     return opts    
     
    
-def update_tectonicGEOROC(country, GVPtectonic, radio):
+def update_tectonicGEOROC(country, gvp_tectonic, radio):
     """
     """
     # reset GEOROC tectonic settings
-    new_GEOROC_tectonic_settings = ([' all GEOROC'] + GEOROC_TECTONIC_SETTINGS)
-    new_GEOROC_tectonic_settings.remove(' Inclusions')
+    new_georoc_tectonic_settings = ([' all GEOROC'] + GEOROC_TECTONIC_SETTINGS)
+    new_georoc_tectonic_settings.remove(' Inclusions')
 
     disable2 = {}
-    for ts in new_GEOROC_tectonic_settings:
+    for ts in new_georoc_tectonic_settings:
         disable2[ts] = False
 
-    GEOROC_tectonic_options = []
-    for ts in new_GEOROC_tectonic_settings:
-        GEOROC_tectonic_options.append({'label': ts,
+    georoc_tectonic_options = []
+    for ts in new_georoc_tectonic_settings:
+        georoc_tectonic_options.append({'label': ts,
                                         'disabled': disable2[ts],
                                         'value': ts})
                              
-    opts = GEOROC_tectonic_options
+    opts = georoc_tectonic_options
                               
-    if not(radio == 'Independent'):
-        GEOROCtectonic, lsttmp = filter_GVPtoGeoroc(country, GVPtectonic, df_volcano, dict_GVP_Georoc, dict_volcano_file)
+    if radio != 'Independent':
+        georoc_tectonic = filter_GVPtoGeoroc(country, gvp_tectonic)
         # removes settings not present
-        lst_not_ts = [x for x in new_GEOROC_tectonic_settings if not(x.strip() in GEOROCtectonic)]
+        lst_not_ts = [x for x in new_georoc_tectonic_settings if x.strip() not in georoc_tectonic]
         
         for ts in lst_not_ts:
             disable2[ts] = True
 
         opts = []
-        for ts in new_GEOROC_tectonic_settings:
+        for ts in new_georoc_tectonic_settings:
             opts.append({'label': ts,
                          'disabled': disable2[ts],
                          'value': ts})
@@ -780,7 +779,7 @@ def update_tectonicGEOROC(country, GVPtectonic, radio):
     return opts
     
   
-def filter_GVPtoGeoroc(country, GVPtectonic):
+def filter_GVPtoGeoroc(country, gvp_tectonic):
     """
     Args:
 
@@ -789,38 +788,38 @@ def filter_GVPtoGeoroc(country, GVPtectonic):
     """    
      
     # GVP tectonic settings
-    chosenGVP = [x.strip() for x in GVPtectonic if x != 'start']
+    chosen_gvp = [x.strip() for x in gvp_tectonic if x != 'start']
     
     # country fiilter  
     if country != 'all' and country != 'start':
-        if len(chosenGVP) == 0:
+        if len(chosen_gvp) == 0:
             # a country is chosen, but no tectonic setting
-            filterGVP = list(df_volcano[df_volcano['Country'] == country]['Volcano Name'])     
+            filter_gvp = list(df_volcano[df_volcano['Country'] == country]['Volcano Name'])     
         else:
             # a country is chosen, and tectonic settings are
-            filterGVP = list(df_volcano[(df_volcano['Country'] == country) & (df_volcano['Tectonic Settings'].isin(chosenGVP))]['Volcano Name']) 
+            filter_gvp = list(df_volcano[(df_volcano['Country'] == country) & (df_volcano['Tectonic Settings'].isin(chosen_gvp))]['Volcano Name']) 
     elif country == 'all':
-        if len(chosenGVP) == 0:
+        if len(chosen_gvp) == 0:
             # all countries, but no tectonic setting
-            filterGVP = list(df_volcano['Volcano Name'])     
+            filter_gvp = list(df_volcano['Volcano Name'])     
         else:
             # all countries are  chosen, and tectonic settings are
-            filterGVP = list(df_volcano[df_volcano['Tectonic Settings'].isin(chosenGVP)]['Volcano Name']) 
+            filter_gvp = list(df_volcano[df_volcano['Tectonic Settings'].isin(chosen_gvp)]['Volcano Name']) 
     else:
-        filterGVP = []
+        filter_gvp = []
         
-    filterGEOROC = [dict_GVP_Georoc[x] for x in filterGVP if x in dict_GVP_Georoc.keys()]     
+    filter_georoc = [dict_gvp_georoc[x] for x in filter_gvp if x in dict_gvp_georoc.keys()]     
     
-    GEOROCtectonic = []
-    for x in filterGEOROC: 
-        GEOROCtectonic += dict_volcano_file[x] 
-    GEOROCtectonic = list(set(GEOROCtectonic))
-    GEOROCtectonic = list(set([x.split('/')[0].split('_comp')[0].replace('_', ' ') for x in GEOROCtectonic]))
+    georoc_tectonic = []
+    for x in filter_georoc: 
+        georoc_tectonic += dict_volcano_file[x] 
+    georoc_tectonic = list(set(georoc_tectonic))
+    georoc_tectonic = list(set([x.split('/')[0].split('_comp')[0].replace('_', ' ') for x in georoc_tectonic]))
     
-    return GEOROCtectonic, filterGEOROC 
+    return georoc_tectonic 
     
     
-def find_new_tect_setting(thisvolcano):
+def find_new_tect_setting(thisvolcano, df_volcano, df_volcano_no_eruption):
     """
     Args:
                
