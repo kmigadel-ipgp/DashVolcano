@@ -2,22 +2,20 @@
 # WARNING: this page is still under construction
 # Author: F. Oggier
 # Editor: K. Migadel
-# Last update: September 03 2024
+# Last update: September 20 2024
 #************************************************************#
 
 import dash_bootstrap_components as dbc
 import plotly.graph_objs as go
 import plotly.express as px
-import pickle
 import pandas as pd
 import numpy as np
-import os
 
 from dash import dcc, html, callback, Input, Output
 
 # import variables common to all files
 # this includes loading the dataframes
-from dataloader.data_loader import df_eruption, lst_names
+from constants.shared_data import df_eruption, lst_names
 
 # import functions to process GVP and GEOROC data
 from functions.gvp import compute_eruptionperiods, update_chronogram

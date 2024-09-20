@@ -26,7 +26,7 @@
 #
 # Author: F. Oggier
 # Editor: K. Migadel
-# Last update: September 03 2024
+# Last update: September 20 2024
 # ************************************************************************************* #
 
 
@@ -38,6 +38,31 @@ from constants.paths import GVP_ERUPTION_DIR, GVP_VOLCANO_DIR
 from constants.rocks import ALL_ROCKS, ROCK_SORTED, VEI_COLS, ROCK_COL, SHAPES
 from constants.events import BY_SEVERITY_EVENTS
 
+def filter_volcano_data(df, tect_gvp, country, has_eruption=True):
+    """
+    Filters the volcano data based on tectonic settings and country.
+
+    Args:
+        df (pd.DataFrame): The volcano data to filter.
+        tect_gvp (list): The list of tectonic settings to filter by.
+        country (str): The country to filter by ('all' for no filtering).
+        has_eruption (bool): If True, the data represents volcanoes with eruptions; otherwise, without eruptions.
+
+    Returns:
+        pd.DataFrame: The filtered volcano data with additional metadata.
+    """
+    condtc = df['Tectonic Settings'].isin(tect_gvp)
+    cond_country = (df['Country'] == country) if country != 'all' else True
+    
+    # Filter the DataFrame
+    filtered_df = df[condtc & cond_country][['Longitude', 'Latitude', 'Volcano Name']].copy()
+
+    # Add metadata
+    filtered_df['db'] = 'GVP with eruptions' if has_eruption else 'GVP no eruption'
+    filtered_df['refs'] = 'Global Volcanism Program, Smithsonian Institution'
+
+    # Rename columns for consistency
+    return filtered_df.rename(columns={'Volcano Name': 'Name'})
 
 
 def load_and_preprocess_volcano_and_eruption_data():
