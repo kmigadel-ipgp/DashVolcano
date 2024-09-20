@@ -190,13 +190,22 @@ def load_refs(dftmp):
         splt = splt.applymap(lambda x: '['+x.strip() if not('[' in x) and len(x)>0 else x)
         # replaces with authors and papers
         splt = splt.replace(dictrefs)
-        # recomposes the refs
-        refcol = splt[list(splt)[0]] 
-        for c in list(splt)[1:]:
-            cc = np.where( splt[c]=='', '', '+')
-            refcol+= cc + splt[c]                    
+        # extracts authors and years
+        spltname = splt.applymap(lambda x: x.split(':', 1)[0])
+        spltyear = splt.applymap(lambda x: ' [' + x.split('[', 1)[1].split(']')[0] + ']' if '[' in x else x)
 
-        dftmp['CITATIONS'] = refcol
+        # recomposes the refs
+        refcol = splt[list(splt)[0]]
+        # recomposes only authors and years
+        nycol = spltname[list(spltname)[0]] + spltyear[list(spltyear)[0]]
+        for c in list(splt)[1:]:
+            cc = np.where(splt[c] == '', '', '+')
+            refcol += cc + splt[c]
+        for n, y in zip(list(spltname)[1:], list(spltyear)[1:]):
+            cc = np.where(spltname[c] == '', '', '+')
+            nycol += cc + spltname[n] + spltyear[y]
+
+        dftmp['CITATIONS'] = nycol + '===' + refcol
         
     else:
         # inclusions
@@ -1285,8 +1294,10 @@ def createGEOROCaroundGVP():
                 #   dfvol[cl] = np.nan
         
         # gathers the GEOROC data of interest (to be displayed on the map, and before that, for computing rocks)   
-        dfvol = dfvol[['LOCATION', 'LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME', 'CITATIONS', 'MATERIAL'] + OXIDES + ['PB206_PB204', 'PB207_PB204', 'PB208_PB204', 'SR87_SR86', 'ND143_ND144']]
+        dfvol = dfvol[['LOCATION', 'LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME', 'CITATIONS', 'MATERIAL'] + OXIDES ] #+ ['PB206_PB204', 'PB207_PB204', 'PB208_PB204', 'SR87_SR86', 'ND143_ND144']]
         dfvol['arc'] = [arc]*len(dfvol.index)
+        # removes the complete refs and keeps the names and years
+        dfvol['CITATIONS'] = dfvol['CITATIONS'].str.split('===').str[0]
         df_georoc = df_georoc.append(dfvol)
         
     # FEO normalization     
@@ -1302,7 +1313,7 @@ def createGEOROCaroundGVP():
     gvp_lat = gvp_names['Latitude']
     gvp_long = gvp_names['Longitude']
 
-    colgr = ['LOCATION', 'LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME', 'ROCK', 'ROCK no inc', 'arc'] + CHEMICALS_SETTINGS[0:1]
+    colgr = ['LOCATION', 'LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME', 'CITATIONS', 'ROCK', 'ROCK no inc', 'arc'] + CHEMICALS_SETTINGS[0:1]
 
     # initializes dataframe to contatin the GEOROC samples matching GVP volcanoes
     match = pd.DataFrame()
@@ -1326,7 +1337,7 @@ def createGEOROCaroundGVP():
     matchgroup = matchgroup.drop(columns=['Latitude', 'Longitude'])
 
     # attaches a new tectonic setting 
-    matchgroup['Volcano Name'] = matchgroup['Volcano Name'].apply(lambda x: list(set([find_new_tect_setting(y) for y in x])))     
+    matchgroup['Volcano Name'] = matchgroup['Volcano Name'].apply(lambda x: list(set([find_new_tect_setting(y) for y in x])))
     
     # sometimes the same sample is found in the intersection of several volcanoes
     matchgroup['SAMPLE NAME'] = matchgroup['SAMPLE NAME'].apply(lambda x: list(set([y.split('/')[0].split('[')[0] for y in x])))
@@ -1341,9 +1352,9 @@ def createGEOROCaroundGVP():
     
     for c in CHEMICALS_SETTINGS[0:1]:
         matchgroup[c+'mean'] = matchgroup[c].apply(lambda x: statistics.mean(x))
-    
+
     # Save the resulting DataFrame to a CSV file
-    matchgroup.to_csv(GEOROC_AROUND_GVP_FILE, index=False)
+    matchgroup.to_csv(GEOROC_AROUND_GVP_FILE)
     
     return matchgroup
     

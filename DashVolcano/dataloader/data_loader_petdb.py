@@ -91,7 +91,7 @@ def createPetDBaroundGVP():
     pdb_long_rad = pdb['LONGITUDE'].astype('float')*pi/180
 
     # keep only columns of interest
-    pdb = pdb[['LATITUDE', 'LONGITUDE', 'MATERIAL', 'SAMPLE ID']+OXIDES]
+    pdb = pdb[['LATITUDE', 'LONGITUDE', 'MATERIAL', 'REFERENCES', 'SAMPLE ID']+OXIDES]
 
     dfgeo = pd.DataFrame()
 
@@ -142,7 +142,7 @@ def createPetDBaroundGVP():
     dfgeo.loc[dfgeo['MATERIAL'] == 'INCLUSION', 'ROCK no inc'] = ''
 
     # Keeps only the necessary
-    dfgeo = dfgeo[['LATITUDE', 'LONGITUDE', 'MATERIAL', 'SAMPLE ID', 'SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)', 'CAO(WT%)','FEOT(WT%)','MGO(WT%)', 'ROCK', 'ROCK no inc', 'Volcano Name']]
+    dfgeo = dfgeo[['LATITUDE', 'LONGITUDE', 'REFERENCES', 'MATERIAL', 'SAMPLE ID', 'SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)', 'CAO(WT%)','FEOT(WT%)','MGO(WT%)', 'ROCK', 'ROCK no inc', 'Volcano Name']]
     
     # group sample names when same location
     matchgroup = dfgeo.groupby(['LATITUDE', 'LONGITUDE']).agg(lambda x: list(x))
@@ -164,7 +164,7 @@ def createPetDBaroundGVP():
 
 
 def empty_petdb_df():
-    return pd.DataFrame({'LATITUDE': [], 'LONGITUDE': [], 'SAMPLE ID': [], 'ROCK no inc': [], 'SIO2(WT%)mean': [], 'Volcano Name': []})
+    return pd.DataFrame({'LATITUDE': [], 'LONGITUDE': [], 'SAMPLE ID': [], 'REFERENCES': [], 'ROCK no inc': [], 'SIO2(WT%)mean': [], 'Volcano Name': []})
 
 def rename_columns(df, db_type):
     """
@@ -199,8 +199,10 @@ def load_petdb_data(tect_lst, df_volcano, df_volcano_no_eruption):
     dfgeo = dfgeo.rename(columns={"LATITUDE": "Latitude", "LONGITUDE": "Longitude"})
     dfgeo['db'] = ['PetDB']*len(dfgeo.index)
     dfgeo = dfgeo.rename(columns={'SAMPLE ID': 'Name'})
-    # add citations
-    dfgeo['refs'] = ['refs'] * len(dfgeo.index)
+    # add references
+    if 'REFERENCES' in dfgeo.columns:
+        dfgeo['refs'] = dfgeo['REFERENCES'] 
+    
     return dfgeo
 
 
