@@ -26,7 +26,7 @@
 #
 # Author: F. Oggier
 # Editor: K. Migadel
-# Last update: September 03 2024
+# Last update: September 20 2024
 # ************************************************************************************* #
 
 
@@ -35,27 +35,14 @@ import pandas as pd
 
 from constants.paths import GEOROC_DATASET_DIR
 from constants.tectonics import NEW_TECTONIC_SETTINGS
+from constants.shared_data import set_volcano_data, set_eruption_data, set_dict, set_list, set_events_data, set_grnames, set_severity_colors
+
 
 from dataloader.data_loader_gvp import load_and_preprocess_gvp_data
 from dataloader.data_loader_georoc import load_and_preprocess_georoc_data
 
-# Global variables
-df_volcano = None
-df_eruption = None
-df_volcano_no_eruption = None
-lst_countries = None
-lst_names = None
-df_events = None
-severity_colors = None
-dict_volcano_file = None
-dict_Georoc_GVP = None
-dict_GVP_Georoc = None
-grnames = None
-dict_Georoc_sl = None
-dict_Georoc_ls = None
 
-
-def generate_summary_statistics(df_volcano, df_eruption, df_volcano_no_eruption, grnames, dict_GVP_Georoc):
+def generate_summary_statistics(df_volcano, df_eruption, df_volcano_no_eruption, grnames, dict_gvp_georoc):
     """
     Generates summary statistics of the loaded data and displays it.
     Args:
@@ -63,7 +50,7 @@ def generate_summary_statistics(df_volcano, df_eruption, df_volcano_no_eruption,
         df_eruption (pd.DataFrame): Eruption data.
         df_volcano_no_eruption (pd.DataFrame): Volcanoes with no eruption data.
         grnames (list): Sorted list of Georoc names.
-        dict_GVP_Georoc (dict): Reverse dictionary mapping GVP names to Georoc names.
+        dict_gvp_georoc (dict): Reverse dictionary mapping GVP names to Georoc names.
     """
     totalgvp = len(df_volcano.index)
     print('##########################################')
@@ -79,7 +66,7 @@ def generate_summary_statistics(df_volcano, df_eruption, df_volcano_no_eruption,
     print('')
     print('Number of GEOROC volcanoes: ', len(grnames))
 
-    witheruptiondata = len(df_eruption[df_eruption['Volcano Name'].isin(list(dict_GVP_Georoc.keys()))]['Volcano Name'].unique())
+    witheruptiondata = len(df_eruption[df_eruption['Volcano Name'].isin(list(dict_gvp_georoc.keys()))]['Volcano Name'].unique())
     print('Number of GEOROC volcanoes with eruption data: ', witheruptiondata)
 
     mrdf = pd.DataFrame()
@@ -106,17 +93,18 @@ def load_data():
     Loads and processes data from several datasets.
     """
 
-    global df_volcano, df_eruption, df_volcano_no_eruption, lst_countries, lst_names
-    global df_events, severity_colors, dict_volcano_file, dict_Georoc_GVP, dict_GVP_Georoc
-    global grnames, dict_Georoc_sl, dict_Georoc_ls
-
     # Loads and preprocess GVP data
     df_volcano, df_eruption, df_volcano_no_eruption, lst_countries, lst_names, df_events, severity_colors = load_and_preprocess_gvp_data()
 
     # Loads and preprocess Georoc data
-    dict_volcano_file, dict_Georoc_GVP, dict_GVP_Georoc, grnames, dict_Georoc_sl, dict_Georoc_ls = load_and_preprocess_georoc_data()
+    dict_volcano_file, dict_georoc_gvp, dict_gvp_georoc, grnames, dict_georoc_sl, dict_georoc_ls = load_and_preprocess_georoc_data()
 
-    generate_summary_statistics(df_volcano, df_eruption, df_volcano_no_eruption, grnames, dict_GVP_Georoc)
+    set_volcano_data(df_volcano, df_volcano_no_eruption)
+    set_eruption_data(df_eruption)
+    set_list(lst_countries, lst_names)
+    set_dict(dict_volcano_file, dict_georoc_gvp, dict_gvp_georoc, dict_georoc_sl, dict_georoc_ls)
+    set_events_data(df_events)
+    set_severity_colors(severity_colors)
+    set_grnames(grnames)
 
-
-load_data()
+    generate_summary_statistics(df_volcano, df_eruption, df_volcano_no_eruption, grnames, dict_gvp_georoc)
