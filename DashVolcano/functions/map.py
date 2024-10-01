@@ -13,18 +13,18 @@ from constants.tectonics import ALL_TECTONIC_SETTINGS
 from constants.chemicals import CHEMICALS_SETTINGS
 from constants.rocks import GEOROC_ROCKS
 
-from helpers.helpers import highlight_volcano_samples, update_georoc_samples, filter_by_databases, filter_by_tectonics, add_tectonic_layers
+from helpers.helpers import highlight_volcano_samples, filter_by_databases, filter_by_tectonics, add_tectonic_layers
 
 
-def create_map_samples(db, thisvolcano, tect_gvp, georoc_petdb_tect_setting, country):
+def create_map_samples(database, thisvolcano, gvp_tect_setting, georoc_petdb_tect_setting, country):
     """
     Creates a world map showing sample locations based on the chosen database (PetDB, GEOROC, GVP),
     tectonic settings, country, and optionally a specific volcano.
 
     Args:
-        db (list): List of databases in use.
+        database (list): List of databases used.
         thisvolcano (str): Specific volcano name selected from dropdown.
-        tect_gvp (list): List of GVP tectonic settings.
+        gvp_tect_setting (list): List of GVP tectonic settings.
         georoc_petdb_tect_setting (list): List of GEOROC and PetDB tectonic settings.
         country (str): Selected country for filtering volcanoes.
         dict_georoc_sl (dict): Dictionary mapping GEOROC sample names to their details.
@@ -48,21 +48,19 @@ def create_map_samples(db, thisvolcano, tect_gvp, georoc_petdb_tect_setting, cou
 
     # Highlight samples from the selected volcano if specified
     if thisvolcano and thisvolcano != "start":
-        dfgeo, db = highlight_volcano_samples(dfgeo, thisvolcano, georoc_petdb_tect_setting, db, dict_georoc_sl, dict_volcano_file)
+        dfgeo, database = highlight_volcano_samples(dfgeo, thisvolcano, georoc_petdb_tect_setting, database, dict_georoc_sl, dict_volcano_file)
         
     # Clean GVP tectonic settings and ensure at least one setting is available
-    tect_gvp = [x.strip() for x in tect_gvp if x is not None and x != 'start']
-    if len(tect_gvp) == 0:
-        tect_gvp = [x.strip() for x in ALL_TECTONIC_SETTINGS]
+    if not gvp_tect_setting:
         # Include 'Unknown' to display volcanoes with no known tectonic setting
-        tect_gvp.append('Unknown')
+        gvp_tect_setting = ALL_TECTONIC_SETTINGS + ['Unknown']
 
     # Process GVP data (both with and without eruptions)
-    dfgeo = pd.concat([dfgeo, filter_volcano_data(df_volcano, tect_gvp, country, has_eruption=True)])
-    dfgeo = pd.concat([dfgeo, filter_volcano_data(df_volcano_no_eruption, tect_gvp, country, has_eruption=False)])
+    dfgeo = pd.concat([dfgeo, filter_volcano_data(df_volcano, gvp_tect_setting, country, has_eruption=True)])
+    dfgeo = pd.concat([dfgeo, filter_volcano_data(df_volcano_no_eruption, gvp_tect_setting, country, has_eruption=False)])
 
     # Filter based on the selected databases (PetDB, GEOROC, GVP)
-    dfgeo = filter_by_databases(dfgeo, db)
+    dfgeo = filter_by_databases(dfgeo, database)
 
     # Replace database names with descriptive labels
     dfgeo['db'] = dfgeo['db'].replace({
@@ -75,7 +73,7 @@ def create_map_samples(db, thisvolcano, tect_gvp, georoc_petdb_tect_setting, cou
     return dfgeo
 
 
-def displays_map_samples(thisdf, thiszoom, thiscenter, plates_boundaries_setting, georoc_petdb_tect_setting, rocksopt):
+def displays_map_samples(thisdf, thiszoom, thiscenter, plates_boundaries_setting, georoc_petdb_tect_setting, rocks_density_filter):
     """
     Displays a world map with geological data.
     
@@ -85,13 +83,13 @@ def displays_map_samples(thisdf, thiszoom, thiscenter, plates_boundaries_setting
         thiscenter (dict): Coordinates for the center of the map.
         plates_boundaries_setting (list): List of plates boundaries to display.
         georoc_petdb_tect_setting (list): GEOROC and PetDB tectonic settings to filter data.
-        rocksopt (list): Rock type filters.
+        rocks_density_filter (list): List of selected rock types for filtering map samples.
     
     Returns:
         go.Figure: A Plotly figure with samples and tectonic layers plotted.
     """ 
     # Determine color column and set filter for SIO2 values
-    if len(list(set(rocksopt) & set(CHEMICALS_SETTINGS))) > 0 and not georoc_petdb_tect_setting.empty:
+    if len(list(set(rocks_density_filter) & set(CHEMICALS_SETTINGS))) > 0 and georoc_petdb_tect_setting:
         colorcol = 'SIO2(WT%)mean'
         thisdf['SIO2(WT%)mean'] = thisdf['SIO2(WT%)mean'].fillna(0)
         # Filter ranges of silica
@@ -110,11 +108,11 @@ def displays_map_samples(thisdf, thiszoom, thiscenter, plates_boundaries_setting
             'Matching rock sample (GEOROC)': 'cornflowerblue'
         }
                 
-    if len(list(set(rocksopt) & set(GEOROC_ROCKS))) > 0 and not georoc_petdb_tect_setting.empty:
+    if len(list(set(rocks_density_filter) & set(GEOROC_ROCKS))) > 0 and georoc_petdb_tect_setting:
         # Reads list format from a string in list format
         # ROCK for all rocks, and ROCK no inc to remove inclusions
         thisdf['ROCK no inc'] = thisdf['ROCK no inc'].apply(lambda y: ast.literal_eval(y) if isinstance(y, str) else [])
-        thisdf['count'] = thisdf['ROCK no inc'].apply(lambda y: sum([x[1] if x[0] in rocksopt else 0 for x in y]))
+        thisdf['count'] = thisdf['ROCK no inc'].apply(lambda y: sum([x[1] if x[0] in rocks_density_filter else 0 for x in y]))
         
         # Draws the samples on the map using a density map
         figtmp = px.density_mapbox(

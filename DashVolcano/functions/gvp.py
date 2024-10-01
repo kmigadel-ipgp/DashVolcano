@@ -75,29 +75,28 @@ def retrieve_vinfo(name, df1, df2, whichrocks):
     return datv
 
 
-def extract_by_filter(countryname, tectonicsetting, df_volcano):
+def extract_by_filter(country_name, gvp_tect_setting, df_volcano):
     """
+    Filters the volcano DataFrame based on country name and tectonic settings.
 
     Args:
-        countryname: the name of a country (string)
-        tectonicsetting: the name of a tectonic setting (string)
+        country_name (str): The name of a country (or 'all' to include all countries).
+        gvp_tect_setting (list): List of tectonic settings to filter by.
 
-    Returns: list of volcanoes filtered by choice of input
-
+    Returns:
+        list: A list of unique volcano names filtered by the specified criteria.
     """
-    if countryname == 'all':
-        dftmp = df_volcano
-    else:
-        dftmp = df_volcano[df_volcano['Country'] == countryname]
 
-    lst_tect = [tt.strip() for tt in tectonicsetting if tt != 'start' and tt is not None]
+    # Filter by country name
+    dftmp = df_volcano if country_name == 'all' else df_volcano[df_volcano['Country'] == country_name]
 
-    if len(lst_tect) > 0:
-        dftmp = dftmp[dftmp['Tectonic Settings'].isin(lst_tect)]
+    # Filter by tectonic settings, excluding 'start' and None values
+    if gvp_tect_setting:
+        dftmp = dftmp[dftmp['Tectonic Settings'].isin(gvp_tect_setting)]
 
-    lst_byfilter = list(set(dftmp['Volcano Name'].unique()))
+    # Return unique volcano names as a list
+    return dftmp['Volcano Name'].unique().tolist()
 
-    return lst_byfilter
 
 
 def extract_by_event(lstvolc, lstev):
@@ -521,84 +520,95 @@ def fix_events(df_be, bns, df_events):
     return df4
 
 
-def update_rockchart(thisvolcanolist, thisfig, df_volcano):
+def update_rockchart(volcanoes, fig, df_volcano):
     """
+    Updates the given figure with a sunburst chart representing the rock composition
+    of specified volcanoes.
 
     Args:
-        thisvolcanolist: lists of names of GVP volcanoes 
-        thisfig: figure to be updated
+        volcanoes (list): List of names of GVP volcanoes to include in the chart.
+        fig (plotly.graph_objects.Figure): The figure to be updated with the sunburst chart.
+        df_volcano (DataFrame): DataFrame containing volcano data, including rock types.
 
-    Returns: figure with sunburst chart of major rocks for volcanoes on the list
-
+    Returns:
+        plotly.graph_objects.Figure: Updated figure with a sunburst chart of major rocks 
+        for the specified volcanoes.
     """
-    
-    this_discrete_map = {}
-    for r in ROCK_COL:
-        z = [0] * len(ROCK_COL)
-        z[ROCK_COL.index(r)] = 1
-        this_discrete_map[r] = 'rgb' + str(rocks_to_color(z))
-    
-    # checks if data is present
-    if len(thisvolcanolist) > 0:
-        if len(thisvolcanolist) == len(set(df_volcano['Volcano Name'].unique())):
-            dff = df_volcano.replace(ROCK_SORTED, ROCK_COL)
-         
-        else:
-            dff = df_volcano[df_volcano['Volcano Name'].isin(thisvolcanolist)].replace(ROCK_SORTED, ROCK_COL)
-        
-        # px to use the path option
-        thisfig = px.sunburst(dff.replace({'\xa0': ' ', 'No Data (checked)': ' '}), path=["Major Rock 1", "Major Rock 2", "Major Rock 3"],
-                              color='Major Rock 1', color_discrete_map=this_discrete_map)
 
-        label = thisfig['data'][0]['labels']
-        current_colors = thisfig['data'][0]['marker']['colors']
-        new_colors = []
-        for lab, colr in zip(label, current_colors):
-            if lab != ' ':
-                new_colors.append(colr)
-            else:
-                new_colors.append('rgb(255, 255, 255)')                        
-        
-        thisfig['data'][0]['marker']['colors'] = new_colors
-        
-        txt = str(len(dff.index)) + ' volcano(es)'    
-        thisfig.update_layout(
-            annotations=[dict(xref='paper',
-                              yref='paper',
-                              x=0.5, y=-0.25,
-                              showarrow=False,
-                              text=txt)],
-                ) 
+    # Create a discrete color map for rock types
+    this_discrete_map = {
+        r: 'rgb' + str(rocks_to_color([1 if r == rock else 0 for rock in ROCK_COL]))
+        for r in ROCK_COL
+    }
+
+    # Filter DataFrame based on volcanoes input
+    if volcanoes:
+        dff = df_volcano[df_volcano['Volcano Name'].isin(volcanoes)]
+        dff = dff.replace(ROCK_SORTED, ROCK_COL)
+
+        # Create the sunburst chart
+        fig = px.sunburst(
+            dff.replace({'\xa0': ' ', 'No Data (checked)': ' '}),  
+            path=["Major Rock 1", "Major Rock 2", "Major Rock 3"],
+            color='Major Rock 1',
+            color_discrete_map=this_discrete_map
+        )
+
+        # Update marker colors, replacing empty labels with white
+        fig['data'][0]['marker']['colors'] = [
+            col if lab != ' ' else 'rgb(255, 255, 255)'
+            for lab, col in zip(fig['data'][0]['labels'], fig['data'][0]['marker']['colors'])
+        ]
+
+        # Add volcano count annotation
+        fig.add_annotation(
+            xref='paper', yref='paper', x=0.5, y=-0.25,
+            showarrow=False,
+            text=f"{len(dff)} volcano(es)"
+        )
 
     else:
-        thisfig.add_traces(
+        # Add a default sunburst chart with generic labels if no volcanoes are specified
+        fig.add_traces(
             go.Sunburst(
                 labels=['Major Rock 1', 'Major Rock 2', 'Major Rock 3'],
                 parents=['', 'Major Rock 1', 'Major Rock 2'],
-                marker=dict(
-                    colorscale='Greys'
-                )
+                marker=dict(colorscale='Greys')
             ),
         )
 
-    # title
-    thisfig.update_layout(title='<b>Rock Composition from GVP</b> <br>')
-    
-    return thisfig
+    # Update the layout of the figure with a title
+    fig.update_layout(title='<b>Rock Composition from GVP</b> <br>')
+
+    return fig
 
     
 def update_tectonicmenu(thiscountry, df_volcano):
     """  
-    Updates tectonic setting menu based on country
+    Updates the tectonic setting menu based on the selected country.
+
+    Args:
+        thiscountry (str): The name of the selected country. Can be 'all', 'start', or a specific country name.
+        df_volcano (DataFrame): A DataFrame containing volcano data, including country and tectonic settings.
+
+    Returns:
+        list: A list of menu options for tectonic settings, with options disabled based on the selected country.
     """
+    
+    # Initialize the disable state for all tectonic settings, all enabled by default
     disable_state = {ts: False for ts in ALL_TECTONIC_SETTINGS}
 
+    # Check if the selected country is neither 'all' nor 'start'
     if thiscountry not in ['all', 'start']:
+        # Get unique tectonic settings associated with the selected country
         lst_ts = list(df_volcano[df_volcano['Country'] == thiscountry]['Tectonic Settings'].unique())
+        
+        # Disable tectonic settings that are not present in the list for the selected country
         for ts in ALL_TECTONIC_SETTINGS:
-            if ts.strip() not in lst_ts:
-                disable_state[ts] = True
+            if ts.strip() not in lst_ts:  # Strip whitespace and check for existence
+                disable_state[ts] = True  # Set the disable state to True for this tectonic setting
 
+    # Create and return the menu options with the updated disable states
     return create_menu_options(ALL_TECTONIC_SETTINGS, disable_state)
     
   

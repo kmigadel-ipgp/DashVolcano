@@ -14,7 +14,7 @@ from constants.rocks import GEOROC_ROCKS, ALL_ROCKS, ROCK_COL
 from constants.paths import GEOROC_AROUND_GVP_FILE, GEOROC_AROUND_PETDB_FILE
 
 # import functions to process GVP, GEOROC and PetDB data
-from functions.georoc import load_georoc, guess_rock, detects_chems, plot_chem, process_georoc_data, clean_and_prepare_georoc, update_onedropdown, update_chemchart, add_alkaline_line, add_alkaline_series, update_subtitle, plot_TAS, match_GVPdates, find_new_tect_setting, rocks_to_color
+from functions.georoc import load_georoc, guess_rock, detects_chems, plot_chem, process_georoc_data, clean_and_prepare_georoc, update_onedropdown, update_chemchart, add_alkaline_line, add_alkaline_series, update_subtitle, plot_tas, match_GVPdates, find_new_tect_setting, rocks_to_color
 from functions.gvp import retrieve_vinfo
 
 def clean_tas_data(tas_data):
@@ -547,7 +547,7 @@ def update_joint_chemchart(thisvolcano_name, thisdf, thisfig, thisdate):
         dff = df_gvp_geo
 
     # Update the plot with the TAS layout and chemical scatter plot
-    thisfig = plot_TAS(thisfig)
+    thisfig = plot_tas(thisfig)
     thisfig = plot_chem(thisfig, dff, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], LBLS)
     thisfig.update_layout(title='<b>Chemical Rock Composition from Georoc (with known eruptions)</b><br>')
 

@@ -38,20 +38,20 @@ from constants.paths import GVP_ERUPTION_DIR, GVP_VOLCANO_DIR
 from constants.rocks import ALL_ROCKS, ROCK_SORTED, VEI_COLS, ROCK_COL, SHAPES
 from constants.events import BY_SEVERITY_EVENTS
 
-def filter_volcano_data(df, tect_gvp, country, has_eruption=True):
+def filter_volcano_data(df, gvp_tect_setting, country, has_eruption=True):
     """
     Filters the volcano data based on tectonic settings and country.
 
     Args:
         df (pd.DataFrame): The volcano data to filter.
-        tect_gvp (list): The list of tectonic settings to filter by.
+        gvp_tect_setting (list): The list of tectonic settings to filter by.
         country (str): The country to filter by ('all' for no filtering).
         has_eruption (bool): If True, the data represents volcanoes with eruptions; otherwise, without eruptions.
 
     Returns:
         pd.DataFrame: The filtered volcano data with additional metadata.
     """
-    condtc = df['Tectonic Settings'].isin(tect_gvp)
+    condtc = df['Tectonic Settings'].isin(gvp_tect_setting)
     cond_country = (df['Country'] == country) if country != 'all' else True
     
     # Filter the DataFrame

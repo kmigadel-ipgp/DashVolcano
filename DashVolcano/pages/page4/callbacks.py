@@ -15,17 +15,19 @@
 import io
 import plotly.graph_objs as go
 import pandas as pd
-from dash import Input, Output
 import plotly.graph_objs as go
-from dash import dcc
 
-from constants.shared_data import df_volcano, df_volcano_no_eruption, dict_georoc_sl, dict_volcano_file, dict_georoc_gvp, dict_gvp_georoc
+from plotly.subplots import make_subplots
+
+from dash import dcc
+from dash import Input, Output
+
+from constants.shared_data import df_volcano, df_volcano_no_eruption, dict_georoc_sl, dict_volcano_file, dict_georoc_gvp
 
 # import functions to process GVP, GEOROC and PetDB data
-from functions.gvp import extract_by_filter, update_rockchart
-from functions.georoc import update_subtitle, make_subplots, plot_TAS, GEOROC_majorrocks, update_GEOrockchart
+from functions.gvp import extract_by_filter, update_rockchart, update_tectonicmenu
+from functions.georoc import update_subtitle, plot_tas, georoc_majorrocks, update_georock_chart
 from functions.petdb import petdb_majorrocks
-from functions.gvp import update_tectonicmenu
 from functions.map import create_map_samples, displays_map_samples
 
 from pages.visualization import update_afm, update_radar, update_tas, clean_tas_data
@@ -90,19 +92,19 @@ def register_callbacks_page4(app):
             None: Reset any selected data points on the map.
             tectext: Updated tectonic settings text to be displayed in the textarea.
         """
-        db = []
+        database = []
 
-        # Append 'GVP' to the db list
+        # Append 'GVP' to the database list
         if country:
-            db.append('GVP')
+            database.append('GVP')
 
-        # Append 'PetDB' to the db list
+        # Append 'PetDB' to the database list
         if 'PetDB' in georoc_petdb_tect_setting:
-            db.append('PetDB')
+            database.append('PetDB')
 
-        # Append 'GEOROC' to the db list
+        # Append 'GEOROC' to the database list
         if 'GEOROC' in georoc_petdb_tect_setting: 
-            db.append('GEOROC')
+            database.append('GEOROC')
 
         # Default center and zoom level for the map
         thiscenter, thiszoom, tectext = {}, 1.3, ''  # Initialize center and zoom level with default values
@@ -129,14 +131,11 @@ def register_callbacks_page4(app):
             # Append tectonic settings to the tectonic text display
             tectext += '\n'.join(t for t in tects if 'Manual' not in t)
 
-        # Prepare rock filter options from user input
-        chosenrocks = [r.strip() for r in rocks_density_filter if r]  # Strip extra spaces from selected rock types
-
         # Create a filtered DataFrame with samples based on the selected filters
-        dffig = create_map_samples(db, volcano_name, gvp_tect_setting, georoc_petdb_tect_setting, country)
+        dffig = create_map_samples(database, volcano_name, gvp_tect_setting, georoc_petdb_tect_setting, country)
         
         # Generate the map figure with the filtered data
-        fig = displays_map_samples(dffig, thiszoom, thiscenter, plates_boundaries_setting, georoc_petdb_tect_setting, chosenrocks)
+        fig = displays_map_samples(dffig, thiszoom, thiscenter, plates_boundaries_setting, georoc_petdb_tect_setting, rocks_density_filter)
 
         # Update the layout of the map figure to include a legend
         fig.update_layout(legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01))
@@ -149,54 +148,35 @@ def register_callbacks_page4(app):
     # 3rd callback: Updates based on dropdown and selection
     # ******************************************#
     @app.callback(
-        [
-            Output("page4-tas-store", "data"),                # Output: Store updated data
-            Output("page4-tas-title", "children"),            # Output: TAS diagram title or subtitle
-        ],
-        [
-            # Inputs from dropdown and map
-            Input("page4-region-filter", "value"),            # Input: Selected region or volcano name
-            Input("page4-tas", "figure"),                     # Input: Current TAS figure
-            Input("page4-tas-store", "data"),                 # Input: Data from tas-store (previous state)
-            Input("page4-tas", "restyleData"),                # Input: Restyle data from TAS plot interactions
-            Input("page4-map", "selectedData"),               # Input: Selected data points from the map
-            Input("page4-GEOROC-PETDB-tectonic-filter", "value"),   # Input: Selected GEOROC tectonic settings
-            Input("page4-country-filter", "value"),           # Input: Selected country for filtering
-            Input("page4-GVP-tectonic-filter", "value"),      # Input: Selected GVP tectonic settings
-            Input("page4-plates-boundaries-filter", "value"),                # Input: Selected databases for filtering
-        ]
+        Output("page4-tas-title", "children"),  # Output: TAS diagram title or subtitle
+        Input("page4-tas", "figure"),           # Input: Current TAS figure
     )
-    def update_store(volcanoname, currentfig, store, restyle, selecteddata, georoc_petdb_tect_setting, country, gvp_tect_setting, plates_boundaries_setting):
+    def update_store(fig):
         """
         Updates the store and subtitle based on selected dropdown and TAS plot interactions.
         
         Args:
-            volcanoname: Name of the volcano or region selected.
-            currentfig: Current TAS diagram figure.
-            store: The previous data stored in store.
-            restyle: Information about restyled elements in the TAS plot.
-            selecteddata: Selected data points from the map.
-            georoc_petdb_tect_setting: Selected GEOROC and PetDB tectonic settings.
-            country: Selected country for filtering.
-            gvp_tect_setting: Selected GVP tectonic settings.
-            plates_boundaries_setting: List of plates boundaries to display.
+            fig: Current TAS diagram figure.
 
         Returns:
-            store: Updated store data based on the interactions.
-            subtitle: Updated TAS diagram subtitle (or empty if no markers).
+            str: Updated TAS diagram subtitle (or empty if no markers).
         """
         
+        # Check if fig is None
+        if fig is None:
+            return ''  # Return empty string if fig is None
+
         # Filter for records with 'customdata' key and non-empty marker symbols on the TAS plot
-        recs = [d for d in currentfig['data'] if 'customdata' in d.keys() and len(d['marker']['symbol']) > 0]
-        
+        recs = [d for d in fig['data'] if 'customdata' in d.keys() and len(d['marker']['symbol']) > 0]
+
         # If there are valid markers in the TAS plot, update the store and subtitle
-        if len(recs) > 0:
-            store, subtitle = update_subtitle(currentfig, store, restyle, volcanoname, selecteddata, georoc_petdb_tect_setting, country, gvp_tect_setting, plates_boundaries_setting)
+        if recs:
+            subtitle = update_subtitle(fig)
         else:
             subtitle = ''  # If no valid markers, clear the subtitle
-        
-        # Return the updated store and subtitle
-        return store, subtitle    
+
+        return subtitle
+
 
 
     # ***************************************************#
@@ -236,7 +216,7 @@ def register_callbacks_page4(app):
         # Initialize a subplot figure for the TAS diagram
         fig = make_subplots(rows=2, cols=1, shared_xaxes=True, row_width=[0.85, 0.2], vertical_spacing=0.05)
         fig.update_layout(title='<b>Chemical Rock Composition from Georoc</b> <br>')  # Set TAS diagram title
-        fig = plot_TAS(fig)  # Plot initial TAS diagram structure
+        fig = plot_tas(fig)  # Plot initial TAS diagram structure
 
         # Update TAS plot with volcano and database data, return the figure and associated data
         fig, tas_data = update_tas(fig, volcano_name, selectedpts, georoc_petdb_tect_setting)
@@ -299,7 +279,7 @@ def register_callbacks_page4(app):
         fig = update_rockchart(volcanoesbycountry, fig, df_volcano)
         
         thisdf = pd.DataFrame()  # Initialize an empty DataFrame for combined data
-        db_sources = []  # List to track data sources (PetDB and GEOROC)
+        database = []  # List to track data sources (PetDB and GEOROC)
 
         # Process PetDB data if selected in the georoc_petdb_tect_setting input
         if 'PetDB' in georoc_petdb_tect_setting:
@@ -316,11 +296,11 @@ def register_callbacks_page4(app):
                     'PetDB Major Rock 3': 'db Major Rock 3'
                 }, inplace=True)
                 thisdf = pd.concat([thisdf, dftmp])  # Concatenate PetDB data to thisdf
-                db_sources.append('PetDB')  # Track source
+                database.append('PetDB')  # Track source
 
         # Process GEOROC data if selected in the georoc_petdb_tect_setting input
         if 'GEOROC' in georoc_petdb_tect_setting:
-            dftmp = GEOROC_majorrocks(georoc_petdb_tect_setting, dict_georoc_sl, dict_volcano_file)  # Retrieve GEOROC major rock data
+            dftmp = georoc_majorrocks(georoc_petdb_tect_setting, dict_georoc_sl, dict_volcano_file)  # Retrieve GEOROC major rock data
             if not dftmp.empty:  # Check if the DataFrame is not empty
                 # Filter for whole rock samples and valid major rock data
                 dftmp = dftmp[(dftmp['material'] == 'WR') & (dftmp['GEOROC Major Rock 1'] != 'No Data')]
@@ -332,7 +312,7 @@ def register_callbacks_page4(app):
                     'GEOROC Major Rock 3': 'db Major Rock 3'
                 }, inplace=True)
                 thisdf = pd.concat([thisdf, dftmp])  # Concatenate GEOROC data to thisdf
-                db_sources.append('GEOROC')  # Track source
+                database.append('GEOROC')  # Track source
 
         # Deduplicate the combined DataFrame to ensure unique entries
         thisdf = thisdf.drop_duplicates()
@@ -341,7 +321,7 @@ def register_callbacks_page4(app):
             thisdf = thisdf[['Volcano Name', 'db Major Rock 1', 'db Major Rock 2', 'db Major Rock 3', 'cnt 1', 'cnt 2', 'cnt 3', 'db']]
 
         # Update the GEO rock chart with the combined data and sources
-        fig2 = update_GEOrockchart(thisdf, ', '.join(db_sources), dict_georoc_gvp)
+        fig2 = update_georock_chart(thisdf, database, dict_georoc_gvp)
         
         return fig, fig2  # Return the updated figures for both charts
 

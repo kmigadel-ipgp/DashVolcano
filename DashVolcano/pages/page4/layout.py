@@ -33,7 +33,7 @@ def create_menus():
                 {'label': 'divergent plate boundaries', 'value': 'rift'},
                 {'label': 'convergent plate boundaries', 'value': 'subduction'},
                 {'label': 'transform plate boundaries', 'value': 'intraplate'},
-            ], value=[None]*3, className='check'),
+            ], value=[], className='check'),
         ], width=3),
         
         # Second column (GEOROC - PetDB Tectonic Settings)
@@ -47,13 +47,13 @@ def create_menus():
             html.Div("Tectonic Settings GVP", className="menu-title"),
             html.Div("Country Name", className="menu-title"),
             dcc.Dropdown(id="page4-country-filter", options=[{"label": region, "value": region} for region in ['all'] + lst_countries], value="all"),
-            dcc.Checklist(id='page4-GVP-tectonic-filter', className='check', options=tectonic_options, value=['start'] * 10),
+            dcc.Checklist(id='page4-GVP-tectonic-filter', className='check', options=tectonic_options, value=[]),
         ], width=3),
 
         # Fourth column (Rock Density Filter)
         dbc.Col([
             html.Div(children="Rock Density", className="menu-title"),
-            dcc.Checklist(id='page4-rocks-density-filter', className='check', options=rocks_options, value=[None]*len(rocks_options)),
+            dcc.Checklist(id='page4-rocks-density-filter', className='check', options=rocks_options, value=[]),
         ], width=3)
     ], justify='center')  # Centering the row horizontally and vertically
     
@@ -96,8 +96,7 @@ def create_tas_and_afm_plot():
             html.Div(className="card", children=[
                 dcc.Graph(id="page4-tas"), 
                 html.Div(id='page4-tas-title', style={'whiteSpace': 'pre-line'})
-            ]),
-            dcc.Store(id="page4-tas-store")
+            ])
         ], width=6),
         dbc.Col([
             html.Div(className="card", children=[dcc.Graph(id='page4-afm')]),

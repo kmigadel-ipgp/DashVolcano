@@ -592,27 +592,73 @@ def extract_date(entry):
     return result                              
 
 
-def plot_TAS(thisfig):
+def plot_tas(fig):
     """
+    Plots a TAS (Total Alkali-Silica) diagram in the background of the given figure.
 
     Args:
-        thisfig: the figure to be updated
+        fig: The figure to be updated with TAS data.
 
-    Returns: Plots a TAS diagram in the background
-
+    Returns:
+        fig: The updated figure with TAS diagram plotted.
     """
-    X = [[41, 41, 45, 45], [45, 45, 52, 52], [52, 52, 57, 57], [57, 57, 63, 63], [63, 63, 69, 77],
-         [41, 41, 45, 49.4, 45, 45, 41], [45, 49.4, 52, 45], [45, 48.4, 53, 49.4, 45], [49.4, 53, 57, 52, 49.4],
-         [53, 48.4, 52.5, 57.6, 53], [53, 57.6, 63, 57, 53]]
-    Y = [[0, 3, 3, 0], [0, 5, 5, 0], [0, 5, 5.9, 0], [0, 5.9, 7, 0], [0, 7, 8, 0],
-         [3, 7, 9.4, 7.3, 5, 3, 3], [5, 7.3, 5, 5], [9.4, 11.5, 9.3, 7.3, 9.4], [7.3, 9.3, 5.9, 5, 7.3],
-         [9.3, 11.5, 14, 11.7, 9.3], [9.3, 11.7, 7, 5.9, 9.3]]
-    tasnames = ['picro-basalt', 'basalt', 'basaltic andesite', 'andesite', 'dacite',
-                'tephrite', 'trachybasalt', 'phono-tephrite', 'basaltic trachyandesite',
-                'tephri-phonolite', 'trachyandesite']
 
-    for (x, y) in zip(X, Y):
-        thisfig.add_traces(
+    # Define the x and y coordinates for different TAS regions
+    X = [
+        [41, 41, 45, 45], 
+        [45, 45, 52, 52], 
+        [52, 52, 57, 57], 
+        [57, 57, 63, 63], 
+        [63, 63, 69, 77],
+        [41, 41, 45, 49.4, 45, 45, 41], 
+        [45, 49.4, 52, 45], 
+        [45, 48.4, 53, 49.4, 45],
+        [49.4, 53, 57, 52, 49.4], 
+        [53, 48.4, 52.5, 57.6, 53], 
+        [53, 57.6, 63, 57, 53],
+        [69, 69, 77, 77, 69],
+        [57.6, 65, 69, 69, 63, 57.6],
+        [50, 65, 57.6, 50]
+    ]
+    
+    Y = [
+        [0, 3, 3, 0], 
+        [0, 5, 5, 0], 
+        [0, 5, 5.9, 0], 
+        [0, 5.9, 7, 0], 
+        [0, 7, 8, 0],
+        [3, 7, 9.4, 7.3, 5, 3, 3], 
+        [5, 7.3, 5, 5], 
+        [9.4, 11.5, 9.3, 7.3, 9.4],
+        [7.3, 9.3, 5.9, 5, 7.3], 
+        [9.3, 11.5, 14, 11.7, 9.3], 
+        [9.3, 11.7, 7, 5.9, 9.3],
+        [8, 13, 13, 0, 8],
+        [11.7, 15.7, 13, 8, 7, 11.7],
+        [15.13, 15.7, 11.7, 15.13]
+    ]
+    
+    # Names of the geological regions corresponding to the X and Y coordinates
+    tasnames = [
+        'picro-basalt', 
+        'basalt', 
+        'basaltic andesite', 
+        'andesite',
+        'dacite',
+        'tephrite',
+        'trachybasalt',
+        'phono-tephrite',
+        'basaltic trachyandesite',
+        'tephri-phonolite',
+        'trachyandesite',
+        'rhyolite',
+        'trachyte,<br>trachydacite',
+        'phonolyte'
+    ]
+
+    # Add filled traces for each region in the TAS diagram
+    for x, y in zip(X, Y):
+        fig.add_traces(
             go.Scatter(
                 x=x,
                 y=y,
@@ -624,84 +670,10 @@ def plot_TAS(thisfig):
                 name=tasnames[X.index(x)],
                 showlegend=False
             ),
-            rows=2, cols=1,
+            rows=2, cols=1  # Position in the figure
         )
-    # add ryholite
-    thisfig.add_traces(
-        go.Scatter(
-            x=[69, 69],
-            y=[8, 13],
-            mode='lines',
-            line_color='lightgrey',
-            showlegend=False
-        ),
-        rows=2, cols=1,
-    )
-    thisfig.add_traces(
-        go.Scatter(
-            x=[69, 69, 77, 77, 69],
-            y=[8, 13, 13, 0, 8],
-            mode='none',
-            fill='toself',
-            fillcolor='lightblue',
-            opacity=0.2,
-            name='rhyolite',
-            showlegend=False
-        ),
-        rows=2, cols=1,
-    )
-    # add trachyte
-    # a = 0.562, b=-20.8
-    thisfig.add_traces(
-        go.Scatter(
-            x=[57.8, 65],
-            y=[11.7, 15.7],
-            mode='lines',
-            line_color='lightgrey',
-            showlegend=False
-        ),
-        rows=2, cols=1,
-    )
-    thisfig.add_traces(
-        go.Scatter(
-            x=[57.8, 65, 69, 69, 63, 57.8],
-            y=[11.7, 15.7, 13, 8, 7, 11.7],
-            mode='none',
-            fill='toself',
-            fillcolor='lightblue',
-            opacity=0.2,
-            name='trachyte,<br>trachydacite',
-            showlegend=False
-        ),
-        rows=2, cols=1,
-    )
-    # add phonolyte
-    # a = -0.433, b=36.783
-    thisfig.add_traces(
-        go.Scatter(
-            x=[50, 52.5],
-            y=[15.13, 14],
-            mode='lines',
-            line_color='lightgrey',
-            showlegend=False
-        ),
-        rows=2, cols=1,
-    )
-    thisfig.add_traces(
-        go.Scatter(
-            x=[50, 65, 57.8, 50],
-            y=[15.13, 15.7, 11.7, 15.13],
-            mode='none',
-            fill='toself',
-            fillcolor='lightblue',
-            opacity=0.2,
-            name='phonolyte',
-            showlegend=False
-        ),
-        rows=2, cols=1,
-    )
 
-    return thisfig
+    return fig
     
 
 def add_alkaline_series(thisfig):
@@ -1056,7 +1028,7 @@ def update_chemchart(thisvolcano_name, thisfig, thisdate, grnames, dict_georoc_s
         dff = pd.DataFrame(data=d)
 
     # adds the TAS layout
-    thisfig = plot_TAS(thisfig)
+    thisfig = plot_tas(thisfig)
     # draws the scatter plot
     thisfig = plot_chem(thisfig, dff, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], LBLS)
     
@@ -1131,7 +1103,7 @@ def update_onedropdown(thisvolcano_name, grnames, dict_georoc_sl, dict_volcano_f
     return opts
 
 
-def GEOROC_majorrocks(georoc_petdb_tect_setting, dict_georoc_sl, dict_volcano_file): 
+def georoc_majorrocks(georoc_petdb_tect_setting, dict_georoc_sl, dict_volcano_file): 
     """
     Generates a dataframe containing volcano names and their corresponding GEOROC major rocks (1, 2, and 3)
     for specified tectonic settings.
@@ -1234,108 +1206,109 @@ def GEOROC_majorrocks(georoc_petdb_tect_setting, dict_georoc_sl, dict_volcano_fi
     return alldf
 
 
-def update_GEOrockchart(thisdf, db, dict_georoc_gvp): 
+def update_georock_chart(thisdf, database, dict_georoc_gvp): 
     """
+    Updates the GEOROC major rocks sunburst chart.
 
     Args:
-        thisdf: output of GEOROC_majorrocks 
-        db: specifies whether GEOROC and/or PetDB is used
+        thisdf: DataFrame containing rock data from GEOROC and/or PetDB.
+        database: Indicates if GEOROC and/or PetDB data is being used.
+        dict_georoc_gvp: Dictionary mapping Georoc names to GVP names.
 
     Returns: 
-        sunburst chart with GEOROC major rocks
-
+        A Plotly sunburst chart representing major rock compositions.
     """
-    this_discrete_map = {}
-    for r in GEOROC_ROCKS:
-        # from GEOROC to GVP rock name
-        rgvp = GEOROC_ROCK_COL[GEOROC_ROCKS.index(r)] 
-        z = [0] * len(ROCK_COL)
-        z[ROCK_COL.index(rgvp)] = 1
-        this_discrete_map[r] = 'rgb' + str(rocks_to_color(z))
-    
-    if 'PetDB' in db and not('GEOROC' in db):
+
+    # Create a discrete color mapping for each rock type
+    this_discrete_map = {
+        r: 'rgb' + str(rocks_to_color([1 if rock_name == GEOROC_ROCK_COL[GEOROC_ROCKS.index(r)] else 0 for rock_name in ROCK_COL]))
+        for r in GEOROC_ROCKS
+    }
+
+    # Determine the title based on the database source
+    if 'PetDB' in database and 'GEOROC' not in database:
         thistitle = '<b>Rock Composition from PetDB</b> <br>'
-    elif 'GEOROC' in db and not('PetDB' in db):
+    elif 'GEOROC' in database and 'PetDB' not in database:
         thistitle = '<b>Rock Composition from GEOROC</b> <br>'
-    elif 'PetDB' in db and 'GEOROC' in db:
+    elif 'PetDB' in database and 'GEOROC' in database:
         thistitle = '<b>Rock Composition from GEOROC and PetDB</b> <br>'
+        
+        # Separate DataFrames for PetDB and GEOROC
         dfpdb = thisdf[thisdf['db'] == 'PetDB'] 
         dfgeo = thisdf[thisdf['db'] == 'GEOROC']
-        dfgeo.loc[:, 'Volcano Name'] = dfgeo['Volcano Name'].apply(lambda x: dict_georoc_gvp[x])
-        mr1 = []
-        mr2 = []
-        mr3 = []
-        # union of names
-        for v in list(set(dfgeo['Volcano Name']).union(set(dfpdb['Volcano Name']))):
-            d1 = {}
-            # GEOROC
-            if v in list(dfgeo['Volcano Name']):
-                rck1 = dfgeo[dfgeo['Volcano Name'] == v][['db Major Rock 1', 'db Major Rock 2', 'db Major Rock 3']].values[0]
-                cnt1 = dfgeo[dfgeo['Volcano Name'] == v][['cnt 1', 'cnt 2', 'cnt 3']].values[0]
-                for r, c in zip(rck1, cnt1):
-                    d1[r] = c
-             
-            # add PetDB
-            if v in list(dfpdb['Volcano Name']):
-                cnt2 = dfpdb[dfpdb['Volcano Name'] == v][['cnt 1', 'cnt 2', 'cnt 3']].values[0]
-                rck2 = dfpdb[dfpdb['Volcano Name'] == v][['db Major Rock 1', 'db Major Rock 2', 'db Major Rock 3']].values[0]
+
+        # Map GEOROC volcano names to GVP names
+        dfgeo['Volcano Name'] = dfgeo['Volcano Name'].map(dict_georoc_gvp)
+
+        # Prepare lists for major rock counts
+        mr1, mr2, mr3 = [], [], []
+
+        # Combine data from both databases for volcanoes
+        for volcano in set(dfgeo['Volcano Name']).union(dfpdb['Volcano Name']):
+            combined_data = {}
+
+            # Add GEOROC data
+            if volcano in dfgeo['Volcano Name'].values:
+                rck1 = dfgeo[dfgeo['Volcano Name'] == volcano][['db Major Rock 1', 'db Major Rock 2', 'db Major Rock 3']].values[0]
+                cnt1 = dfgeo[dfgeo['Volcano Name'] == volcano][['cnt 1', 'cnt 2', 'cnt 3']].values[0]
+                combined_data.update(dict(zip(rck1, cnt1)))
+
+            # Add PetDB data
+            if volcano in dfpdb['Volcano Name'].values:
+                rck2 = dfpdb[dfpdb['Volcano Name'] == volcano][['db Major Rock 1', 'db Major Rock 2', 'db Major Rock 3']].values[0]
+                cnt2 = dfpdb[dfpdb['Volcano Name'] == volcano][['cnt 1', 'cnt 2', 'cnt 3']].values[0]
                 for r, c in zip(rck2, cnt2):
-                    if r in d1.keys():
-                        d1[r] += c
-                    else:    
-                        d1[r] = c  
-                            
-            # sorts    
-            newmr = [list(x) for x in sorted(d1.items())[0:3]]+[['No Data', 0], ['No Data', 0]]
-            newmr.sort(key=lambda x: x[1], reverse=True)
-            mr1.append(newmr[0][0])
-            mr2.append(newmr[1][0])
-            mr3.append(newmr[2][0])   
+                    combined_data[r] = combined_data.get(r, 0) + c
+
+            # Sort and select the top 3 major rocks
+            top_rocks = sorted(combined_data.items(), key=lambda x: x[1], reverse=True)[:3]
+            while len(top_rocks) < 3:
+                top_rocks.append(('No Data', 0))  # Fill with 'No Data' if less than 3
+            
+            mr1.append(top_rocks[0][0])
+            mr2.append(top_rocks[1][0])
+            mr3.append(top_rocks[2][0])
+        
+        # Create a new DataFrame with the major rocks
         thisdf = pd.DataFrame({'db Major Rock 1': mr1, 'db Major Rock 2': mr2, 'db Major Rock 3': mr3})             
-           
     else:
         thistitle = '<b>Rock Composition</b><br>'
-      
-    if len(thisdf.index) > 0:
-        
-        fig = px.sunburst(thisdf.replace('No Data', ' '), path=["db Major Rock 1", "db Major Rock 2", "db Major Rock 3"],
-                          color='db Major Rock 1', color_discrete_map=this_discrete_map,
-                          title=thistitle)
-                             
-        label = fig['data'][0]['labels']
-        current_colors = fig['data'][0]['marker']['colors']
-        new_colors = []
-        for lab, colr in zip(label, current_colors):
-            if lab != ' ':
-                new_colors.append(colr)
-            else:
-                new_colors.append('rgb(255, 255, 255)')                        
-        
-        fig['data'][0]['marker']['colors'] = new_colors
-        
-    else:
-        fig = go.Figure()
-        fig.update_layout(title=thistitle) 
-        fig.add_traces(
-            go.Sunburst(
-                labels=['Major Rock 1', 'Major Rock 2', 'Major Rock 3'],
-                parents=['', 'Major Rock 1', 'Major Rock 2'],
-                marker=dict(
-                    colorscale='Greys'
-                )
-            ),
+
+    # Create the sunburst chart if data exists
+    if not thisdf.empty:
+        fig = px.sunburst(
+            thisdf.replace('No Data', ' '), 
+            path=["db Major Rock 1", "db Major Rock 2", "db Major Rock 3"],
+            color='db Major Rock 1', 
+            color_discrete_map=this_discrete_map,
+            title=thistitle
         )
-    
-    txt = str(len(thisdf.index)) + ' volcano(es)'
-        
+
+        # Update colors for the sunburst chart
+        fig['data'][0]['marker']['colors'] = [
+            col if lab != ' ' else 'rgb(255, 255, 255)' 
+            for lab, col in zip(fig['data'][0]['labels'], fig['data'][0]['marker']['colors'])
+        ]
+    else:
+        # Create an empty figure if no data
+        fig = go.Figure()
+        fig.update_layout(title=thistitle)
+        fig.add_traces(go.Sunburst(
+            labels=['Major Rock 1', 'Major Rock 2', 'Major Rock 3'],
+            parents=['', 'Major Rock 1', 'Major Rock 2'],
+            marker=dict(colorscale='Greys')
+        ))
+
+    # Add a footer with the count of volcanoes
+    txt = f'{len(thisdf.index)} volcano(es)'
     fig.update_layout(
-        annotations=[dict(xref='paper',
-                          yref='paper',
-                          x=0.5, y=-0.25,
-                          showarrow=False,
-                          text=txt)],
-                ) 
-                             
+        annotations=[dict(
+            xref='paper', yref='paper',
+            x=0.5, y=-0.25, showarrow=False,
+            text=txt
+        )]
+    )
+    
     return fig
     
     
@@ -1485,127 +1458,104 @@ def retrievedf_fromfigure(currentfig):
     
     return thisdf
     
-
-def update_subtitle(currentfig, store, restyle, *context):
+def update_subtitle(fig):
     """
+    Updates the subtitle based on the current figure and selected materials.
 
     Args:
-        currentfig:
-        store:
-        restyle:
-        context:
+        fig: The current figure from which data is retrieved.
 
-    Returns: 
-
+    Returns:
+        tuple: Updated store state and the generated subtitle.
     """
-    #
-    # inclusion = 19
-    # volcanic glass = 18
-    # whole glass = 17
-    #
-    subtitle = ''
-    context = list(context)
+
+    subtitle = ''  # Initialize an empty subtitle string
     
-    # retrieves the data from the figure
-    thisdf = retrievedf_fromfigure(currentfig)
-    # extracts existing materials
+    # Retrieve the DataFrame from the current figure
+    thisdf = retrievedf_fromfigure(fig)
+    
+    # Extract existing materials from the DataFrame
     existing_materials = thisdf['MATERIAL'].unique()
-        
-    if store is None:
-        store = context + [True if mt in existing_materials else False for mt in ['WR', 'GL', 'INC']]
-     
-    else:
-        # if no change
-        if store[0:len(context)] == context:  
-            # thus restyle applies
-            for idx, lbl in zip([len(context), len(context)+1, len(context)+2], [17, 18, 19]):
-                if restyle is not None:
-                    if restyle[1][0] == lbl:
-                        store[idx] = restyle[0]['visible'][0]
-                        
-        else:
-            # if anything changes, reset
-            store = context + [True if mt in existing_materials else False for mt in ['WR', 'GL', 'INC']]
     
-    visible_materials = [['WR', 'GL', 'INC'][i] for i in [0, 1, 2] if store[i+len(context)] == True]
-    if len(existing_materials) > 0:   
-        thisdf = thisdf[thisdf['MATERIAL'].isin(visible_materials)]
-        # extracts major rocks
-        totalsamples = len(thisdf.index)
-        majorrocks = [x for x in list(thisdf['ROCK'].value_counts().index[0:5]) if x != 'UNNAMED']
-        majorrocksvalues = [round(100*(thisdf['ROCK'].value_counts()[r]/totalsamples), 1) for r in majorrocks]
-        
-        # material present
-        for vm in visible_materials:
-            subtitle += vm + '-'
-        subtitle = subtitle[:-1] + ': '
-        # string
-        for mr, mrc in zip(majorrocks, majorrocksvalues):
-            subtitle += mr + ' (' + str(mrc) + '%)' + ', '
-        subtitle = subtitle[:-2]
-    else:      
-        majorrocks = []
+    # Initialize store based on context and existing materials
+    store = [mt in existing_materials for mt in ['WR', 'GL', 'INC']]
+    
+    # Determine visible materials based on the updated store
+    visible_materials = [mat for mat, present in zip(['WR', 'GL', 'INC'], store) if present]
 
-    return store, subtitle   
+    if existing_materials.size > 0:  # Check if there are existing materials
+        thisdf = thisdf[thisdf['MATERIAL'].isin(visible_materials)]  # Filter DataFrame
+        
+        # Count total samples and extract major rocks
+        totalsamples = len(thisdf)
+        majorrocks = thisdf['ROCK'].value_counts().index[thisdf['ROCK'].value_counts() != 'UNNAMED'][:5]
+        majorrocksvalues = (round(100 * (thisdf['ROCK'].value_counts()[rock] / totalsamples), 1) 
+                            for rock in majorrocks)
+        
+        # Construct subtitle string
+        subtitle = f"{'-'.join(visible_materials)}: {', '.join(f'{mr} ({mrc}%)' for mr, mrc in zip(majorrocks, majorrocksvalues))}"
+        
+    return subtitle
 
+
+
+# def GEOROC_sunburst(thisdf):
+#     """
+#     """
+#     fig3 = make_subplots(rows=1, cols=3, specs=[[{"type": "pie"}, {"type": "pie"}, {"type": "pie"}]],
+#                          subplot_titles=("all", "GL", "INC"))
     
-def GEOROC_sunburst(thisdf):
-    """
-    """
-    fig3 = make_subplots(rows=1, cols=3, specs=[[{"type": "pie"}, {"type": "pie"}, {"type": "pie"}]],
-                         subplot_titles=("all", "GL", "INC"))
+#     xs = [0.2, 0.5, 0.8]
     
-    xs = [0.2, 0.5, 0.8]
-    
-    for mat, coln in zip(['all', 'GL', 'INC'], [1, 2, 3]):
-        if len(thisdf.index) > 0:
-            dfmat = thisdf[thisdf['material'] == mat]
+#     for mat, coln in zip(['all', 'GL', 'INC'], [1, 2, 3]):
+#         if len(thisdf.index) > 0:
+#             dfmat = thisdf[thisdf['material'] == mat]
             
-            if len(dfmat.index) > 0:
-                tmpfig = update_GEOrockchart(dfmat)
-                # moves the data to graph object
-                # ids are needed when labels are repeated
-                # formats hovertmplate
-                hovertmplate = tmpfig['data'][0]['hovertemplate'].split('{label}<br>')[1]
-                splt = hovertmplate.split('parent=%{parent}<br>')
-                hovertmplate = splt[0] + splt[1]
-                fig3.add_traces(
-                    go.Sunburst(
-                        ids=tmpfig['data'][0]['ids'].tolist(),
-                        labels=tmpfig['data'][0]['labels'].tolist(),
-                        parents=tmpfig['data'][0]['parents'].tolist(),
-                        values=tmpfig['data'][0]['values'].tolist(),
-                        marker=tmpfig['data'][0]['marker'],
-                        customdata=tmpfig['data'][0]['customdata'],
-                        hovertemplate=hovertmplate
-                    ),
-                    rows=1, cols=coln,
-                )
+#             if len(dfmat.index) > 0:
+#                 tmpfig = update_georock_chart(dfmat)
+#                 # moves the data to graph object
+#                 # ids are needed when labels are repeated
+#                 # formats hovertmplate
+#                 hovertmplate = tmpfig['data'][0]['hovertemplate'].split('{label}<br>')[1]
+#                 splt = hovertmplate.split('parent=%{parent}<br>')
+#                 hovertmplate = splt[0] + splt[1]
+#                 fig3.add_traces(
+#                     go.Sunburst(
+#                         ids=tmpfig['data'][0]['ids'].tolist(),
+#                         labels=tmpfig['data'][0]['labels'].tolist(),
+#                         parents=tmpfig['data'][0]['parents'].tolist(),
+#                         values=tmpfig['data'][0]['values'].tolist(),
+#                         marker=tmpfig['data'][0]['marker'],
+#                         customdata=tmpfig['data'][0]['customdata'],
+#                         hovertemplate=hovertmplate
+#                     ),
+#                     rows=1, cols=coln,
+#                 )
                      
-                fig3['layout']['annotations'][coln-1].update(text=mat+': ' + str(len(dfmat.index)) + ' volcano(es)', font = dict(size=13), 
-                                                             xref='paper', yref='paper', x=xs[coln-1], y=-0.25)
+#                 fig3['layout']['annotations'][coln-1].update(text=mat+': ' + str(len(dfmat.index)) + ' volcano(es)', font = dict(size=13), 
+#                                                              xref='paper', yref='paper', x=xs[coln-1], y=-0.25)
                 
-            else:
-                fig3.add_traces(
-                    go.Sunburst(
-                                labels=['Major Rock 1', 'Major Rock 2', 'Major Rock 3'],
-                                parents=['', 'Major Rock 1', 'Major Rock 2'],
-                                marker=dict(colorscale='Greys')
-                               ),
-                    rows=1, cols=coln,
-                )
+#             else:
+#                 fig3.add_traces(
+#                     go.Sunburst(
+#                                 labels=['Major Rock 1', 'Major Rock 2', 'Major Rock 3'],
+#                                 parents=['', 'Major Rock 1', 'Major Rock 2'],
+#                                 marker=dict(colorscale='Greys')
+#                                ),
+#                     rows=1, cols=coln,
+#                 )
                    
-        else:
-            fig3.add_traces(
-                go.Sunburst(
-                        labels=['Major Rock 1', 'Major Rock 2', 'Major Rock 3'],
-                        parents=['', 'Major Rock 1', 'Major Rock 2'],
-                        marker=dict(colorscale='Greys')
-                       ),
-                rows=1, cols=coln,
-            )
+#         else:
+#             fig3.add_traces(
+#                 go.Sunburst(
+#                         labels=['Major Rock 1', 'Major Rock 2', 'Major Rock 3'],
+#                         parents=['', 'Major Rock 1', 'Major Rock 2'],
+#                         marker=dict(colorscale='Greys')
+#                        ),
+#                 rows=1, cols=coln,
+#             )
     
-    return fig3
+#     return fig3
     
     
 def perc_rock():
