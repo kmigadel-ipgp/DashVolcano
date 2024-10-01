@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import numpy as np
 import json
 import geopandas as gpd
 import plotly.express as px
@@ -10,6 +11,14 @@ from itertools import groupby
 from functions.georoc import load_georoc
 
 from constants.paths import TECTONICS_PLATES_DIR, TECTONIC_ZONES_DIR
+
+
+def calculate_matrix(data):
+        rows = []
+        for r1 in data:
+            row = [np.square(np.subtract(np.array(r1), np.array(r2))).sum() / 2 for r2 in data]
+            rows.append(row)
+        return np.matrix(rows)
 
 
 def read_gmt(file_name):
