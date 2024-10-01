@@ -45,13 +45,16 @@ body {
 
 /* makes check boxes horizontal */
 .check {
-    height: 500px;
     display: flex;
     justify-content: left;
     padding-top: 20px;
     margin: 0px 0px 0px 0px;
     background-color: #FFFFFF;
     display: block;
+}
+
+.check input[type="checkbox"] {
+    margin-right: 5px;  /* Space between checkbox and label */
 }
 
 /* makes a shadow below the box */

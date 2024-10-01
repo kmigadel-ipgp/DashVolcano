@@ -48,13 +48,101 @@ from numpy.linalg import inv
 from plotly.subplots import make_subplots
 
 from constants.rocks import GEOROC_ROCKS, GEOROC_ROCK_COL, ROCK_COL
-from constants.chemicals import MORE_CHEMS, LBLS, LBLS2, CHEM_COLS, CHEMICALS_SETTINGS, OXIDES, COLS_ROCK, ISOTOPES
+from constants.chemicals import MORE_CHEMS, LBLS, LBLS2, CHEM_COLS, OXIDES, COLS_ROCK, ISOTOPES
 from constants.tectonics import NEW_TECTONIC_DICT, NEW_TECTONIC_SETTINGS
 from constants.paths import GEOROC_DATASET_DIR, GEOROC_GVP_DIR, GEOROC_AROUND_GVP_FILE
 from constants.shared_data import df_volcano, dict_gvp_georoc, dict_georoc_ls, df_volcano_no_eruption
 
-from functions.gvp import rocks_to_color, find_new_tect_setting
+def rocks_to_color(rid):
+    """
 
+    Args:
+        rid: the rock composition
+
+    Returns: a corresponding color code
+
+    """
+    # coloring based on rock composition
+    if rid[9] > 0 and rid[6] == 0:
+        cc_r = max(200 - (rid[9] - 1) * 16, 115)
+        cc_g = 0
+    elif rid[9] == 0 and rid[6] > 0:
+        cc_r = max(255 - (rid[6] - 1) * 26, 115)
+        cc_g = 64
+    elif rid[9] > 0 and rid[6] > 0:
+        cc_r = max(200 - (rid[9] - 1) * 16, 115)
+        cc_g = 64
+    else:
+        cc_r = 0
+        cc_g = 0
+    # intermediate and mafic
+    if rid[2] > 0 and rid[3] == 0:
+        cc_b = max(255 - (rid[2] - 1) * 26, 115)
+        cc_g += 0
+    elif rid[2] == 0 and rid[3] > 0:
+        cc_g += max(255 - 64 - (rid[3] - 1) * 26, 115)
+        cc_b = 0
+    elif rid[2] > 0 and rid[3] > 0:
+        cc_g += max(255 - 64 - (rid[3] - 1) * 26, 115)
+        cc_b = max(255 - (rid[2] - 1) * 26, 115)
+    else:
+        cc_b = 0
+        cc_g += 0
+
+    return cc_r, cc_g, cc_b
+
+def find_new_tect_setting(thisvolcano, df_volcano, df_volcano_no_eruption):
+    """
+    Args:
+               
+    """
+    if thisvolcano in ['Northern Lake Abaya Volcanic Field', 'Kaikohe-Bay of Islands', 'Garove', 'Eastern Gemini Seamount', 'Vitim Volcanic Field']:
+        if thisvolcano in ['Northern Lake Abaya Volcanic Field', 'Vitim Volcanic Field']:
+            newts = 'Rift at plate boundaries / Continental'
+        if thisvolcano == 'Kaikohe-Bay of Islands':
+            newts = 'Intraplate / Continental'
+        if thisvolcano in ['Garove', 'Eastern Gemini Seamount']:
+            newts = 'Subduction zone / Continental'
+    
+    else:
+        # for other volcanoes
+        thistecset = df_volcano[df_volcano['Volcano Name'] == thisvolcano]['Tectonic Settings'].values
+        if len(thistecset) == 0:
+            thistecset = df_volcano_no_eruption[df_volcano_no_eruption['Volcano Name'] == thisvolcano]['Tectonic Settings'].values[0]
+        else:
+            thistecset = thistecset[0]
+    
+        if thistecset == 'Subduction zone / Oceanic crust (< 15 km)':
+            newts = 'Subduction zone / Oceanic'
+        elif thistecset in ['Subduction zone / Continental crust (>25 km)', 'Subduction zone / Intermediate crust (15-25 km)']:
+            newts = 'Subduction zone / Continental'
+        elif thistecset == 'Intraplate / Oceanic crust (< 15 km)':
+            newts = 'Intraplate / Oceanic'
+        elif thistecset in ['Intraplate / Continental crust (>25 km)', 'Intraplate / Intermediate crust (15-25 km)']:
+            newts = 'Intraplate / Continental'
+        elif thistecset == 'Rift zone / Oceanic crust (< 15 km)':     
+            newts = 'Rift at plate boundaries / Oceanic'
+        elif thistecset in ['Rift zone / Continental crust (>25 km)', 'Rift zone / Intermediate crust (15-25 km)']:
+            newts = 'Rift at plate boundaries / Continental'
+        elif thistecset == 'Subduction zone / Crustal thickness unknown':
+            thissubregion = df_volcano[df_volcano['Volcano Name'] == thisvolcano]['Subregion'].values
+            if len(thissubregion) == 0:
+                thissubregion = df_volcano_no_eruption[df_volcano_no_eruption['Volcano Name'] == thisvolcano]['Subregion'].values[0]
+            else:
+                thissubregion = thissubregion[0]
+       
+            if thissubregion in ['Bougainville and Solomon Islands', 'Izu, Volcano, and Mariana Islands', 'New Ireland', 'Santa Cruz Islands']:
+                newts = 'Subduction zone / Oceanic'
+            elif thissubregion in ['Pacific Ocean (southwestern)', 'North of Luzon', 'Lesser Sunda Islands', 'Fiji Islands']:
+                newts = 'Subduction zone / Continental'
+            else:
+                print('Warning: missed subregion')
+        else:    
+            if thistecset == 'Unknown':
+                newts = 'Unknown'
+            else:
+                print('Warning: missed subregion')         
+    return newts
 
 def load_georoc(thisvolcano, dict_georoc_sl, dict_volcano_file):
     """
@@ -166,6 +254,13 @@ def load_georoc(thisvolcano, dict_georoc_sl, dict_volcano_file):
     
     # adds names to rocks using TAS 
     dfloaded = guess_rock(dfloaded)
+
+    dfloaded = dfloaded.rename(columns={'CITATIONS': 'refs'})
+    
+    for i in range(1, 11):
+        dfloaded['refs'] = dfloaded['refs'].apply(lambda x: x[:i*80]+'<br>'+x[i*80:] if len(x)>i*80 else x)
+    dfloaded['refs'] = dfloaded['refs'].apply(lambda x: x if len(x)<800 else x[:800]+'(...)')
+
 
     return dfloaded
 
@@ -711,6 +806,17 @@ def detects_chems(thisdf, chem1, chem2, theselbls):
     
     return thisdf
 
+def process_material(material):
+    # If the material is a string and contains any of the keywords
+    if isinstance(material, str) and any(keyword in material for keyword in ['WR', 'GL', 'INC', 'MIN']):
+        # Split the value by space and return only the first part
+        return material.split(' ')[0]
+    elif isinstance(material, str):
+        # If it's a string but doesn't contain the keywords, keep the original value
+        return material
+    else:
+        # If it's not a valid string, return 'UNKNOWN'
+        return 'UNKNOWN'
 
 def plot_chem(thisfig, thisdf, chem1, theselbls):
     """
@@ -731,13 +837,7 @@ def plot_chem(thisfig, thisdf, chem1, theselbls):
                                     (np.where(thisdf['VEI'].astype('float') <= 2, 'circle', 'triangle-up')))
     else:
         # sometimes two materials are present, this is to retrieve the first one
-        oldvalues = [x for x in list(thisdf['MATERIAL'].unique()) if (type(x) == str and '[' in x)]
-        newvalues = {}
-        for x in oldvalues:
-            newvalues[x] = x.split('[')[0].strip() 
-        thisdf['MATERIAL'] = thisdf['MATERIAL'].replace(newvalues)
-        # in case some MATERIAL entry are missing or off
-        thisdf.loc[~thisdf['MATERIAL'].isin(['WR', 'GL', 'INC', 'MIN'])] = 'UNKNOWN'
+        thisdf['MATERIAL'] = thisdf['MATERIAL'].apply(process_material)
         # adjusts symbol based on material
         thisdf['symbol'] = thisdf['MATERIAL'].replace(to_replace={'WR': 'circle', 'GL': 'diamond', 'INC': 'square', 'MIN': 'x', 'UNKNOWN': 'diamond-wide'})
         
@@ -1031,27 +1131,27 @@ def update_onedropdown(thisvolcano_name, grnames, dict_georoc_sl, dict_volcano_f
     return opts
 
 
-def GEOROC_majorrocks(tect_setting, dict_georoc_sl, dict_volcano_file): 
+def GEOROC_majorrocks(georoc_petdb_tect_setting, dict_georoc_sl, dict_volcano_file): 
     """
     Generates a dataframe containing volcano names and their corresponding GEOROC major rocks (1, 2, and 3)
     for specified tectonic settings.
 
     Args:
-        tect_setting (list): List of tectonic settings.
+        georoc_petdb_tect_setting (list): List of tectonic settings from Georoc and PetDB.
 
     Returns:
         pd.DataFrame: DataFrame with volcano names and their GEOROC major rocks.
     """
     
-    tect_setting = [x for x in tect_setting if x != None and x != ' PetDB']
+    georoc_petdb_tect_setting = [x for x in georoc_petdb_tect_setting if x != None and x != 'PetDB']
     
     # Determine the tectonic settings to use for GEOROC
-    if ' all GEOROC' in tect_setting and len(tect_setting)==1:
+    if 'GEOROC' in georoc_petdb_tect_setting and len(georoc_petdb_tect_setting)==1:
         # format tectonic setting names
         tect_georoc = [x.strip().replace(' ', '_').replace('/',',') for x in NEW_TECTONIC_SETTINGS]
     else: 
         # new tectonic settings
-        tect_georoc = [x.strip().replace(' ', '_').replace('/',',') for x in tect_setting if (x !=' all GEOROC') and (x!=' PetDB')]
+        tect_georoc = [x.strip().replace(' ', '_').replace('/',',') for x in georoc_petdb_tect_setting if (x !='GEOROC') and (x!='PetDB')]
         
     alldf = pd.DataFrame()
         
@@ -1252,6 +1352,9 @@ def createGEOROCaroundGVP():
     gvp_names = gvp_names.append(df_volcano_no_eruption[['Volcano Name', 'Latitude', 'Longitude']])
     gvp_names = gvp_names[gvp_names['Volcano Name'] != 'Unnamed'] # removes unnamed
 
+    gvp_names['Volcano Name'] = gvp_names['Volcano Name'].apply(lambda name: name.replace('Within ', 'Intra'))
+
+
     # List all folders in the GEOROC-GVP mapping directory
     path_for_arcs = os.listdir(GEOROC_GVP_DIR)
     lst_arcs = []
@@ -1313,7 +1416,7 @@ def createGEOROCaroundGVP():
     gvp_lat = gvp_names['Latitude']
     gvp_long = gvp_names['Longitude']
 
-    colgr = ['LOCATION', 'LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME', 'CITATIONS', 'ROCK', 'ROCK no inc', 'arc'] + CHEMICALS_SETTINGS[0:1]
+    colgr = ['LOCATION', 'LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME', 'CITATIONS', 'ROCK', 'ROCK no inc', 'arc', 'SIO2(WT%)']
 
     # initializes dataframe to contatin the GEOROC samples matching GVP volcanoes
     match = pd.DataFrame()
@@ -1349,9 +1452,7 @@ def createGEOROCaroundGVP():
     matchgroup['SAMPLE NAME'] = matchgroup['SAMPLE NAME'].apply(lambda x: " ".join(x))
     matchgroup['ROCK'] = matchgroup['ROCK'].apply(lambda x: list(Counter(x).items()))
     matchgroup['ROCK no inc'] = matchgroup['ROCK no inc'].apply(lambda x: list(Counter(x).items()))
-    
-    for c in CHEMICALS_SETTINGS[0:1]:
-        matchgroup[c+'mean'] = matchgroup[c].apply(lambda x: statistics.mean(x))
+    matchgroup['SIO2(WT%)mean'] = matchgroup['SIO2(WT%)'].apply(lambda x: statistics.mean(x))
 
     # Save the resulting DataFrame to a CSV file
     matchgroup.to_csv(GEOROC_AROUND_GVP_FILE)
@@ -1550,6 +1651,10 @@ def process_georoc_data(dfgeogr, with_text, volcano_name, with_text_match, thisg
     for pathcsv in set(whichfiles):
         pathcsv = fix_pathname(pathcsv)
         dftmp = pd.read_csv(os.path.join(GEOROC_DATASET_DIR, pathcsv), low_memory=False, encoding='latin1')
+        # inclusion file has a different format
+        if 'Inclusions_comp' in pathcsv:
+            # updates columns to have the same format as dataframes from other files
+            dftmp = fix_inclusion(dftmp)
         dfloc = guess_rock(dftmp[dftmp['LOCATION'].isin(whichlocation)])
         dfloaded = pd.concat([dfloaded, dfloc])
 

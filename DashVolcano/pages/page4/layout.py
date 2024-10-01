@@ -3,21 +3,10 @@ from dash import dcc, html
 import dash_bootstrap_components as dbc
 
 from constants.shared_data import grnames, lst_countries
-
 from constants.tectonics import ALL_TECTONIC_SETTINGS, NEW_TECTONIC_SETTINGS
 from constants.rocks import GEOROC_ROCKS
-from constants.chemicals import CHEMICALS_SETTINGS
 
-
-# *************************#
-# Helper functions
-# *************************#
-
-# Function to create tectonic menu options
-def create_tectonic_menu_options(tectonic_settings):
-    disable = {ts: False for ts in tectonic_settings}
-    return [{'label': ts, 'disabled': disable[ts], 'value': ts} for ts in tectonic_settings]
-
+from helpers.helpers import create_menu_options
 
 # *************************#
 # Create Menus
@@ -25,29 +14,12 @@ def create_tectonic_menu_options(tectonic_settings):
 
 def create_menus():
     """Creates the dropdowns and checklist menus for tectonics, rocks, etc."""
-    tectonic_options = create_tectonic_menu_options(ALL_TECTONIC_SETTINGS)
+    # Tectonic settings for all and GEOROC
+    tectonic_options = create_menu_options(ALL_TECTONIC_SETTINGS)
+    georoc_tectonic_options = create_menu_options(['GEOROC', 'PetDB'] + NEW_TECTONIC_SETTINGS)
 
-    # GEOROC tectonic settings
-    new_georoc_tectonic_settings = [' all GEOROC', ' PetDB'] + NEW_TECTONIC_SETTINGS
-    
-    disable2 = {}
-    for ts in new_georoc_tectonic_settings:
-        disable2[ts] = False
-
-    georoc_tectonic_options = []
-    for ts in new_georoc_tectonic_settings:
-        georoc_tectonic_options.append({'label': ts.replace('Within ', 'Intra').replace('all', ''),
-                                        'disabled': disable2[ts],
-                                        'value': ts})
-        
-
-    disable3 = {}
-    for ch in GEOROC_ROCKS + CHEMICALS_SETTINGS[0:1]:
-        disable3[ch] = False
-
-    rocks_options = []
-    for r in GEOROC_ROCKS + CHEMICALS_SETTINGS[0:1]:
-        rocks_options.append({'label': ' ' + r, 'disabled': disable3[r], 'value': r})
+    # Rocks and chemical settings
+    rocks_options = create_menu_options(GEOROC_ROCKS + ['SIO2(WT%)'])
 
     # Layout for menus
     return dbc.Row([
@@ -55,32 +27,33 @@ def create_menus():
             # First column (Region Filter and Tectonic Menu)
             html.Div("Where", className="menu-title"),
             dcc.Dropdown(id="page4-region-filter", options=[{"label": region, "value": region} for region in grnames], value="start"),
-            html.Div(id='page4-textarea-example-output', style={'whiteSpace': 'pre-line'}),
-            dcc.Checklist(id="page4-db-filter", options=[
-                {'label': ' tectonic plates', 'value': 'tectonic'},
-                {'label': ' divergent plate boundaries', 'value': 'rift'},
-                {'label': ' convergent plate boundaries', 'value': 'subduction'},
-                {'label': ' transform plate boundaries', 'value': 'intraplate'},
-            ], value=[None]*3, className='check')
+            html.Div(id='page4-textarea-output', style={'whiteSpace': 'pre-line'}),
+            dcc.Checklist(id="page4-plates-boundaries-filter", options=[
+                {'label': 'tectonic plates', 'value': 'tectonic'},
+                {'label': 'divergent plate boundaries', 'value': 'rift'},
+                {'label': 'convergent plate boundaries', 'value': 'subduction'},
+                {'label': 'transform plate boundaries', 'value': 'intraplate'},
+            ], value=[None]*3, className='check'),
         ], width=3),
         
-        # Second column (GEOROC Tectonic Settings)
+        # Second column (GEOROC - PetDB Tectonic Settings)
         dbc.Col([
-            html.Div("Tectonic Settings", className="menu-title"),
-            dcc.Checklist(id='page4-GEOROC-tectonic-filter', className='check', options=georoc_tectonic_options, value=[None]*len(georoc_tectonic_options))
+            html.Div("Tectonic Settings (GEOROC - PetDB)", className="menu-title"),
+            dcc.Checklist(id='page4-GEOROC-PETDB-tectonic-filter', className='check', options=georoc_tectonic_options, value=[])
         ], width=3),
         
-        # Third column (Country Filter and Rocks)
+        # Third column (GVP Tectonic Settings)
         dbc.Col([
+            html.Div("Tectonic Settings GVP", className="menu-title"),
             html.Div("Country Name", className="menu-title"),
             dcc.Dropdown(id="page4-country-filter", options=[{"label": region, "value": region} for region in ['all'] + lst_countries], value="all"),
-            dcc.Checklist(id='page4-tectonic-filter', className='check', options=tectonic_options, value=['start'] * 10),
+            dcc.Checklist(id='page4-GVP-tectonic-filter', className='check', options=tectonic_options, value=['start'] * 10),
         ], width=3),
 
         # Fourth column (Rock Density Filter)
         dbc.Col([
             html.Div(children="Rock Density", className="menu-title"),
-            dcc.Checklist(id='page4-rocksopt', className='check', options=rocks_options, value=[None]*len(rocks_options)),
+            dcc.Checklist(id='page4-rocks-density-filter', className='check', options=rocks_options, value=[None]*len(rocks_options)),
         ], width=3)
     ], justify='center')  # Centering the row horizontally and vertically
     
@@ -104,7 +77,7 @@ def create_download_button():
     return dbc.Row([
         dbc.Col([
             html.Div([
-                html.Button('Download', id='page4-button-1', n_clicks=0),        
+                html.Button('Download', id='page4-download-button', n_clicks=0),        
                 # Download component (to trigger the download automatically)
                 dcc.Download(id='page4-download')
             ], style={'textAlign': 'center'})  # Centering the button within the column
@@ -139,8 +112,8 @@ def create_rock_composition_plots():
     """Creates the rock composition plots."""
     return dbc.Row([
         dbc.Col([html.Div(className="card", children=[dcc.Graph(id='page4-radar')])]),
-        dbc.Col([html.Div(className="card", children=[dcc.Graph(id='page4-rocksGEO')])]),
-        dbc.Col([html.Div(className="card", children=[dcc.Graph(id='page4-rocks')])]),
+        dbc.Col([html.Div(className="card", children=[dcc.Graph(id='page4-rocks-composition-GEOROC')])]),
+        dbc.Col([html.Div(className="card", children=[dcc.Graph(id='page4-rocks-composition-GVP')])]),
     ], align='center')
 
 # *************************#

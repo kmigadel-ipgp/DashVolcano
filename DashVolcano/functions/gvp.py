@@ -22,22 +22,20 @@
 # Last update: September 20 2024
 # **********************************************************************************#
 
-import os
 import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objs as go
 
-from itertools import groupby
 from datetime import datetime
 
 from constants.rocks import ROCK_COL, ROCK_SORTED
-from constants.tectonics import ALL_TECTONIC_SETTINGS, GEOROC_TECTONIC_SETTINGS
-from constants.paths import TECTONIC_ZONES_DIR
-
-
+from constants.tectonics import ALL_TECTONIC_SETTINGS
 from constants.shared_data import df_volcano, df_events, df_eruption, dict_gvp_georoc, dict_volcano_file
 
+from functions.georoc import rocks_to_color
+
+from helpers.helpers import create_menu_options
 
 def retrieve_vinfo(name, df1, df2, whichrocks):
     """
@@ -75,45 +73,6 @@ def retrieve_vinfo(name, df1, df2, whichrocks):
     datv.append([days1, days2, months1, months2, year1, year2])
 
     return datv
-
-
-def rocks_to_color(rid):
-    """
-
-    Args:
-        rid: the rock composition
-
-    Returns: a corresponding color code
-
-    """
-    # coloring based on rock composition
-    if rid[9] > 0 and rid[6] == 0:
-        cc_r = max(200 - (rid[9] - 1) * 16, 115)
-        cc_g = 0
-    elif rid[9] == 0 and rid[6] > 0:
-        cc_r = max(255 - (rid[6] - 1) * 26, 115)
-        cc_g = 64
-    elif rid[9] > 0 and rid[6] > 0:
-        cc_r = max(200 - (rid[9] - 1) * 16, 115)
-        cc_g = 64
-    else:
-        cc_r = 0
-        cc_g = 0
-    # intermediate and mafic
-    if rid[2] > 0 and rid[3] == 0:
-        cc_b = max(255 - (rid[2] - 1) * 26, 115)
-        cc_g += 0
-    elif rid[2] == 0 and rid[3] > 0:
-        cc_g += max(255 - 64 - (rid[3] - 1) * 26, 115)
-        cc_b = 0
-    elif rid[2] > 0 and rid[3] > 0:
-        cc_g += max(255 - 64 - (rid[3] - 1) * 26, 115)
-        cc_b = max(255 - (rid[2] - 1) * 26, 115)
-    else:
-        cc_b = 0
-        cc_g += 0
-
-    return cc_r, cc_g, cc_b
 
 
 def extract_by_filter(countryname, tectonicsetting, df_volcano):
@@ -627,156 +586,20 @@ def update_rockchart(thisvolcanolist, thisfig, df_volcano):
     
     return thisfig
 
-
-def read_gmt(file_name):
-    """
-    Reads a GMT file and extracts longitudes, latitudes, and zone names.
-
-    Args:
-        file_name (str): Name of the GMT file, e.g., 'ridge.gmt'.
-
-    Returns:
-        tuple: Three lists containing the longitudes, latitudes, and names of the tectonic zones.
-    """
-    
-    data = []
-    file_path = os.path.join(TECTONIC_ZONES_DIR, str(file_name))
-
-    # reads gmt file
-    with open(file_path) as gmtf:
-        for line in gmtf:
-            data.append(line)
- 
-    orig_names = [x.strip('>') for x in data if '>' in x][:-1]
-    names = []
-    
-    zones = [list(g) for k, g in groupby(data, key=lambda x: not('>' in x)) if k]
-
-    X = []
-    Y = []
-
-    for r, on in zip(zones, orig_names):
-        rs = [[y for y in x.split(' ') if y != ''] for x in r]
-        
-        # so need to cut two lines for ridge
-        if 'ridge' in file_name:
-
-            fnd1 = [x for x in rs if (float(x[0]) == 179.935)]
-            fnd2 = [x for x in rs if (float(x[0]) == 179.9024)]
-
-            if len(fnd1) > 0:
-                x_tmp = [float(x[0]) for x in rs]
-                id1 = x_tmp.index(179.935)
-                id2 = x_tmp.index(-179.77)
-                X.append([float(x[0]) for x in rs[0:id1]])
-                Y.append([float(x[1]) for x in rs[0:id1]])
-                X.append([float(x[0]) for x in rs[id2:]])
-                Y.append([float(x[1]) for x in rs[id2:]])
-                names.append(on)
-                names.append(on)
-            elif len(fnd2) > 0:
-                x_tmp = [float(x[0]) for x in rs]
-                id1 = x_tmp.index(179.9024)
-                id2 = x_tmp.index(-179.9401)
-                X.append([float(x[0]) for x in rs[0:id1]])
-                Y.append([float(x[1]) for x in rs[0:id1]])
-                X.append([float(x[0]) for x in rs[id2:]])
-                Y.append([float(x[1]) for x in rs[id2:]])
-                names.append(on)
-                names.append(on)
-            else:
-                X.append([float(x[0]) for x in rs])
-                Y.append([float(x[1]) for x in rs])
-                names.append(on)
-    
-        # so need to cut two lines for ridge
-        if 'trench' in file_name:
-
-            fnd1 = [x for x in rs if (float(x[0]) == -179.7613)]
-
-            if len(fnd1) > 0:
-                x_tmp = [float(x[0]) for x in rs]
-                id1 = x_tmp.index(-179.7613)
-                id2 = x_tmp.index(179.8569)
-                X.append([float(x[0]) for x in rs[0:id1]])
-                Y.append([float(x[1]) for x in rs[0:id1]])
-                X.append([float(x[0]) for x in rs[id2:]])
-                Y.append([float(x[1]) for x in rs[id2:]])
-                names.append(on)
-                names.append(on)
-            
-            else:
-                X.append([float(x[0]) for x in rs])
-                Y.append([float(x[1]) for x in rs])
-                names.append(on)
-                
-        # for transform
-        if 'transform' in file_name:
-            if len(rs) > 10:
-                rs = rs[0::3]
-                on = on[0::3]
-            X.append([float(x[0]) for x in rs])
-            Y.append([float(x[1]) for x in rs])
-            names.append(on)
-
-    return X, Y, names
-
     
 def update_tectonicmenu(thiscountry, df_volcano):
-    """  Updates tectonic setting menu based on country
+    """  
+    Updates tectonic setting menu based on country
     """
-    disable_here = {}
-    for ts in ALL_TECTONIC_SETTINGS:
-        disable_here[ts] = False
-    opts = []
+    disable_state = {ts: False for ts in ALL_TECTONIC_SETTINGS}
 
-    if thiscountry != 'all' and thiscountry != 'start':
+    if thiscountry not in ['all', 'start']:
         lst_ts = list(df_volcano[df_volcano['Country'] == thiscountry]['Tectonic Settings'].unique())
-        lst_not_ts = [x for x in ALL_TECTONIC_SETTINGS if x.strip() not in lst_ts]
-        for ts in lst_not_ts:
-            disable_here[ts] = True
+        for ts in ALL_TECTONIC_SETTINGS:
+            if ts.strip() not in lst_ts:
+                disable_state[ts] = True
 
-    for ts in ALL_TECTONIC_SETTINGS:
-        opts.append({'label': ts,
-                     'disabled': disable_here[ts],
-                     'value': ts})
-    return opts    
-    
-   
-def update_tectonicGEOROC(country, gvp_tectonic, radio):
-    """
-    """
-    # reset GEOROC tectonic settings
-    new_georoc_tectonic_settings = ([' all GEOROC'] + GEOROC_TECTONIC_SETTINGS)
-    new_georoc_tectonic_settings.remove(' Inclusions')
-
-    disable2 = {}
-    for ts in new_georoc_tectonic_settings:
-        disable2[ts] = False
-
-    georoc_tectonic_options = []
-    for ts in new_georoc_tectonic_settings:
-        georoc_tectonic_options.append({'label': ts,
-                                        'disabled': disable2[ts],
-                                        'value': ts})
-                             
-    opts = georoc_tectonic_options
-                              
-    if radio != 'Independent':
-        georoc_tectonic = filter_GVPtoGeoroc(country, gvp_tectonic)
-        # removes settings not present
-        lst_not_ts = [x for x in new_georoc_tectonic_settings if x.strip() not in georoc_tectonic]
-        
-        for ts in lst_not_ts:
-            disable2[ts] = True
-
-        opts = []
-        for ts in new_georoc_tectonic_settings:
-            opts.append({'label': ts,
-                         'disabled': disable2[ts],
-                         'value': ts})
-    
-    return opts
+    return create_menu_options(ALL_TECTONIC_SETTINGS, disable_state)
     
   
 def filter_GVPtoGeoroc(country, gvp_tectonic):
@@ -816,63 +639,9 @@ def filter_GVPtoGeoroc(country, gvp_tectonic):
     georoc_tectonic = list(set(georoc_tectonic))
     georoc_tectonic = list(set([x.split('/')[0].split('_comp')[0].replace('_', ' ') for x in georoc_tectonic]))
     
-    return georoc_tectonic 
-    
-    
-def find_new_tect_setting(thisvolcano, df_volcano, df_volcano_no_eruption):
-    """
-    Args:
-               
-    """
-    if thisvolcano in ['Northern Lake Abaya Volcanic Field', 'Kaikohe-Bay of Islands', 'Garove', 'Eastern Gemini Seamount', 'Vitim Volcanic Field']:
-        if thisvolcano in ['Northern Lake Abaya Volcanic Field', 'Vitim Volcanic Field']:
-            newts = 'Rift at plate boundaries / Continental'
-        if thisvolcano == 'Kaikohe-Bay of Islands':
-            newts = 'Within plate / Continental'
-        if thisvolcano in ['Garove', 'Eastern Gemini Seamount']:
-            newts = 'Subduction zone / Continental'
-    
-    else:
-        # for other volcanoes
-        thistecset = df_volcano[df_volcano['Volcano Name'] == thisvolcano]['Tectonic Settings'].values
-        if len(thistecset) == 0:
-            thistecset = df_volcano_no_eruption[df_volcano_no_eruption['Volcano Name'] == thisvolcano]['Tectonic Settings'].values[0]
-        else:
-            thistecset = thistecset[0]
-    
-        if thistecset == 'Subduction zone / Oceanic crust (< 15 km)':
-            newts = 'Subduction zone / Oceanic'
-        elif thistecset in ['Subduction zone / Continental crust (>25 km)', 'Subduction zone / Intermediate crust (15-25 km)']:
-            newts = 'Subduction zone / Continental'
-        elif thistecset == 'Intraplate / Oceanic crust (< 15 km)':
-            newts = 'Within plate / Oceanic'
-        elif thistecset in ['Intraplate / Continental crust (>25 km)', 'Intraplate / Intermediate crust (15-25 km)']:
-            newts = 'Within plate / Continental'
-        elif thistecset == 'Rift zone / Oceanic crust (< 15 km)':     
-            newts = 'Rift at plate boundaries / Oceanic'
-        elif thistecset in ['Rift zone / Continental crust (>25 km)', 'Rift zone / Intermediate crust (15-25 km)']:
-            newts = 'Rift at plate boundaries / Continental'
-        elif thistecset == 'Subduction zone / Crustal thickness unknown':
-            thissubregion = df_volcano[df_volcano['Volcano Name'] == thisvolcano]['Subregion'].values
-            if len(thissubregion) == 0:
-                thissubregion = df_volcano_no_eruption[df_volcano_no_eruption['Volcano Name'] == thisvolcano]['Subregion'].values[0]
-            else:
-                thissubregion = thissubregion[0]
-       
-            if thissubregion in ['Bougainville and Solomon Islands', 'Izu, Volcano, and Mariana Islands', 'New Ireland', 'Santa Cruz Islands']:
-                newts = 'Subduction zone / Oceanic'
-            elif thissubregion in ['Pacific Ocean (southwestern)', 'North of Luzon', 'Lesser Sunda Islands', 'Fiji Islands']:
-                newts = 'Subduction zone / Continental'
-            else:
-                print('Warning: missed subregion')
-        else:    
-            if thistecset == 'Unknown':
-                newts = 'Unknown'
-            else:
-                print('Warning: missed subregion')         
-    return newts                                                 
-    
-                                                                                  
+    return georoc_tectonic
+
+
 def compute_eruptionperiods(keys):   
     """
     Args:

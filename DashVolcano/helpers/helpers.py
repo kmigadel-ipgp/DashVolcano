@@ -1,14 +1,116 @@
+import os
 import pandas as pd
 import json
 import geopandas as gpd
 import plotly.express as px
 import plotly.graph_objs as go
 from shapely.geometry import Polygon
+from itertools import groupby
 
 from functions.georoc import load_georoc
-from functions.gvp import read_gmt
 
-from constants.paths import TECTONICS_PLATES_DIR
+from constants.paths import TECTONICS_PLATES_DIR, TECTONIC_ZONES_DIR
+
+
+def read_gmt(file_name):
+    """
+    Reads a GMT file and extracts longitudes, latitudes, and zone names.
+
+    Args:
+        file_name (str): Name of the GMT file, e.g., 'ridge.gmt'.
+
+    Returns:
+        tuple: Three lists containing the longitudes, latitudes, and names of the tectonic zones.
+    """
+    
+    data = []
+    file_path = os.path.join(TECTONIC_ZONES_DIR, str(file_name))
+
+    # reads gmt file
+    with open(file_path) as gmtf:
+        for line in gmtf:
+            data.append(line)
+ 
+    orig_names = [x.strip('>') for x in data if '>' in x][:-1]
+    names = []
+    
+    zones = [list(g) for k, g in groupby(data, key=lambda x: not('>' in x)) if k]
+
+    X = []
+    Y = []
+
+    for r, on in zip(zones, orig_names):
+        rs = [[y for y in x.split(' ') if y != ''] for x in r]
+        
+        # so need to cut two lines for ridge
+        if 'ridge' in file_name:
+
+            fnd1 = [x for x in rs if (float(x[0]) == 179.935)]
+            fnd2 = [x for x in rs if (float(x[0]) == 179.9024)]
+
+            if len(fnd1) > 0:
+                x_tmp = [float(x[0]) for x in rs]
+                id1 = x_tmp.index(179.935)
+                id2 = x_tmp.index(-179.77)
+                X.append([float(x[0]) for x in rs[0:id1]])
+                Y.append([float(x[1]) for x in rs[0:id1]])
+                X.append([float(x[0]) for x in rs[id2:]])
+                Y.append([float(x[1]) for x in rs[id2:]])
+                names.append(on)
+                names.append(on)
+            elif len(fnd2) > 0:
+                x_tmp = [float(x[0]) for x in rs]
+                id1 = x_tmp.index(179.9024)
+                id2 = x_tmp.index(-179.9401)
+                X.append([float(x[0]) for x in rs[0:id1]])
+                Y.append([float(x[1]) for x in rs[0:id1]])
+                X.append([float(x[0]) for x in rs[id2:]])
+                Y.append([float(x[1]) for x in rs[id2:]])
+                names.append(on)
+                names.append(on)
+            else:
+                X.append([float(x[0]) for x in rs])
+                Y.append([float(x[1]) for x in rs])
+                names.append(on)
+    
+        # so need to cut two lines for ridge
+        if 'trench' in file_name:
+
+            fnd1 = [x for x in rs if (float(x[0]) == -179.7613)]
+
+            if len(fnd1) > 0:
+                x_tmp = [float(x[0]) for x in rs]
+                id1 = x_tmp.index(-179.7613)
+                id2 = x_tmp.index(179.8569)
+                X.append([float(x[0]) for x in rs[0:id1]])
+                Y.append([float(x[1]) for x in rs[0:id1]])
+                X.append([float(x[0]) for x in rs[id2:]])
+                Y.append([float(x[1]) for x in rs[id2:]])
+                names.append(on)
+                names.append(on)
+            
+            else:
+                X.append([float(x[0]) for x in rs])
+                Y.append([float(x[1]) for x in rs])
+                names.append(on)
+                
+        # for transform
+        if 'transform' in file_name:
+            if len(rs) > 10:
+                rs = rs[0::3]
+                on = on[0::3]
+            X.append([float(x[0]) for x in rs])
+            Y.append([float(x[1]) for x in rs])
+            names.append(on)
+
+    return X, Y, names
+
+# Function to create menu options
+def create_menu_options(items, disabled_state=None):
+    """Creates menu options for given items with all options enabled by default."""
+    if disabled_state is None:
+        disabled_state = {item: False for item in items}
+    return [{'label': item, 'disabled': disabled_state[item], 'value': item} for item in items]
 
 
 def process_lat_lon(df):
@@ -33,14 +135,14 @@ def process_lat_lon(df):
     return df
 
 
-def highlight_volcano_samples(dfgeo, thisvolcano, tect_lst, db, dict_georoc_sl, dict_volcano_file):
+def highlight_volcano_samples(dfgeo, thisvolcano, georoc_petdb_tect_setting, db, dict_georoc_sl, dict_volcano_file):
     """
     Highlights samples from the selected volcano.
 
     Args:
         dfgeo: DataFrame containing geological data.
         thisvolcano: Name of the volcano to highlight.
-        tect_lst: List of tectonic settings to consider.
+        georoc_petdb_tect_setting: List of Georoc and PetDB tectonic settings to consider.
         db: List of databases in use.
         dict_georoc_sl: Dictionary mapping GEOROC samples.
         dict_volcano_file: Dictionary for volcano file mappings.
@@ -56,22 +158,22 @@ def highlight_volcano_samples(dfgeo, thisvolcano, tect_lst, db, dict_georoc_sl, 
     dfzoom = process_lat_lon(dfzoom)
     
     # Mark the database source for these samples
-    dfzoom['db'] = ['Georoc found'] * len(dfzoom.index)
+    dfzoom['db'] = 'Georoc found'
     
     # Update the main geological DataFrame with new samples
-    dfgeo, db = update_georoc_samples(dfgeo, dfzoom, tect_lst, db)
+    dfgeo, db = update_georoc_samples(dfgeo, dfzoom, georoc_petdb_tect_setting, db)
     
     return dfgeo, db
 
 
-def update_georoc_samples(dfgeo, dfzoom, tect_lst, db):
+def update_georoc_samples(dfgeo, dfzoom, georoc_petdb_tect_setting, db):
     """
     Updates GEOROC samples with new data.
 
     Args:
         dfgeo: Main geological DataFrame.
         dfzoom: DataFrame containing new GEOROC samples.
-        tect_lst: List of tectonic settings to check.
+        georoc_petdb_tect_setting: List of Georoc and PetDB tectonic settings to check.
         db: List of databases in use.
 
     Returns:
@@ -81,8 +183,8 @@ def update_georoc_samples(dfgeo, dfzoom, tect_lst, db):
     # Rename column for consistency
     dfzoom = dfzoom.rename(columns={'SAMPLE NAME': 'Name'})
     
-    # Check if 'all GEOROC' is in the tectonic settings list
-    if 'all GEOROC' in tect_lst:
+    # Check if 'GEOROC' is in the tectonic settings list
+    if 'GEOROC' in georoc_petdb_tect_setting:
         # Find matching latitude and longitude in the main DataFrame
         fnd = dfgeo['Latitude'].isin(dfzoom['Latitude']) & dfgeo['Longitude'].isin(dfzoom['Longitude'])
         
@@ -98,31 +200,31 @@ def update_georoc_samples(dfgeo, dfzoom, tect_lst, db):
         
         # If there are missing samples, concatenate them to dfgeo
         if len(dfmissing.index) > 0:
-            dfgeo = pd.concat([dfgeo, dfmissing[['Latitude', 'Longitude', 'db', 'Name']]])
+            dfgeo = pd.concat([dfgeo, dfmissing[['Latitude', 'Longitude', 'db', 'Name', 'refs']]])
     else:
         # If not all tectonics, just append dfzoom to dfgeo
-        dfgeo = pd.concat([dfgeo, dfzoom[['Latitude', 'Longitude', 'db', 'Name']]])
+        dfgeo = pd.concat([dfgeo, dfzoom[['Latitude', 'Longitude', 'db', 'Name', 'refs']]])
         db.append('GEOROC')
     
     return dfgeo, db
 
 
-def filter_by_tectonics(dfgeo, tect_georoc):
+def filter_by_tectonics(dfgeo, georoc_petdb_tect_setting):
     """
     Filters the dataset by tectonic settings.
 
     Args:
         dfgeo: Main geological DataFrame.
-        tect_georoc: List of tectonic settings to filter by.
+        georoc_petdb_tect_setting: List of Georoc and PetDB tectonic settings to filter by.
 
     Returns:
         dfgeo: Filtered DataFrame based on tectonic settings.
     """
-    # Remove 'all GEOROC' and 'PetDB' from tectonic settings
-    tect_georoc = [x for x in tect_georoc if x not in ['all GEOROC', 'PetDB']]
+    # Remove 'GEOROC' and 'PetDB' from tectonic settings
+    georoc_petdb_tect_setting = [x for x in georoc_petdb_tect_setting if x not in ['GEOROC', 'PetDB']]
     
     # Filter the DataFrame if there are tectonic settings to apply
-    return dfgeo[dfgeo['Volcano Name'].map(lambda x: bool(set(x) & set(tect_georoc)))] if tect_georoc else dfgeo
+    return dfgeo[dfgeo['Volcano Name'].map(lambda x: bool(set(x) & set(georoc_petdb_tect_setting)))] if georoc_petdb_tect_setting else dfgeo
 
 
 def filter_by_databases(dfgeo, db):

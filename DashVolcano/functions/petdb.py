@@ -20,10 +20,10 @@ from constants.rocks import GEOROC_ROCK_COL, GEOROC_ROCKS
 from constants.paths import PETDB_GVP_DIR, PETDB_DIR
 
 from constants.shared_data import df_volcano
-from dataloader.data_loader_petdb import load_and_preprocess_PetDB_data
+from dataloader.data_loader_petdb import load_and_preprocess_petdb_data
 
 
-def get_volcano_names_from_PetDB():
+def get_volcano_names_from_petdb():
     """
     Loads and processes volcano names from the PetDBaroundGVP.csv file.
 
@@ -82,7 +82,7 @@ def create_major_rocks_dataframe(volcanoes):
     all_majorrocks = []
     
     for thisvolcano in volcanoes:
-        thisdf = load_and_preprocess_PetDB_data(thisvolcano)
+        thisdf = load_and_preprocess_petdb_data(thisvolcano)
         
         for mat in ['WR', 'GL', 'INC']:
             thisdftmp = thisdf[thisdf['MATERIAL'].str.contains(mat)]
@@ -150,25 +150,25 @@ def save_major_rocks_dataframe(df, file_path):
     df.to_csv(file_path, index=False)
 
 
-def PetDB_majorrocks(tect_setting): 
+def petdb_majorrocks(georoc_petdb_tect_setting): 
     """
     Args:
-        tect_setting (list): List of tectonic settings.
+        georoc_petdb_tect_setting (list): List of tectonic settings from Georoc and PetDB.
 
     Returns:
         pd.DataFrame: A dataframe with volcano names and their PetDB major rocks 1, 2, and 3.
     """
 
     # Filter out unwanted tectonic settings
-    tect_setting = [x for x in tect_setting if x != None and x != ' all GEOROC']
+    georoc_petdb_tect_setting = [x for x in georoc_petdb_tect_setting if x != 'GEOROC']
     
     # Determine tectonic settings to use for GEOROC
-    if ' PetDB' in tect_setting and len(tect_setting) == 1:
+    if 'PetDB' in georoc_petdb_tect_setting and len(georoc_petdb_tect_setting) == 1:
         # format tectonic setting names
         tect_georoc = [x.strip().replace(' ', '_').replace('/',',') for x in NEW_TECTONIC_SETTINGS]
     else: 
-        tect_georoc = [x.strip().replace(' ', '_').replace('/',',') for x in tect_setting if (x != ' PetDB') and (x != ' all GEOROC')]
-        
+        tect_georoc = [x.strip().replace(' ', '_').replace('/',',') for x in georoc_petdb_tect_setting if (x != 'PetDB') and (x != 'GEOROC')]
+
     alldf = pd.DataFrame()
         
     # check if file exists
@@ -176,7 +176,7 @@ def PetDB_majorrocks(tect_setting):
 
         file_name = f"PetDB{ts}.txt"
         file_path = os.path.join(PETDB_DIR, file_name)
-
+        
         # lists files in the folder
         if file_name in os.listdir(PETDB_DIR):
             # File exists, read it
@@ -184,7 +184,7 @@ def PetDB_majorrocks(tect_setting):
         else:
             # file needs to be created    
             # PetDB volcanoes    
-            volcano_names = get_volcano_names_from_PetDB()
+            volcano_names = get_volcano_names_from_petdb()
             matched_volcanoes = match_volcanoes_to_tectonic_setting(ts, volcano_names)   
             thisdf = create_major_rocks_dataframe(matched_volcanoes)
             save_major_rocks_dataframe(thisdf, file_path)
