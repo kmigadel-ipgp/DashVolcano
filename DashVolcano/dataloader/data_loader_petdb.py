@@ -36,13 +36,13 @@ import ast
 import statistics
 import math
 
-from constants.chemicals import OXIDES, CHEMICALS_SETTINGS
+from collections import Counter
+
+from constants.chemicals import OXIDES
 from constants.paths import PETDB_GVP_DIR, PETDB_EARTHCHEM_DIR, GEOROC_DATASET_DIR, GEOROC_AROUND_PETDB_FILE
 
-from functions.georoc import with_FEOnorm, guess_rock
+from functions.georoc import with_FEOnorm, guess_rock, find_new_tect_setting
 from constants.shared_data import df_volcano
-
-from functions.gvp import find_new_tect_setting
 
 
 def createPetDBaroundGVP():
@@ -152,9 +152,7 @@ def createPetDBaroundGVP():
     matchgroup['SAMPLE ID'] = matchgroup['SAMPLE ID'].apply(lambda x: " ".join([str(y) for y in x]))
     matchgroup['ROCK'] = matchgroup['ROCK'].apply(lambda x: list(Counter(x).items()))
     matchgroup['ROCK no inc'] = matchgroup['ROCK no inc'].apply(lambda x: list(Counter(x).items()))
-    
-    for c in CHEMICALS_SETTINGS[0:1]:
-        matchgroup[c+'mean'] = matchgroup[c].apply(lambda x: statistics.mean(x))
+    matchgroup['SIO2(WT%)mean'] = matchgroup['SIO2(WT%)'].apply(lambda x: statistics.mean(x))
     
     # Save the output to a CSV file
     output_path = os.path.join(PETDB_GVP_DIR)
@@ -181,32 +179,57 @@ def rename_columns(df, db_type):
     
     return df
 
-def load_petdb_data(tect_lst, df_volcano, df_volcano_no_eruption):
+
+def load_petdb_data(georoc_petdb_tect_setting, df_volcano, df_volcano_no_eruption):
     """
     Loads and processes PetDB data.
+
+    Args:
+        georoc_petdb_tect_setting: Settings that specify the inclusion of PetDB data.
+        df_volcano: DataFrame containing volcano data.
+        df_volcano_no_eruption: DataFrame for volcanoes with no eruptions.
+
+    Returns:
+        A DataFrame with processed PetDB data.
     """
-    if 'PetDBaroundGVP.csv' in os.listdir(GEOROC_DATASET_DIR) and 'PetDB' in tect_lst:
+    # Check if the PetDB data file exists in the specified directory and if PetDB is included in the settings
+    if 'PetDBaroundGVP.csv' in os.listdir(GEOROC_DATASET_DIR) and 'PetDB' in georoc_petdb_tect_setting:
+        # Load the PetDB data from the CSV file
         dfgeo = pd.read_csv(GEOROC_AROUND_PETDB_FILE)
-        # from string back to list
-        dfgeo['Volcano Name'] = dfgeo['Volcano Name'].apply(lambda x: set(ast.literal_eval(x)))
-        dfgeo['Volcano Name'] = dfgeo['Volcano Name'].apply(lambda y: [x.split(';') for x in y])
-        dfgeo['Volcano Name'] = dfgeo['Volcano Name'].apply(lambda y: list(set([item for sublist in y for item in sublist])))
-        dfgeo['Volcano Name'] = dfgeo['Volcano Name'].apply(lambda x: [find_new_tect_setting(y, df_volcano, df_volcano_no_eruption) for y in x if y != ''] )        
+        
+        # Convert 'Volcano Name' from string representation of lists to actual lists
+        dfgeo['Volcano Name'] = dfgeo['Volcano Name'].apply(lambda x: set(ast.literal_eval(x)))  # Convert string to set
+        dfgeo['Volcano Name'] = dfgeo['Volcano Name'].apply(lambda y: [x.split(';') for x in y])  # Split names by ';'
+        dfgeo['Volcano Name'] = dfgeo['Volcano Name'].apply(lambda y: list(set([item for sublist in y for item in sublist])))  # Flatten and deduplicate lists
+        
+        # Update volcano names with new tectonic settings
+        dfgeo['Volcano Name'] = dfgeo['Volcano Name'].apply(lambda x: [find_new_tect_setting(y, df_volcano, df_volcano_no_eruption) for y in x if y != '']) 
+        
+        # Rename columns to standardize the DataFrame
         dfgeo = rename_columns(dfgeo, 'PetDB')
     else:
-        dfgeo = createPetDBaroundGVP() if 'PetDB' in tect_lst else empty_petdb_df()
+        # If PetDB data file does not exist or PetDB is not in settings, create an empty DataFrame or load the data
+        dfgeo = createPetDBaroundGVP() if 'PetDB' in georoc_petdb_tect_setting else empty_petdb_df()
 
+    # Rename specific columns for consistency
     dfgeo = dfgeo.rename(columns={"LATITUDE": "Latitude", "LONGITUDE": "Longitude"})
-    dfgeo['db'] = ['PetDB']*len(dfgeo.index)
+    
+    # Add a new column to specify the data source
+    dfgeo['db'] = 'PetDB'
+    
+    # Rename 'SAMPLE ID' column to 'Name'
     dfgeo = dfgeo.rename(columns={'SAMPLE ID': 'Name'})
-    # add references
+    
+    # If the 'REFERENCES' column exists, create a new column 'refs' to hold reference information
     if 'REFERENCES' in dfgeo.columns:
         dfgeo['refs'] = dfgeo['REFERENCES'] 
     
+    # Return the processed DataFrame
     return dfgeo
 
 
-def load_and_preprocess_PetDB_data(volcano):
+
+def load_and_preprocess_petdb_data(volcano):
     """
     Load and preprocess PetDB data for a specific volcano.
     
@@ -251,7 +274,7 @@ def load_and_preprocess_PetDB_data(volcano):
         
         # Filter samples based on latitude and longitude matches with the GVP data
         pdtmp = pdtmp[(pdtmp['LATITUDE'].isin(dfn['LATITUDE'])) & (pdtmp['LONGITUDE'].isin(dfn['LONGITUDE']))]
-        pdbloaded = pdbloaded.append(pdtmp)  # Append the filtered data to the combined DataFrame
+        pdbloaded = pd.concat([pdbloaded, pdtmp])  # Append the filtered data to the combined DataFrame
         
     # Clean and standardize material names
     pdbloaded = pdbloaded.replace({'WHOLE ROCK': 'WR', 'GLASS': 'GL', 'INCLUSION': 'INC'})

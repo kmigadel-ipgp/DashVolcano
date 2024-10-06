@@ -18,9 +18,9 @@ data_loader.load_data()
 
 # Import pages
 from pages.page2.page_2 import Page2
+from pages.page3.page_3 import Page3
 from pages.page4.page_4 import Page4
 from pages.page5.page_5 import Page5
-# from pages import page_3  # Page 3 is under development
 
 # Initialize Dash app
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
@@ -29,6 +29,7 @@ app.title = "Volcano Analytics"
 
 # Create page instances
 page_2 = Page2()
+page_3 = Page3()
 page_4 = Page4()
 page_5 = Page5()
 
@@ -60,6 +61,7 @@ def display_page(pathname):
 
 # Register callbacks for each page
 page_2.register_callbacks(app)
+page_3.register_callbacks(app)
 page_4.register_callbacks(app)
 page_5.register_callbacks(app)
 

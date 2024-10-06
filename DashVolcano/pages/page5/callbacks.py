@@ -23,7 +23,7 @@ from constants.shared_data import df_eruption, grnames, dict_georoc_sl, dict_geo
 
 # import functions to process GVP and GEOROC data
 from functions.gvp import update_chronogram
-from functions.georoc import update_chemchart, plot_TAS
+from functions.georoc import update_chemchart, plot_tas
 
 from pages.visualization import set_date_options, update_joint_chemchart, add_chems
 
@@ -116,7 +116,7 @@ def register_callbacks_page5(app):
             figgvp = make_subplots(
                 rows=2, cols=1, shared_xaxes=True, row_width=[0.85, 0.2], vertical_spacing=0.05
             )
-            figgvp = plot_TAS(figgvp)  # Default TAS diagram plot
+            figgvp = plot_tas(figgvp)  # Default TAS diagram plot
 
         # Set the height of the figgvp figure to 700
         figgvp.update_layout(height=700)

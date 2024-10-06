@@ -44,23 +44,28 @@ def empty_georoc_df():
     return pd.DataFrame({'LATITUDE MIN': [], 'LATITUDE MAX': [], 'LONGITUDE MIN': [], 'LONGITUDE MAX': [], 'SAMPLE NAME': [], 'CITATIONS': [], 'ROCK no inc': [], 'SIO2(WT%)mean': [], 'Volcano Name': [] })
 
 
-def load_georoc_data(tect_georoc):
+def load_georoc_data(georoc_petdb_tect_setting):
     """
     Loads and processes GEOROC data.
+    
+    Args:
+        georoc_petdb_tect_setting (list): List containing the data settings ('GEOROC', 'PetDB', etc.).    
+    Returns:
+        pd.DataFrame: Processed GEOROC data, potentially filtered by volcano name.
     """
-    if 'GEOROCaroundGVP.csv' in os.listdir(GEOROC_DATASET_DIR) and 'all GEOROC' in tect_georoc:
-        dfgeo2 = pd.read_csv(GEOROC_AROUND_GVP_FILE)
-        dfgeo2['Volcano Name'] = dfgeo2['Volcano Name'].apply(lambda x: list(set(ast.literal_eval(x))))
+    if 'GEOROCaroundGVP.csv' in os.listdir(GEOROC_DATASET_DIR) and 'GEOROC' in georoc_petdb_tect_setting:
+        df_georoc = pd.read_csv(GEOROC_AROUND_GVP_FILE)
+        df_georoc['Volcano Name'] = df_georoc['Volcano Name'].apply(lambda x: list(set([name.replace('Within ', 'Intra') for name in ast.literal_eval(x)])))
     else:
-        dfgeo2 = createGEOROCaroundGVP() if 'all GEOROC' in tect_georoc else empty_georoc_df()
-    dfgeo2 = process_lat_lon(dfgeo2)
-    dfgeo2['db'] = ['Georoc']*len(dfgeo2.index)
-    dfgeo2 = dfgeo2.rename(columns={'SAMPLE NAME': 'Name'})
-    dfgeo2 = dfgeo2.rename(columns={'CITATIONS': 'refs'})
+        df_georoc = createGEOROCaroundGVP() if 'GEOROC' in georoc_petdb_tect_setting else empty_georoc_df()
+    df_georoc = process_lat_lon(df_georoc)
+    df_georoc['db'] = 'Georoc'
+    df_georoc = df_georoc.rename(columns={'SAMPLE NAME': 'Name'})
+    df_georoc = df_georoc.rename(columns={'CITATIONS': 'refs'})
     for i in range(1, 11):
-        dfgeo2['refs'] = dfgeo2['refs'].apply(lambda x: x[:i*80]+'<br>'+x[i*80:] if len(x)>i*80 else x)
-    dfgeo2['refs'] = dfgeo2['refs'].apply(lambda x: x if len(x)<800 else x[:800]+'(...)')  
-    return dfgeo2
+        df_georoc['refs'] = df_georoc['refs'].apply(lambda x: x[:i*80]+'<br>'+x[i*80:] if len(x)>i*80 else x)
+    df_georoc['refs'] = df_georoc['refs'].apply(lambda x: x if len(x)<800 else x[:800]+'(...)')  
+    return df_georoc
 
 
 def load_and_preprocess_georoc_data():

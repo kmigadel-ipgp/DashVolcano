@@ -1,14 +1,198 @@
+import os
 import pandas as pd
+import numpy as np
 import json
 import geopandas as gpd
 import plotly.express as px
 import plotly.graph_objs as go
 from shapely.geometry import Polygon
+from itertools import groupby
 
 from functions.georoc import load_georoc
-from functions.gvp import read_gmt
 
-from constants.paths import TECTONICS_PLATES_DIR
+from constants.paths import TECTONICS_PLATES_DIR, TECTONIC_ZONES_DIR
+
+
+def calculate_matrix(data):
+    """
+    Computes a pairwise distance matrix based on squared differences.
+
+    Args:
+        data (list of lists): A 2D list where each sublist represents a data point.
+
+    Returns:
+        np.matrix: A matrix where the (i, j) entry represents the half-squared Euclidean distance
+                   between data point i and data point j.
+    """
+
+    # Initialize an empty list to store the rows of the matrix
+    rows = []
+
+    # Iterate over each data point in the input list (r1)
+    for r1 in data:
+        # For each data point r1, compute the row of the matrix by calculating the
+        # half-squared Euclidean distance to every other data point (r2)
+        row = [
+            np.square(np.subtract(np.array(r1), np.array(r2))).sum() / 2
+            for r2 in data
+        ]
+
+        # Append the computed row to the rows list
+        rows.append(row)
+
+    # Convert the list of rows into an np.matrix and return the result
+    return np.matrix(rows)
+
+
+def split_coordinates(zone):
+    """
+    Splits each line of zone data by spaces and removes any empty strings.
+
+    Args:
+        zone (list): A list of strings, each representing a line of data from the GMT file.
+
+    Returns:
+        list: A list of lists where each sublist contains the coordinate values (as strings) for a given line.
+    """
+    return [[y for y in x.split(' ') if y != ''] for x in zone]
+
+
+def append_split_data(longitudes, latitudes, on, rs, x1_val, x2_val, names_list):
+    """
+    Splits the coordinates into two parts based on specified x-values and appends them to the respective lists.
+
+    Args:
+        longitudes (list): List to store longitude data.
+        latitudes (list): List to store latitude data.
+        on (str): The name of the tectonic zone.
+        rs (list): List of coordinate pairs (longitude, latitude) for the current zone.
+        x1_val (float): First longitude value used to split the zone coordinates.
+        x2_val (float): Second longitude value used to split the zone coordinates.
+        names_list (list): List to store the zone names.
+
+    Returns:
+        tuple: Updated longitudes, latitudes, and names_list after appending the split data.
+    """
+    # Extract longitudess from the coordinate pairs
+    x_tmp = [float(x[0]) for x in rs]
+    
+    # Find the indices where the splitting should happen
+    id1, id2 = x_tmp.index(x1_val), x_tmp.index(x2_val)
+    
+    # Append the first part of the split data
+    longitudes.append([float(x[0]) for x in rs[0:id1]])
+    latitudes.append([float(x[1]) for x in rs[0:id1]])
+    
+    # Append the second part of the split data
+    longitudes.append([float(x[0]) for x in rs[id2:]])
+    latitudes.append([float(x[1]) for x in rs[id2:]])
+    
+    # Append the zone name twice since data was split into two segments
+    names_list.append(on)
+    names_list.append(on)
+
+    return longitudes, latitudes, names_list
+
+
+def read_gmt(file_name):
+    """
+    Reads a GMT file and extracts longitudes, latitudes, and zone names.
+
+    Args:
+        file_name (str): Name of the GMT file, e.g., 'ridge.gmt'.
+
+    Returns:
+        tuple: Three lists containing the longitudes, latitudes, and names of the tectonic zones.
+    """
+
+    # Initialize an empty list to hold the file's raw data lines
+    data = []
+    
+    # Construct the full file path by combining the directory and file name
+    file_path = os.path.join(TECTONIC_ZONES_DIR, file_name)
+    
+    # Open and read the contents of the GMT file
+    with open(file_path) as gmtf:
+        data = gmtf.readlines()
+
+    # Extract zone names (lines starting with '>') and group the remaining data by tectonic zones
+    orig_names = [x.strip('>') for x in data if '>' in x][:-1]
+    zones = [list(g) for k, g in groupby(data, key=lambda x: '>' not in x) if k]
+
+    # Initialize empty lists to store longitudes (X), latitudes (Y), and zone names
+    longitudes, latitudes, names = [], [], []
+
+    # Iterate over each zone and its corresponding original name
+    for r, on in zip(zones, orig_names):
+        # Split the zone data into longitude-latitude pairs
+        rs = split_coordinates(r)
+
+        # If the file name contains 'ridge', process ridge-specific logic
+        if 'ridge' in file_name:
+            # Check for specific longitude values in the zone data
+            fnd1 = any(np.isclose(float(x[0]), 179.935, rtol=1e-09, atol=1e-09) for x in rs)
+            fnd2 = any(np.isclose(float(x[0]), 179.9024, rtol=1e-09, atol=1e-09) for x in rs)
+            
+            # If specific values are found, split the data and append
+            if fnd1:
+                longitudes, latitudes, names = append_split_data(longitudes, latitudes, on, rs, 179.935, -179.77, names)
+            elif fnd2:
+                longitudes, latitudes, names = append_split_data(longitudes, latitudes, on, rs, 179.9024, -179.9401, names)
+            else:
+                # Otherwise, append the entire zone's data
+                longitudes.append([float(x[0]) for x in rs])
+                latitudes.append([float(x[1]) for x in rs])
+                names.append(on)
+
+        # If the file name contains 'trench', process trench-specific logic
+        elif 'trench' in file_name:
+            # Check if a specific longitude value is found in the zone data
+            fnd1 = any(float(x[0]) == -179.7613 for x in rs)
+            
+            # If found, split and append the data
+            if fnd1:
+                longitudes, latitudes, names = append_split_data(longitudes, latitudes, on, rs, -179.7613, 179.8569, names)
+            else:
+                # Otherwise, append the entire zone's data
+                longitudes.append([float(x[0]) for x in rs])
+                latitudes.append([float(x[1]) for x in rs])
+                names.append(on)
+
+        # If the file name contains 'transform', process transform-specific logic
+        elif 'transform' in file_name:
+            # Reduce the number of points by taking every third point if the zone has more than 10 points
+            if len(rs) > 10:
+                rs = rs[0::3]  # Take every third point
+            longitudes.append([float(x[0]) for x in rs])
+            latitudes.append([float(x[1]) for x in rs])
+            names.append(on)
+
+    # Return the longitudes (longitudes), latitudes (latitudes), and names of the tectonic zones
+    return longitudes, latitudes, names
+
+
+def create_menu_options(items, disabled_state=None):
+    """
+    Creates a list of dictionary-based menu options for a dropdown or menu component.
+    
+    Args:
+        items (list): A list of items for which menu options need to be created.
+        disabled_state (dict, optional): A dictionary specifying the disabled state for each item.
+                                         If None, all items will be enabled by default.
+
+    Returns:
+        list: A list of dictionaries, each containing 'label', 'disabled', and 'value' keys for the menu option.
+    """
+
+    # If no disabled_state is provided, initialize all items as enabled (False).
+    if disabled_state is None:
+        disabled_state = {item: False for item in items}
+
+    # Create a list of menu options where each option is a dictionary containing:
+    # 'label': the item name to display
+    # 'disabled': whether the item is disabled (based on the disabled_state)
+    # 'value': the item itself
+    return [{'label': item, 'disabled': disabled_state[item], 'value': item} for item in items]
 
 
 def process_lat_lon(df):
@@ -33,14 +217,14 @@ def process_lat_lon(df):
     return df
 
 
-def highlight_volcano_samples(dfgeo, thisvolcano, tect_lst, db, dict_georoc_sl, dict_volcano_file):
+def highlight_volcano_samples(dfgeo, thisvolcano, georoc_petdb_tect_setting, db, dict_georoc_sl, dict_volcano_file):
     """
     Highlights samples from the selected volcano.
 
     Args:
         dfgeo: DataFrame containing geological data.
         thisvolcano: Name of the volcano to highlight.
-        tect_lst: List of tectonic settings to consider.
+        georoc_petdb_tect_setting: List of Georoc and PetDB tectonic settings to consider.
         db: List of databases in use.
         dict_georoc_sl: Dictionary mapping GEOROC samples.
         dict_volcano_file: Dictionary for volcano file mappings.
@@ -56,22 +240,22 @@ def highlight_volcano_samples(dfgeo, thisvolcano, tect_lst, db, dict_georoc_sl, 
     dfzoom = process_lat_lon(dfzoom)
     
     # Mark the database source for these samples
-    dfzoom['db'] = ['Georoc found'] * len(dfzoom.index)
+    dfzoom['db'] = 'Georoc found'
     
     # Update the main geological DataFrame with new samples
-    dfgeo, db = update_georoc_samples(dfgeo, dfzoom, tect_lst, db)
+    dfgeo, db = update_georoc_samples(dfgeo, dfzoom, georoc_petdb_tect_setting, db)
     
     return dfgeo, db
 
 
-def update_georoc_samples(dfgeo, dfzoom, tect_lst, db):
+def update_georoc_samples(dfgeo, dfzoom, georoc_petdb_tect_setting, db):
     """
     Updates GEOROC samples with new data.
 
     Args:
         dfgeo: Main geological DataFrame.
         dfzoom: DataFrame containing new GEOROC samples.
-        tect_lst: List of tectonic settings to check.
+        georoc_petdb_tect_setting: List of Georoc and PetDB tectonic settings to check.
         db: List of databases in use.
 
     Returns:
@@ -81,8 +265,8 @@ def update_georoc_samples(dfgeo, dfzoom, tect_lst, db):
     # Rename column for consistency
     dfzoom = dfzoom.rename(columns={'SAMPLE NAME': 'Name'})
     
-    # Check if 'all GEOROC' is in the tectonic settings list
-    if 'all GEOROC' in tect_lst:
+    # Check if 'GEOROC' is in the tectonic settings list
+    if 'GEOROC' in georoc_petdb_tect_setting:
         # Find matching latitude and longitude in the main DataFrame
         fnd = dfgeo['Latitude'].isin(dfzoom['Latitude']) & dfgeo['Longitude'].isin(dfzoom['Longitude'])
         
@@ -98,31 +282,31 @@ def update_georoc_samples(dfgeo, dfzoom, tect_lst, db):
         
         # If there are missing samples, concatenate them to dfgeo
         if len(dfmissing.index) > 0:
-            dfgeo = pd.concat([dfgeo, dfmissing[['Latitude', 'Longitude', 'db', 'Name']]])
+            dfgeo = pd.concat([dfgeo, dfmissing[['Latitude', 'Longitude', 'db', 'Name', 'refs']]])
     else:
         # If not all tectonics, just append dfzoom to dfgeo
-        dfgeo = pd.concat([dfgeo, dfzoom[['Latitude', 'Longitude', 'db', 'Name']]])
+        dfgeo = pd.concat([dfgeo, dfzoom[['Latitude', 'Longitude', 'db', 'Name', 'refs']]])
         db.append('GEOROC')
     
     return dfgeo, db
 
 
-def filter_by_tectonics(dfgeo, tect_georoc):
+def filter_by_tectonics(dfgeo, georoc_petdb_tect_setting):
     """
     Filters the dataset by tectonic settings.
 
     Args:
         dfgeo: Main geological DataFrame.
-        tect_georoc: List of tectonic settings to filter by.
+        georoc_petdb_tect_setting: List of Georoc and PetDB tectonic settings to filter by.
 
     Returns:
         dfgeo: Filtered DataFrame based on tectonic settings.
     """
-    # Remove 'all GEOROC' and 'PetDB' from tectonic settings
-    tect_georoc = [x for x in tect_georoc if x not in ['all GEOROC', 'PetDB']]
+    # Remove 'GEOROC' and 'PetDB' from tectonic settings
+    georoc_petdb_tect_setting = [x for x in georoc_petdb_tect_setting if x not in ['GEOROC', 'PetDB']]
     
     # Filter the DataFrame if there are tectonic settings to apply
-    return dfgeo[dfgeo['Volcano Name'].map(lambda x: bool(set(x) & set(tect_georoc)))] if tect_georoc else dfgeo
+    return dfgeo[dfgeo['Volcano Name'].map(lambda x: bool(set(x) & set(georoc_petdb_tect_setting)))] if georoc_petdb_tect_setting else dfgeo
 
 
 def filter_by_databases(dfgeo, db):
@@ -150,13 +334,13 @@ def filter_by_databases(dfgeo, db):
     return dfgeo[dfgeo['db'].isin(sum(selected_dbs, []))]
 
 
-def add_tectonic_layers(fig, db, thiszoom, thiscenter):
+def add_tectonic_layers(fig, plates_boundaries_setting, thiszoom, thiscenter):
     """
     Adds tectonic plate, rift, subduction, and intraplate data to the map.
 
     Args:
         fig: Plotly figure to which tectonic layers are added.
-        db: List of tectonic settings chosen.
+        plates_boundaries_setting (list): List of plates boundaries to display.
         thiszoom: Zoom level for the map.
         thiscenter: Center coordinates of the map.
 
@@ -173,7 +357,7 @@ def add_tectonic_layers(fig, db, thiszoom, thiscenter):
 
     # Add tectonic layers based on the selected database
     for layer, data in tectonic_layers.items():
-        if layer in db:
+        if layer in plates_boundaries_setting:
             if layer == 'tectonic':
                 # Colorize tectonic plates on the map
                 fig = colorize_tectonic_plates(data[0], data[1], thiszoom, thiscenter)
