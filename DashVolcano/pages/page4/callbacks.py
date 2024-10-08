@@ -76,7 +76,7 @@ def register_callbacks_page4(app):
             Input("page4-rocks-density-filter", "value"),           # Input: Selected rock types
         ],
     )
-    def update_map(volcano_name, plates_boundaries_setting, rock_database, gvp_tect_setting, georoc_petdb_tect_setting, country, rocks_density_filter):
+    def update_map(volcano_name, plates_boundaries_setting, rock_database, gvp_tect_setting, rock_tect_setting, country, rocks_density_filter):
         """
         Updates the map based on the selected filters and tectonic settings.
         
@@ -85,7 +85,7 @@ def register_callbacks_page4(app):
             plates_boundaries_setting: List of plates boundaries to display.
             rock_database: List of volcanic rock databases selected.
             gvp_tect_setting: List of selected GVP tectonic settings for map display.
-            georoc_petdb_tect_setting: List of selected GEOROC and PetDb tectonic settings for map display.
+            rock_tect_setting: List of selected GEOROC and PetDb tectonic settings for map display.
             country: Selected country to filter the map data.
             rocks_density_filter: List of selected rock types for filtering map samples.
         
@@ -134,10 +134,10 @@ def register_callbacks_page4(app):
             tectext += '\n'.join(t for t in tects if 'Manual' not in t)
 
         # Create a filtered DataFrame with samples based on the selected filters
-        dffig = create_map_samples(database, volcano_name, gvp_tect_setting, georoc_petdb_tect_setting, country)
+        dffig = create_map_samples(database, volcano_name, gvp_tect_setting, rock_tect_setting, country)
         
         # Generate the map figure with the filtered data
-        fig = displays_map_samples(dffig, thiszoom, thiscenter, plates_boundaries_setting, georoc_petdb_tect_setting, rocks_density_filter)
+        fig = displays_map_samples(dffig, thiszoom, thiscenter, plates_boundaries_setting, rock_tect_setting, rocks_density_filter)
 
         # Update the layout of the map figure to include a legend
         fig.update_layout(legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01))
@@ -202,7 +202,7 @@ def register_callbacks_page4(app):
         ],
         prevent_initial_call=True  # Prevent callback from being triggered on page load
     )
-    def update_tas_download(volcano_name, selectedpts, button, rock_database, georoc_petdb_tect_setting, sample_interval):
+    def update_tas_download(volcano_name, selectedpts, button, rock_database, rock_tect_setting, sample_interval):
         """
         Updates the TAS diagram, AFM diagram, radar chart, and handles data download.
         
@@ -211,7 +211,7 @@ def register_callbacks_page4(app):
             selectedpts: Points selected on the map (via selection tool such as box or lasso).
             button: Number of clicks on the download button.
             rock_database: List of volcanic rock databases selected.
-            georoc_petdb_tect_setting: Tectonic filter selected from the GEOROC and PetDB database.
+            rock_tect_setting: Tectonic filter selected from the GEOROC and PetDB database.
         
         Returns:
             Updated TAS, AFM, and radar chart figures.
@@ -242,11 +242,11 @@ def register_callbacks_page4(app):
             output.seek(0)
 
             # Send the Excel file content as bytes to trigger the download via dcc.Download
-            return fig, update_afm(volcano_name, tas_data), update_radar(rock_database, georoc_petdb_tect_setting, volcano_name, tas_data), \
+            return fig, update_afm(volcano_name, tas_data), update_radar(rock_database, rock_tect_setting, volcano_name, tas_data), \
                 dcc.send_bytes(output.getvalue(), f'download_{volcano_name}.xlsx'), 0
 
         # If no download action, return the updated figures without triggering the download
-        return fig, update_afm(volcano_name, tas_data), update_radar(rock_database, georoc_petdb_tect_setting, volcano_name, tas_data, sample_interval), None, 0
+        return fig, update_afm(volcano_name, tas_data), update_radar(rock_database, rock_tect_setting, volcano_name, tas_data, sample_interval), None, 0
 
 
     # ***************************************************#
@@ -264,7 +264,7 @@ def register_callbacks_page4(app):
             Input("page4-rock-tectonic-settings", "value"),         # Input from the GEOROC tectonic settings checkboxes
         ],
     )
-    def update_charts(country_name, rock_database, gvp_tect_setting, georoc_petdb_tect_setting):
+    def update_charts(country_name, rock_database, gvp_tect_setting, rock_tect_setting):
         """
         Update sunburst charts of major rocks based on user filters.
 
@@ -272,7 +272,7 @@ def register_callbacks_page4(app):
             country_name (str): Selected country name from the dropdown.
             rock_database: List of volcanic rock databases selected.
             gvp_tect_setting (list): Selected tectonic settings from GVP.
-            georoc_petdb_tect_setting (list): Selected tectonic settings from GEOROC and PetDB.
+            rock_tect_setting (list): Selected tectonic settings from GEOROC and PetDB.
 
         Returns:
             tuple: Updated figures for the rock chart and GEOROC chart.
@@ -290,7 +290,7 @@ def register_callbacks_page4(app):
 
         # Process PetDB data if selected in the rock_database input
         if 'PetDB' in rock_database:
-            dftmp = petdb_majorrocks(georoc_petdb_tect_setting)  # Retrieve PetDB major rock data
+            dftmp = petdb_majorrocks(rock_tect_setting)  # Retrieve PetDB major rock data
             if not dftmp.empty:  # Check if the DataFrame is not empty
                 # Filter for whole rock samples and valid major rock data
                 dftmp = dftmp[dftmp['material'] == 'WR']
@@ -307,7 +307,7 @@ def register_callbacks_page4(app):
 
         # Process GEOROC data if selected in the rock_database input
         if 'GEOROC' in rock_database:
-            dftmp = georoc_majorrocks(georoc_petdb_tect_setting, dict_georoc_sl, dict_volcano_file)  # Retrieve GEOROC major rock data
+            dftmp = georoc_majorrocks(rock_tect_setting, dict_georoc_sl, dict_volcano_file)  # Retrieve GEOROC major rock data
             if not dftmp.empty:  # Check if the DataFrame is not empty
                 # Filter for whole rock samples and valid major rock data
                 dftmp = dftmp[(dftmp['material'] == 'WR') & (dftmp['GEOROC Major Rock 1'] != 'No Data')]

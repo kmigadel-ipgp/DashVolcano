@@ -44,13 +44,12 @@ def empty_georoc_df():
     return pd.DataFrame({'LATITUDE MIN': [], 'LATITUDE MAX': [], 'LONGITUDE MIN': [], 'LONGITUDE MAX': [], 'SAMPLE NAME': [], 'CITATIONS': [], 'ROCK no inc': [], 'SIO2(WT%)mean': [], 'Volcano Name': [] })
 
 
-def load_georoc_data(database, georoc_petdb_tect_setting):
+def load_georoc_data(database):
     """
     Loads and processes GEOROC data.
     
     Args:
         database (list): List of databases used.
-        georoc_petdb_tect_setting (list): List containing the data settings ('GEOROC', 'PetDB', etc.).    
     Returns:
         pd.DataFrame: Processed GEOROC data, potentially filtered by volcano name.
     """

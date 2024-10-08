@@ -1200,25 +1200,25 @@ def update_onedropdown(thisvolcano_name, grnames, dict_georoc_sl, dict_volcano_f
     return opts
 
 
-def georoc_majorrocks(georoc_petdb_tect_setting, dict_georoc_sl, dict_volcano_file): 
+def georoc_majorrocks(rock_tect_setting, dict_georoc_sl, dict_volcano_file): 
     """
     Generates a dataframe containing volcano names and their corresponding GEOROC major rocks (1, 2, and 3)
     for specified tectonic settings.
 
     Args:
-        georoc_petdb_tect_setting (list): List of tectonic settings from Georoc and PetDB.
+        rock_tect_setting (list): List of tectonic settings from Georoc and PetDB.
 
     Returns:
         pd.DataFrame: DataFrame with volcano names and their GEOROC major rocks.
     """
     
     # Determine the tectonic settings to use for GEOROC
-    if len(georoc_petdb_tect_setting) == 0:
+    if len(rock_tect_setting) == 0:
         # format tectonic setting names
         tect_georoc = [x.strip().replace(' ', '_').replace('/',',') for x in NEW_TECTONIC_SETTINGS]
     else: 
         # new tectonic settings
-        tect_georoc = [x.strip().replace(' ', '_').replace('/',',') for x in georoc_petdb_tect_setting]
+        tect_georoc = [x.strip().replace(' ', '_').replace('/',',') for x in rock_tect_setting]
         
     alldf = pd.DataFrame()
         

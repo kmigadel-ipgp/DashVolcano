@@ -225,13 +225,12 @@ def rename_columns(df, db_type):
 
 
 
-def load_petdb_data(database, georoc_petdb_tect_setting, df_volcano, df_volcano_no_eruption):
+def load_petdb_data(database, df_volcano, df_volcano_no_eruption):
     """
     Loads and processes PetDB data.
 
     Args:
         database (list): List of databases used.
-        georoc_petdb_tect_setting: Settings that specify the inclusion of PetDB data.
         df_volcano: DataFrame containing volcano data.
         df_volcano_no_eruption: DataFrame for volcanoes with no eruptions.
 

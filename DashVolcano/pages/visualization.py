@@ -47,7 +47,7 @@ def clean_tas_data(tas_data):
     return tas_data
 
 
-def update_tas(fig, volcano_name, selectedpts, georoc_petdb_tect_setting):
+def update_tas(fig, volcano_name, selectedpts, rock_tect_setting):
     """
     Updates the TAS diagram based on selected points and volcano data.
 
@@ -55,7 +55,7 @@ def update_tas(fig, volcano_name, selectedpts, georoc_petdb_tect_setting):
         fig: The TAS figure object to update.
         volcano_name: Selected volcano name (GEOROC).
         selectedpts: Selected points data (box or lasso tool).
-        georoc_petdb_tect_setting: Tectonic filter selected from the GEOROC and PetDB database.
+        rock_tect_setting: Tectonic filter selected from the GEOROC and PetDB database.
 
     Returns:
         A tuple containing the updated TAS figure and geochemical data.
@@ -95,7 +95,7 @@ def update_tas(fig, volcano_name, selectedpts, georoc_petdb_tect_setting):
 
     # Plot the TAS diagram if geochemical data is available
     if not thisgeogr.empty:
-        fig = plot_chem(fig, thisgeogr, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], LBLS2 if 'PetDB' in georoc_petdb_tect_setting else LBLS)
+        fig = plot_chem(fig, thisgeogr, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], LBLS2 if 'PetDB' in rock_tect_setting else LBLS)
         add_subtitle(fig, thisgeogr)
     else:
         fig.update_layout(title='<b>TAS diagram</b><br>', height=700)
@@ -154,13 +154,13 @@ def add_subtitle(fig, thisgeogr):
     )
 
 
-def update_radar(rock_database, georoc_petdb_tect_setting, thisvolcano, tas_data, sample_interval):
+def update_radar(rock_database, rock_tect_setting, thisvolcano, tas_data, sample_interval):
     """
     Update a radar chart showing the frequency of rock samples based on tectonic settings.
 
     Args:
         rock_database: List of volcanic rock databases selected.
-        georoc_petdb_tect_setting (list): List of selected tectonic settings from GEOROC and PetDB.
+        rock_tect_setting (list): List of selected tectonic settings from GEOROC and PetDB.
         thisvolcano (str): Name of the selected volcano.
         tas_data (DataFrame): DataFrame containing rock sample data.
 
@@ -209,8 +209,8 @@ def update_radar(rock_database, georoc_petdb_tect_setting, thisvolcano, tas_data
         dfgeo = pd.concat([dfgeo, dftmp])
 
     # Filter data based on new tectonic settings
-    if set(georoc_petdb_tect_setting) & set(NEW_TECTONIC_SETTINGS):
-        dfgeo = dfgeo[dfgeo['Volcano Name'].map(lambda x: len(np.intersect1d(x, georoc_petdb_tect_setting)) > 0)]
+    if set(rock_tect_setting) & set(NEW_TECTONIC_SETTINGS):
+        dfgeo = dfgeo[dfgeo['Volcano Name'].map(lambda x: len(np.intersect1d(x, rock_tect_setting)) > 0)]
         if dfgeo.empty:
             dfgeo = pd.DataFrame({'ROCK': [], 'Volcano Name': [], 'db': []})
 
@@ -231,7 +231,7 @@ def update_radar(rock_database, georoc_petdb_tect_setting, thisvolcano, tas_data
             fill='toself',
             fillcolor='cadetblue',
             line_color='grey',
-            name=' '.join(georoc_petdb_tect_setting)
+            name=' '.join(rock_tect_setting)
         ))
 
     # Count rocks from tas_data or load from GEOROC based on volcano selection
