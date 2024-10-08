@@ -150,24 +150,21 @@ def save_major_rocks_dataframe(df, file_path):
     df.to_csv(file_path, index=False)
 
 
-def petdb_majorrocks(georoc_petdb_tect_setting): 
+def petdb_majorrocks(rock_tect_setting): 
     """
     Args:
-        georoc_petdb_tect_setting (list): List of tectonic settings from Georoc and PetDB.
+        rock_tect_setting (list): List of tectonic settings from Georoc and PetDB.
 
     Returns:
         pd.DataFrame: A dataframe with volcano names and their PetDB major rocks 1, 2, and 3.
     """
 
-    # Filter out unwanted tectonic settings
-    georoc_petdb_tect_setting = [x for x in georoc_petdb_tect_setting if x != 'GEOROC']
-    
     # Determine tectonic settings to use for GEOROC
-    if 'PetDB' in georoc_petdb_tect_setting and len(georoc_petdb_tect_setting) == 1:
+    if len(rock_tect_setting) == 0:
         # format tectonic setting names
         tect_georoc = [x.strip().replace(' ', '_').replace('/',',') for x in NEW_TECTONIC_SETTINGS]
     else: 
-        tect_georoc = [x.strip().replace(' ', '_').replace('/',',') for x in georoc_petdb_tect_setting if (x != 'PetDB') and (x != 'GEOROC')]
+        tect_georoc = [x.strip().replace(' ', '_').replace('/',',') for x in rock_tect_setting]
 
     alldf = pd.DataFrame()
         

@@ -38,33 +38,46 @@ from constants.paths import GEOROC_GVP_DIR, GEOROC_DATASET_DIR, GEOROC_AROUND_GV
 
 from helpers.helpers import process_lat_lon
 
-from functions.georoc import createGEOROCaroundGVP
+from functions.georoc import create_georoc_around_gvp
 
 def empty_georoc_df():
     return pd.DataFrame({'LATITUDE MIN': [], 'LATITUDE MAX': [], 'LONGITUDE MIN': [], 'LONGITUDE MAX': [], 'SAMPLE NAME': [], 'CITATIONS': [], 'ROCK no inc': [], 'SIO2(WT%)mean': [], 'Volcano Name': [] })
 
 
-def load_georoc_data(georoc_petdb_tect_setting):
+def load_georoc_data(database, df_volcano, df_volcano_no_eruption):
     """
     Loads and processes GEOROC data.
     
     Args:
-        georoc_petdb_tect_setting (list): List containing the data settings ('GEOROC', 'PetDB', etc.).    
+        database (list): List of databases used.
     Returns:
         pd.DataFrame: Processed GEOROC data, potentially filtered by volcano name.
     """
-    if 'GEOROCaroundGVP.csv' in os.listdir(GEOROC_DATASET_DIR) and 'GEOROC' in georoc_petdb_tect_setting:
+    # Check if the GEOROC data file exists in the specified directory and if GEOROC is included in the settings
+    if 'GEOROCaroundGVP.csv' in os.listdir(GEOROC_DATASET_DIR) and 'GEOROC' in database:
+        # Load the GEOROC data from the CSV file
         df_georoc = pd.read_csv(GEOROC_AROUND_GVP_FILE)
+
+        # Convert 'Volcano Name' from string representation of lists to actual lists
         df_georoc['Volcano Name'] = df_georoc['Volcano Name'].apply(lambda x: list(set([name.replace('Within ', 'Intra') for name in ast.literal_eval(x)])))
     else:
-        df_georoc = createGEOROCaroundGVP() if 'GEOROC' in georoc_petdb_tect_setting else empty_georoc_df()
+        # If GEOROC data file does not exist or GEOROC is not in settings, create an empty DataFrame or load the data
+        df_georoc = create_georoc_around_gvp(df_volcano, df_volcano_no_eruption) if 'GEOROC' in database else empty_georoc_df()
     df_georoc = process_lat_lon(df_georoc)
+
+    # Add a new column to specify the data source
     df_georoc['db'] = 'Georoc'
+
+    # Rename 'SAMPLE NAME' column to 'Name'
     df_georoc = df_georoc.rename(columns={'SAMPLE NAME': 'Name'})
+
+    # Create a new column 'refs' to hold reference information
     df_georoc = df_georoc.rename(columns={'CITATIONS': 'refs'})
     for i in range(1, 11):
         df_georoc['refs'] = df_georoc['refs'].apply(lambda x: x[:i*80]+'<br>'+x[i*80:] if len(x)>i*80 else x)
     df_georoc['refs'] = df_georoc['refs'].apply(lambda x: x if len(x)<800 else x[:800]+'(...)')  
+    
+    # Return the processed DataFrame
     return df_georoc
 
 
