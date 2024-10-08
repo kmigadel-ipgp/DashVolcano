@@ -6,7 +6,7 @@
 # * load_refs: loads references
 # * fix_pathname
 # * fix_inclusion
-# * with_FEOnorm: handles FEOT and normalizes oxides 
+# * normalize_oxides_with_feot: handles FEOT and normalizes oxides 
 # * guess_rock: associates a rock name based on chemicals and TAS diagram
 # * extract_date: extract date information from comments
 # * plot_TAS: draws the TAS background
@@ -91,58 +91,89 @@ def rocks_to_color(rid):
 
     return cc_r, cc_g, cc_b
 
+
 def find_new_tect_setting(thisvolcano, df_volcano, df_volcano_no_eruption):
     """
+    Determines the tectonic setting for a given volcano, accounting for specific known exceptions,
+    and looks up the tectonic setting in the provided volcano dataframes.
+
     Args:
-               
+        thisvolcano (str): Name of the volcano.
+        df_volcano (pd.DataFrame): DataFrame containing volcanoes with known eruptions.
+        df_volcano_no_eruption (pd.DataFrame): DataFrame containing volcanoes without known eruptions.
+
+    Returns:
+        str: The tectonic setting of the volcano.
     """
-    if thisvolcano in ['Northern Lake Abaya Volcanic Field', 'Kaikohe-Bay of Islands', 'Garove', 'Eastern Gemini Seamount', 'Vitim Volcanic Field']:
-        if thisvolcano in ['Northern Lake Abaya Volcanic Field', 'Vitim Volcanic Field']:
-            newts = 'Rift at plate boundaries / Continental'
-        if thisvolcano == 'Kaikohe-Bay of Islands':
-            newts = 'Intraplate / Continental'
-        if thisvolcano in ['Garove', 'Eastern Gemini Seamount']:
-            newts = 'Subduction zone / Continental'
     
+    # Check for specific volcanoes with predefined tectonic settings
+    specific_volcanoes = {
+        'Northern Lake Abaya Volcanic Field': 'Rift at plate boundaries / Continental',
+        'Vitim Volcanic Field': 'Rift at plate boundaries / Continental',
+        'Kaikohe-Bay of Islands': 'Intraplate / Continental',
+        'Garove': 'Subduction zone / Continental',
+        'Eastern Gemini Seamount': 'Subduction zone / Continental'
+    }
+    
+    # Return predefined tectonic setting if the volcano is in the list
+    if thisvolcano in specific_volcanoes:
+        return specific_volcanoes[thisvolcano]
+
+    # Look up the tectonic setting from the dataframes
+    tectonic_setting = df_volcano[df_volcano['Volcano Name'] == thisvolcano]['Tectonic Settings'].values
+    
+    # If not found in the main DataFrame, check the secondary one (no eruption data)
+    if len(tectonic_setting) == 0:
+        tectonic_setting = df_volcano_no_eruption[df_volcano_no_eruption['Volcano Name'] == thisvolcano]['Tectonic Settings'].values[0]
     else:
-        # for other volcanoes
-        thistecset = df_volcano[df_volcano['Volcano Name'] == thisvolcano]['Tectonic Settings'].values
-        if len(thistecset) == 0:
-            thistecset = df_volcano_no_eruption[df_volcano_no_eruption['Volcano Name'] == thisvolcano]['Tectonic Settings'].values[0]
-        else:
-            thistecset = thistecset[0]
+        tectonic_setting = tectonic_setting[0]
     
-        if thistecset == 'Subduction zone / Oceanic crust (< 15 km)':
-            newts = 'Subduction zone / Oceanic'
-        elif thistecset in ['Subduction zone / Continental crust (>25 km)', 'Subduction zone / Intermediate crust (15-25 km)']:
-            newts = 'Subduction zone / Continental'
-        elif thistecset == 'Intraplate / Oceanic crust (< 15 km)':
-            newts = 'Intraplate / Oceanic'
-        elif thistecset in ['Intraplate / Continental crust (>25 km)', 'Intraplate / Intermediate crust (15-25 km)']:
-            newts = 'Intraplate / Continental'
-        elif thistecset == 'Rift zone / Oceanic crust (< 15 km)':     
-            newts = 'Rift at plate boundaries / Oceanic'
-        elif thistecset in ['Rift zone / Continental crust (>25 km)', 'Rift zone / Intermediate crust (15-25 km)']:
-            newts = 'Rift at plate boundaries / Continental'
-        elif thistecset == 'Subduction zone / Crustal thickness unknown':
-            thissubregion = df_volcano[df_volcano['Volcano Name'] == thisvolcano]['Subregion'].values
-            if len(thissubregion) == 0:
-                thissubregion = df_volcano_no_eruption[df_volcano_no_eruption['Volcano Name'] == thisvolcano]['Subregion'].values[0]
-            else:
-                thissubregion = thissubregion[0]
-       
-            if thissubregion in ['Bougainville and Solomon Islands', 'Izu, Volcano, and Mariana Islands', 'New Ireland', 'Santa Cruz Islands']:
-                newts = 'Subduction zone / Oceanic'
-            elif thissubregion in ['Pacific Ocean (southwestern)', 'North of Luzon', 'Lesser Sunda Islands', 'Fiji Islands']:
-                newts = 'Subduction zone / Continental'
-            else:
-                print('Warning: missed subregion')
-        else:    
-            if thistecset == 'Unknown':
-                newts = 'Unknown'
-            else:
-                print('Warning: missed subregion')         
-    return newts
+    # Map the tectonic setting to simplified categories
+    tectonic_mapping = {
+        'Subduction zone / Oceanic crust (< 15 km)': 'Subduction zone / Oceanic',
+        'Subduction zone / Continental crust (>25 km)': 'Subduction zone / Continental',
+        'Subduction zone / Intermediate crust (15-25 km)': 'Subduction zone / Continental',
+        'Intraplate / Oceanic crust (< 15 km)': 'Intraplate / Oceanic',
+        'Intraplate / Continental crust (>25 km)': 'Intraplate / Continental',
+        'Intraplate / Intermediate crust (15-25 km)': 'Intraplate / Continental',
+        'Rift zone / Oceanic crust (< 15 km)': 'Rift at plate boundaries / Oceanic',
+        'Rift zone / Continental crust (>25 km)': 'Rift at plate boundaries / Continental',
+        'Rift zone / Intermediate crust (15-25 km)': 'Rift at plate boundaries / Continental'
+    }
+
+    # Return mapped tectonic setting if found
+    if tectonic_setting in tectonic_mapping:
+        return tectonic_mapping[tectonic_setting]
+
+    # Handle subduction zone with unknown crustal thickness
+    if tectonic_setting == 'Subduction zone / Crustal thickness unknown':
+        subregion = df_volcano[df_volcano['Volcano Name'] == thisvolcano]['Subregion'].values
+        if len(subregion) == 0:
+            subregion = df_volcano_no_eruption[df_volcano_no_eruption['Volcano Name'] == thisvolcano]['Subregion'].values[0]
+        else:
+            subregion = subregion[0]
+        
+        # Map subregion to tectonic setting
+        oceanic_subregions = ['Bougainville and Solomon Islands', 'Izu, Volcano, and Mariana Islands', 'New Ireland', 'Santa Cruz Islands']
+        continental_subregions = ['Pacific Ocean (southwestern)', 'North of Luzon', 'Lesser Sunda Islands', 'Fiji Islands']
+        
+        if subregion in oceanic_subregions:
+            return 'Subduction zone / Oceanic'
+        elif subregion in continental_subregions:
+            return 'Subduction zone / Continental'
+        else:
+            print('Warning: missed subregion')
+            return 'Unknown'
+    
+    # Handle unknown or unclassified tectonic setting
+    if tectonic_setting == 'Unknown':
+        return 'Unknown'
+    
+    # Warning for any missed cases
+    print('Warning: missed tectonic setting')
+    return 'Unknown'
+
+
 
 def load_georoc(thisvolcano, dict_georoc_sl, dict_volcano_file):
     """
@@ -250,7 +281,7 @@ def load_georoc(thisvolcano, dict_georoc_sl, dict_volcano_file):
     dfloaded['ERUPTION YEAR'] = dfloaded['ERUPTION YEAR'].fillna(dfloaded['GUESSED DATE'])
     
     # add normalization 
-    dfloaded = with_FEOnorm(dfloaded)
+    dfloaded = normalize_oxides_with_feot(dfloaded)
     
     # adds names to rocks using TAS 
     dfloaded = guess_rock(dfloaded)
@@ -400,157 +431,223 @@ def fix_inclusion(thisdf):
     return thisdf
     
 
-def with_FEOnorm(thisdf):
+def normalize_oxides_with_feot(thisdf):
     """
+    Normalizes oxide measurements in the given GEOROC dataframe for a single volcano, 
+    handling Fe2O3 and FeO conversion to FEOT, and performing normalization across all oxides.
 
     Args:
-        thisdf: GEOROC dataframe for one volcano
+        thisdf (pd.DataFrame): GEOROC dataframe for one volcano.
         
-    Returns: Among oxydes, we have 'FE2O3(WT%)', 'FEO(WT%)', 'FEOT(WT%)'.
-             If FEOT is here, discard the other two, otherwise computes FEOT based on the other two.
-             The dataframe with normalized oxides is returned. 
-
-    """    
-    # cleans up, oxides include LOI
+    Returns:
+        pd.DataFrame: Dataframe with normalized oxide values.
+                      If 'FEOT(WT%)' is present, 'FE2O3(WT%)' and 'FEO(WT%)' are discarded.
+                      Otherwise, 'FEOT(WT%)' is calculated from 'FE2O3(WT%)' and 'FEO(WT%)'.
+    """
+    
+    # Handle cases where oxide values are given as pairs of measurements, e.g., 'x\\y'
     for col in OXIDES:
-        # in case two measurements
-        nofloat = [x for x in list(thisdf[col].unique()) if (isinstance(x, str) and '\\' in x)]
-        newvalues = {}
-        for x in nofloat:
-            # choose the first value of the pair
-            newvalues[x] = x.split('\\')[0].strip() 
+        # Identify non-float entries containing '\\', which indicates two measurements
+        nofloat = [x for x in list(thisdf[col].unique()) if isinstance(x, str) and '\\' in x]
+        newvalues = {x: x.split('\\')[0].strip() for x in nofloat}  # Take the first value of the pair
         
-        # replaces the pairs by their first value
-        # thisdf[col].replace(to_replace=newvalues, inplace=True)
+        # Replace pairs with their first value
         thisdf[col] = thisdf[col].replace(newvalues)
     
-    #  replaces missing oxides and LOI data with 0
+    # Replace missing values in oxides with 0 and convert to float
     thisdf[OXIDES] = thisdf[OXIDES].fillna(0).astype(float)
-    # when FEOT(WT%) is available, disregard FE2O3(WT%) and FEO(WT%)
-    oxides_nofe = ['SIO2(WT%)', 'TIO2(WT%)', 'AL2O3(WT%)', 'FE2O3(WT%)', 'FEO(WT%)', 'FEOT(WT%)', 'CAO(WT%)', 'MGO(WT%)', 'MNO(WT%)', 'K2O(WT%)', 'NA2O(WT%)', 'P2O5(WT%)']
-    # When FEOT(WT%) is not available or empty, then FEOT(WT%) = FE2O3(WT%)/1.111 + FEO(WT%)    
-    thisdf.loc[:, 'FEOT(WT%)'] = np.where(thisdf['FEOT(WT%)'] == 0, (thisdf['FE2O3(WT%)']/1.111) + thisdf['FEO(WT%)'], thisdf['FEOT(WT%)'])
     
-    # the numerator is the sum of the oxides without FE203 and FEO
-    # LOI shouldnt be taken, and should further be removed
-    num = thisdf[oxides_nofe].sum(axis=1)-thisdf['LOI(WT%)']
+    # List of oxides without Fe-specific columns (to be normalized)
+    oxides_nofe = ['SIO2(WT%)', 'TIO2(WT%)', 'AL2O3(WT%)', 'FE2O3(WT%)', 'FEO(WT%)', 'FEOT(WT%)', 
+                   'CAO(WT%)', 'MGO(WT%)', 'MNO(WT%)', 'K2O(WT%)', 'NA2O(WT%)', 'P2O5(WT%)']
     
+    # Compute 'FEOT(WT%)' if missing, using the formula FEOT = FE2O3 / 1.111 + FEO
+    thisdf.loc[:, 'FEOT(WT%)'] = np.where(thisdf['FEOT(WT%)'] == 0, 
+                                           (thisdf['FE2O3(WT%)'] / 1.111) + thisdf['FEO(WT%)'], 
+                                           thisdf['FEOT(WT%)'])
+    
+    # Calculate the sum of oxides excluding 'FE2O3(WT%)' and 'FEO(WT%)' and subtract 'LOI(WT%)'
+    num = thisdf[oxides_nofe].sum(axis=1) - thisdf['LOI(WT%)']
+    
+    # Normalize each oxide by the total sum of oxides (excluding LOI)
     for col in oxides_nofe:
-        # normalizes    
-        thisdf.loc[:, col] = thisdf[col]*(100/num)
+        thisdf.loc[:, col] = thisdf[col] * (100 / num)
     
     return thisdf
 
 
 def guess_rock(thisdf):
     """
-
     Args:
         thisdf: GEOROC dataframe for one volcano
 
-    Returns: a new column with a ROCK name based on TAS
-
+    Returns: 
+        A new column with a rock name based on the TAS diagram, classified using SiO2 and total alkali (Na2O + K2O) content.
     """
-    # adds a new column that stores the guessed name
-    thisdf.loc[:, 'ROCK'] = ['UNNAMED']*len(thisdf.index)
+
+    # Initialize a 'ROCK' column with default value 'UNNAMED' for all rows
+    thisdf['ROCK'] = 'UNNAMED'
+
+    # Extract SiO2 and total alkali (Na2O + K2O) as float values
+    x = thisdf['SIO2(WT%)'].astype(float)
+    y = thisdf['NA2O(WT%)'].astype(float) + thisdf['K2O(WT%)'].astype(float)
+
+    # Check for valid rows where SiO2 and alkalis are greater than 0
+    valid_data = (x > 0) & (thisdf['NA2O(WT%)'] > 0) & (thisdf['K2O(WT%)'] > 0)
+
+    # Define helper function to calculate the slope and intercept of a line between two points
+    def get_line_params(x, x1, y1, x2, y2):
+        slope, intercept = np.polyfit([x1, x2], [y1, y2], 1)
+        return slope * x + intercept
+
+    # Define line boundaries for TAS diagram
+    upper_bound_tephrite_phono_tephrite_tephrite_phonolite = get_line_params(x, 41, 7, 52.5, 14)  
+
+    upper_bound_trachy = get_line_params(x, 45, 5, 65, 15.7)  
+
+    upper_bound_trachybasalt = get_line_params(x, 49.4, 7.3, 52, 5)
+
+    lower_bound_trachy = get_line_params(x, 52, 5, 69, 8)
     
-    # x- and y-axis from the TAS diagram
-    x = thisdf['SIO2(WT%)'].astype('float')
-    y = (thisdf['NA2O(WT%)'].astype('float') + thisdf['K2O(WT%)'].astype('float'))
-    # x and y are greater than 0 (in fact both components of the sum y are greater than 0)
-    cond1 = (thisdf['SIO2(WT%)'].astype('float') > 0) & (thisdf['NA2O(WT%)'].astype('float') > 0) & (thisdf['K2O(WT%)'].astype('float') > 0)    
-    # lower anti-diagonal 1
-    # a,b in ax+b
-    ab = np.dot(inv(np.array([[52., 1.], [57., 1.]])), np.array([[5], [5.9]]))
-    cond_ab = float(ab[0])*x+float(ab[1]) >= y
-    cond_ba = float(ab[0])*x+float(ab[1]) < y
-    # anti-diagonal 2
-    # a,b in ax+b
-    ab2 = np.dot(inv(np.array([[45., 1.], [49.4, 1.]])), np.array([[5], [7.3]]))
-    cond_ab2 = float(ab2[0])*x+float(ab2[1]) < y
-    cond_ba2 = float(ab2[0])*x+float(ab2[1]) >= y
-    # upper anti-diagonal 3
-    ab3 = np.dot(inv(np.array([[41., 1.], [52.5, 1.]])), np.array([[7], [14]]))
-    cond_ab3 = float(ab3[0])*x+float(ab3[1]) < y
-    cond_ba3 = float(ab3[0])*x+float(ab3[1]) >= y
-    # lower diagonal
-    cd = np.dot(inv(np.array([[49.4, 1.], [52., 1.]])), np.array([[7.3], [5.]]))
-    cond_cd = float(cd[0])*x+float(cd[1]) < y
-    cond_dc = float(cd[0])*x+float(cd[1]) >= y
-    # diagonal
-    cd2 = np.dot(inv(np.array([[53., 1.], [57., 1.]])), np.array([[9.3], [5.9]]))
-    cond_cd2 = float(cd2[0])*x+float(cd2[1]) < y
-    cond_dc2 = float(cd2[0])*x+float(cd2[1]) >= y
-    # upper diagonal
-    cd3 = np.dot(inv(np.array([[57.6, 1.], [63., 1.]])), np.array([[11.7], [7.]]))
-    cond_cd3 = float(cd3[0])*x+float(cd3[1]) < y
-    cond_dc3 = float(cd3[0])*x+float(cd3[1]) >= y
-    # lower diagonal
-    ef = np.dot(inv(np.array([[49.4, 1.], [45., 1.]])), np.array([[7.3], [9.4]]))
-    cond_ef = float(ef[0])*x+float(ef[1]) < y
-    cond_fe = float(ef[0])*x+float(ef[1]) >= y
-    # diagonal
-    ef2 = np.dot(inv(np.array([[53., 1.], [48.4, 1.]])), np.array([[9.3], [11.5]]))
-    cond_ef2 = float(ef2[0])*x+float(ef2[1]) < y
-    cond_fe2 = float(ef2[0])*x+float(ef2[1]) >= y
-    # upper diagonal
-    ef3 = np.dot(inv(np.array([[57.6, 1.], [52.5, 1.]])), np.array([[11.7], [14.]]))
-    cond_ef3 = float(ef3[0])*x+float(ef3[1]) < y
-    cond_fe3 = float(ef3[0])*x+float(ef3[1]) >= y
+    lower_bound_trachyandesite = get_line_params(x, 53, 9.3, 57, 5.9)
 
-    # else will be FOIDITE
-    thisdf.loc[cond1, 'ROCK'] = 'FOIDITE'
+    lower_bound_trachydacite = get_line_params(x, 57.6, 11.7, 63, 7)
 
-    # basalt
-    thisdf.loc[cond1 & (x >= 45) & (x < 52) & (y < 5), 'ROCK'] = 'BASALT'
-
-    # basaltic andesite
-    thisdf.loc[cond1 & (x >= 52) & (x < 57) & cond_ab, 'ROCK'] = 'BASALTIC ANDESITE'
-
-    # andesite
-    thisdf.loc[cond1 & (x >= 57) & (x < 63) & cond_ab, 'ROCK'] = 'ANDESITE'
-
-    # dacite
-    # a,b in ax+b 
-    d = np.dot(inv(np.array([[76., 1.], [69., 1.]])), np.array([[1.], [8.]]))
-    cond_d1 = (x >= 63) & (float(d[0])*x + float(d[1]) >= y)
-    thisdf.loc[cond1 & cond_d1 & cond_ab, 'ROCK'] = 'DACITE'
-
-    # trachy-basalt
-    thisdf.loc[(y >= 5) & cond_dc & cond_ba2, 'ROCK'] = 'TRACHYBASALT'
-
-    # basaltic trachy-andesite
-    thisdf.loc[cond_ba & cond_ba2 & cond_cd & cond_dc2, 'ROCK'] = 'BASALTIC TRACHYANDESITE'
-
-    # trachy-andesite
-    thisdf.loc[cond_ba & cond_ba2 & cond_cd2 & cond_dc3, 'ROCK'] = 'TRACHYANDESITE'
+    upper_bound_trachydacite = get_line_params(x, 65, 15.7, 69, 13)
     
-    # trachy-dacite
-    thisdf.loc[cond_ba & cond_ba2 & cond_cd3 & (x < 69), 'ROCK'] = 'TRACHYTE/TRACHYDACITE'
+    upper_bound_tephrite = get_line_params(x, 49.4, 7.3, 45, 9.4)
+    
+    lower_bound_tephriphonolite = get_line_params(x, 53, 9.3, 48.4, 11.5)
+    
+    lower_bound_phonolyte = get_line_params(x, 57.6, 11.7, 50, 15.13)
 
-    # rhyolite
+    upper_bound_phonolyte = get_line_params(x, 50, 15.13, 65, 15.7)
+
+    lower_bound_rhyolite = get_line_params(x, 69, 8, 77, 1)
+
+    lower_bound_basanite = get_line_params(x, 41, 7, 45, 5)
+    
+    # Define conditions for each rock type based on SiO2 (x) and alkali (y) values
+    
+    # Foidite classification
+    thisdf.loc[valid_data, 'ROCK'] = 'FOIDITE'
+
+    # Basalt classification
+    thisdf.loc[
+        valid_data & 
+        (x >= 45) & 
+        (x < 52) & 
+        (y < 5), 'ROCK'] = 'BASALT'
+
+    # Basaltic andesite classification
+    thisdf.loc[
+        valid_data & 
+        (x >= 52) & 
+        (x < 57) & 
+        (y < lower_bound_trachy), 'ROCK'] = 'BASALTIC ANDESITE'
+
+    # Andesite classification
+    thisdf.loc[
+        valid_data & 
+        (x >= 57) & 
+        (x < 63) & 
+        (y < lower_bound_trachy), 'ROCK'] = 'ANDESITE'
+
+    # Dacite classification
+    thisdf.loc[
+        valid_data & 
+        (x >= 63) & 
+        (x < 77) & 
+        (y < lower_bound_rhyolite) & 
+        (y < lower_bound_trachy), 'ROCK'] = 'DACITE'
+
+    # Trachy-basalt classification
+    thisdf.loc[
+        valid_data & 
+        (y >= 5) & 
+        (y < upper_bound_trachybasalt) & 
+        (y < upper_bound_trachy), 'ROCK'] = 'TRACHYBASALT'
+
+    # Basaltic trachy-andesite classification
+    thisdf.loc[
+        valid_data & 
+        (y >= lower_bound_trachy) & 
+        (y < upper_bound_trachy) & 
+        (y >= upper_bound_trachybasalt) &
+        (y < lower_bound_trachyandesite), 'ROCK'] = 'BASALTIC TRACHYANDESITE'
+
+    # Trachy-andesite classification
+    thisdf.loc[
+        valid_data & 
+        (y >= lower_bound_trachy) &
+        (y < upper_bound_trachy) &
+        (y >= lower_bound_trachyandesite) &
+        (y < lower_bound_trachydacite), 'ROCK'] = 'TRACHYANDESITE'
+    
+    # Trachy-dacite classification
+    thisdf.loc[
+        valid_data & 
+        (x < 69) &
+        (y >= lower_bound_trachy) &
+        (y < upper_bound_trachy) &
+        (y < upper_bound_trachydacite) &
+        (y >= lower_bound_trachydacite), 'ROCK'] = 'TRACHYTE/TRACHYDACITE'
+
+    # Rhyolite classification
     # a,b in ax+b
-    cond_r1 = (float(d[0])*x + float(d[1]) < y)
-    thisdf.loc[cond1 & cond_r1 & (x >= 69), 'ROCK'] = 'RHYOLITE'
+    thisdf.loc[
+        valid_data &
+        (x >= 69) &
+        (x < 77) &
+        (y >= lower_bound_rhyolite), 'ROCK'] = 'RHYOLITE'
 
-    # phonolite
-    thisdf.loc[cond_ab2 & cond_ef3, 'ROCK'] = 'PHONOLITE'
+    # Phonolite classification
+    thisdf.loc[
+        (y >= upper_bound_trachy) &
+        (y < upper_bound_phonolyte) &
+        (y >= lower_bound_phonolyte), 'ROCK'] = 'PHONOLITE'
 
-    # tephri-phonolite
-    thisdf.loc[cond_ab2 & cond_fe3 & cond_ef2 & cond_ba3, 'ROCK'] = 'TEPHRI-PHONOLITE'
+    # Tephri-phonolite classification
+    thisdf.loc[
+        (y >= upper_bound_trachy) & 
+        (y >= lower_bound_phonolyte) & 
+        (y < lower_bound_tephriphonolite) & 
+        (y < upper_bound_tephrite_phono_tephrite_tephrite_phonolite), 'ROCK'] = 'TEPHRI-PHONOLITE'
 
-    # phono-tephrite
-    thisdf.loc[cond_ab2 & cond_fe2 & cond_ef & cond_ba3, 'ROCK'] = 'PHONO-TEPHRITE'
+    # Phono-tephrite classification
+    thisdf.loc[
+        (x >= 45) &
+        (x < 53) &
+        (y >= upper_bound_trachy) &  
+        (y >= lower_bound_tephriphonolite) & 
+        (y < upper_bound_tephrite) & 
+        (y < upper_bound_tephrite_phono_tephrite_tephrite_phonolite), 'ROCK'] = 'PHONO-TEPHRITE'
 
-    # tephrite
+    # Tephrite classification
     # a,b in ax+b
-    t = np.dot(inv(np.array([[41., 1.], [45., 1.]])), np.array([[7.], [5.]]))
-    cond_t1 = (float(t[0])*x + float(t[1]) <= y) & cond_ab2 & cond_ba3 & cond_fe
-    cond_t2 = (float(t[0])*x + float(t[1]) >= y) & (y >= 3) & (x >= 41) & (x < 45)
-    thisdf.loc[cond_t1 | cond_t2, 'ROCK'] = 'TEPHRITE/BASANITE'
 
-    # picro-basalt
-    thisdf.loc[cond1 & (y < 3) & (x >= 41) & (x < 45), 'ROCK'] = 'PICROBASALT'
+    cond_t1 = (y > upper_bound_trachy) & \
+        (y < upper_bound_tephrite_phono_tephrite_tephrite_phonolite) & \
+        (y < upper_bound_tephrite) & \
+        (y >= lower_bound_basanite) & \
+        (x >= 41) & \
+        (x < 49.4)
+    
+    cond_t2 = (y <= upper_bound_tephrite_phono_tephrite_tephrite_phonolite) & \
+        (y < upper_bound_tephrite) & \
+        (y >= 3) & \
+        (x >= 41) & \
+        (x < 45) & \
+        (y < lower_bound_basanite)
+    
+    thisdf.loc[valid_data & (cond_t1 | cond_t2), 'ROCK'] = 'TEPHRITE/BASANITE'
+
+    # Picro-basalt classification
+    thisdf.loc[
+        valid_data & 
+        (y < 3) & 
+        (x >= 41) & 
+        (x < 45), 'ROCK'] = 'PICROBASALT'
 
     return thisdf
     
@@ -1115,15 +1212,13 @@ def georoc_majorrocks(georoc_petdb_tect_setting, dict_georoc_sl, dict_volcano_fi
         pd.DataFrame: DataFrame with volcano names and their GEOROC major rocks.
     """
     
-    georoc_petdb_tect_setting = [x for x in georoc_petdb_tect_setting if x != None and x != 'PetDB']
-    
     # Determine the tectonic settings to use for GEOROC
-    if 'GEOROC' in georoc_petdb_tect_setting and len(georoc_petdb_tect_setting)==1:
+    if len(georoc_petdb_tect_setting) == 0:
         # format tectonic setting names
         tect_georoc = [x.strip().replace(' ', '_').replace('/',',') for x in NEW_TECTONIC_SETTINGS]
     else: 
         # new tectonic settings
-        tect_georoc = [x.strip().replace(' ', '_').replace('/',',') for x in georoc_petdb_tect_setting if (x !='GEOROC') and (x!='PetDB')]
+        tect_georoc = [x.strip().replace(' ', '_').replace('/',',') for x in georoc_petdb_tect_setting]
         
     alldf = pd.DataFrame()
         
@@ -1377,7 +1472,7 @@ def createGEOROCaroundGVP():
         df_georoc = df_georoc.append(dfvol)
         
     # FEO normalization     
-    df_georoc = with_FEOnorm(df_georoc)
+    df_georoc = normalize_oxides_with_feot(df_georoc)
     # add rock names
     df_georoc = guess_rock(df_georoc)
     # rock names excluding inclusions
@@ -1617,7 +1712,7 @@ def process_georoc_data(dfgeogr, with_text, volcano_name, with_text_match, thisg
 
 def clean_and_prepare_georoc(dfloaded):
     """Clean and normalize GEOROC data."""
-    dfloaded = with_FEOnorm(dfloaded)
+    dfloaded = normalize_oxides_with_feot(dfloaded)
     dfloaded = dfloaded.dropna(subset=['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], how='all')
     dfloaded = detects_chems(dfloaded, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], MORE_CHEMS, LBLS)
     dfloaded['db'] = 'GEOROC'

@@ -14,9 +14,12 @@ from helpers.helpers import create_menu_options
 
 def create_menus():
     """Creates the dropdowns and checklist menus for tectonics, rocks, etc."""
-    # Tectonic settings for all and GEOROC
-    tectonic_options = create_menu_options(ALL_TECTONIC_SETTINGS)
-    georoc_tectonic_options = create_menu_options(['GEOROC', 'PetDB'] + NEW_TECTONIC_SETTINGS)
+    # Rock database
+    rock_database = create_menu_options(['GEOROC', 'PetDB'])
+
+    # Tectonic settings
+    gvp_tectonic_options = create_menu_options(ALL_TECTONIC_SETTINGS)
+    rock_tectonic_options = create_menu_options(NEW_TECTONIC_SETTINGS)
 
     # Rocks and chemical settings
     rocks_options = create_menu_options(GEOROC_ROCKS + ['SIO2(WT%)'])
@@ -24,37 +27,48 @@ def create_menus():
     # Layout for menus
     return dbc.Row([
         dbc.Col([
-            # First column (Region Filter and Tectonic Menu)
-            html.Div("Where", className="menu-title"),
-            dcc.Dropdown(id="page4-region-filter", options=[{"label": region, "value": region} for region in grnames], value="start"),
-            html.Div(id='page4-textarea-output', style={'whiteSpace': 'pre-line'}),
-            dcc.Checklist(id="page4-plates-boundaries-filter", options=[
-                {'label': 'tectonic plates', 'value': 'tectonic'},
-                {'label': 'divergent plate boundaries', 'value': 'rift'},
-                {'label': 'convergent plate boundaries', 'value': 'subduction'},
-                {'label': 'transform plate boundaries', 'value': 'intraplate'},
-            ], value=[], className='check'),
+            html.Div([
+                # First column (Map View Menu)
+                html.Div("Map View", className="menu-title"),
+                dcc.Checklist(id="page4-plates-boundaries-filter", options=[
+                    {'label': 'tectonic plates', 'value': 'tectonic'},
+                    {'label': 'divergent plate boundaries', 'value': 'rift'},
+                    {'label': 'convergent plate boundaries', 'value': 'subduction'},
+                    {'label': 'transform plate boundaries', 'value': 'intraplate'},
+                ], value=[], className='check')
+            ], className='card'),
+            html.Div([
+                html.Div("Volcanic Rock Database", className="menu-title"),
+                dcc.Checklist(id='page4-rock-database', className='check', options=rock_database, value=[]),
+                html.Div("Tectonic Settings", className="menu-title"),
+                dcc.Checklist(id='page4-rock-tectonic-settings', className='check', options=rock_tectonic_options, value=[]),
+            ], className='card'),
+            html.Div([
+                html.Div(children="Rock Density Map", className="menu-title"),
+                dcc.Dropdown(id='page4-rocks-density-filter', options=rocks_options, value=[], multi=True),            
+                ], className='card')
         ], width=3),
         
         # Second column (GEOROC - PetDB Tectonic Settings)
         dbc.Col([
-            html.Div("Tectonic Settings (GEOROC - PetDB)", className="menu-title"),
-            dcc.Checklist(id='page4-GEOROC-PETDB-tectonic-filter', className='check', options=georoc_tectonic_options, value=[])
+            html.Div([
+                html.Div("Global Volcanism Program (GVP)", className="menu-title"),
+                html.Div("Select Volcano country", className="menu-title"),
+                dcc.Dropdown(id="page4-country-filter", options=[{"label": region, "value": region} for region in ['all'] + lst_countries], value="all"),
+                html.Div("Tectonic Settings", className="menu-title"),
+                dcc.Checklist(id='page4-GVP-tectonic-settings', className='check', options=gvp_tectonic_options, value=[]),
+                html.Div("*GVP provides volcano locations, tectonic settings and main rock types.", className="information"),
+            ], className='card')
         ], width=3),
         
         # Third column (GVP Tectonic Settings)
         dbc.Col([
-            html.Div("Tectonic Settings GVP", className="menu-title"),
-            html.Div("Country Name", className="menu-title"),
-            dcc.Dropdown(id="page4-country-filter", options=[{"label": region, "value": region} for region in ['all'] + lst_countries], value="all"),
-            dcc.Checklist(id='page4-GVP-tectonic-filter', className='check', options=tectonic_options, value=[]),
+            html.Div([
+                html.Div("Single volcano view", className="menu-title"),
+                dcc.Dropdown(id="page4-region-filter", options=[{"label": region, "value": region} for region in grnames], value="start"),
+                html.Div(id='page4-textarea-output', style={'whiteSpace': 'pre-line'}),
+            ], className='card')
         ], width=3),
-
-        # Fourth column (Rock Density Filter)
-        dbc.Col([
-            html.Div(children="Rock Density", className="menu-title"),
-            dcc.Checklist(id='page4-rocks-density-filter', className='check', options=rocks_options, value=[]),
-        ], width=3)
     ], justify='center')  # Centering the row horizontally and vertically
     
 

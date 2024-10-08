@@ -154,11 +154,12 @@ def add_subtitle(fig, thisgeogr):
     )
 
 
-def update_radar(georoc_petdb_tect_setting, thisvolcano, tas_data):
+def update_radar(rock_database, georoc_petdb_tect_setting, thisvolcano, tas_data):
     """
     Update a radar chart showing the frequency of rock samples based on tectonic settings.
 
     Args:
+        rock_database: List of volcanic rock databases selected.
         georoc_petdb_tect_setting (list): List of selected tectonic settings from GEOROC and PetDB.
         thisvolcano (str): Name of the selected volcano.
         tas_data (DataFrame): DataFrame containing rock sample data.
@@ -167,14 +168,14 @@ def update_radar(georoc_petdb_tect_setting, thisvolcano, tas_data):
         go.Figure: A Plotly figure object containing the radar chart.
     """
     # Load relevant data based on selected tectonic settings
-    if 'PetDB' in georoc_petdb_tect_setting:
+    if 'PetDB' in rock_database:
         # Load PetDB data and process the Volcano Name column
         dfgeo = pd.read_csv(GEOROC_AROUND_PETDB_FILE)[['ROCK', 'Volcano Name']]
         dfgeo['Volcano Name'] = dfgeo['Volcano Name'].apply(lambda x: set(ast.literal_eval(x)))
         dfgeo['Volcano Name'] = dfgeo['Volcano Name'].apply(lambda y: [x.split(';') for x in y])
         dfgeo['Volcano Name'] = dfgeo['Volcano Name'].apply(lambda y: list(set([item for sublist in y for item in sublist])))
         dfgeo['Volcano Name'] = dfgeo['Volcano Name'].apply(lambda x: [find_new_tect_setting(y, df_volcano, df_volcano_no_eruption) for y in x if y != ''])
-    elif 'GEOROC' in georoc_petdb_tect_setting:
+    elif 'GEOROC' in rock_database:
         # Load GEOROC data and process the Volcano Name column
         dfgeo = pd.read_csv(GEOROC_AROUND_GVP_FILE)[['ROCK', 'Volcano Name']]
         dfgeo['Volcano Name'] = dfgeo['Volcano Name'].apply(lambda x: list(set(ast.literal_eval(x))))
@@ -184,7 +185,6 @@ def update_radar(georoc_petdb_tect_setting, thisvolcano, tas_data):
 
     # Filter data based on new tectonic settings
     if set(georoc_petdb_tect_setting) & set(NEW_TECTONIC_SETTINGS):
-        georoc_petdb_tect_setting = [x for x in georoc_petdb_tect_setting if x not in ['GEOROC', 'PetDB']]
         dfgeo = dfgeo[dfgeo['Volcano Name'].map(lambda x: len(np.intersect1d(x, georoc_petdb_tect_setting)) > 0)]
         if dfgeo.empty:
             dfgeo = pd.DataFrame({'ROCK': [], 'Volcano Name': []})

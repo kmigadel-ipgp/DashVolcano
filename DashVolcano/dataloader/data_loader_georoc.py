@@ -44,20 +44,21 @@ def empty_georoc_df():
     return pd.DataFrame({'LATITUDE MIN': [], 'LATITUDE MAX': [], 'LONGITUDE MIN': [], 'LONGITUDE MAX': [], 'SAMPLE NAME': [], 'CITATIONS': [], 'ROCK no inc': [], 'SIO2(WT%)mean': [], 'Volcano Name': [] })
 
 
-def load_georoc_data(georoc_petdb_tect_setting):
+def load_georoc_data(database, georoc_petdb_tect_setting):
     """
     Loads and processes GEOROC data.
     
     Args:
+        database (list): List of databases used.
         georoc_petdb_tect_setting (list): List containing the data settings ('GEOROC', 'PetDB', etc.).    
     Returns:
         pd.DataFrame: Processed GEOROC data, potentially filtered by volcano name.
     """
-    if 'GEOROCaroundGVP.csv' in os.listdir(GEOROC_DATASET_DIR) and 'GEOROC' in georoc_petdb_tect_setting:
+    if 'GEOROCaroundGVP.csv' in os.listdir(GEOROC_DATASET_DIR) and 'GEOROC' in database:
         df_georoc = pd.read_csv(GEOROC_AROUND_GVP_FILE)
         df_georoc['Volcano Name'] = df_georoc['Volcano Name'].apply(lambda x: list(set([name.replace('Within ', 'Intra') for name in ast.literal_eval(x)])))
     else:
-        df_georoc = createGEOROCaroundGVP() if 'GEOROC' in georoc_petdb_tect_setting else empty_georoc_df()
+        df_georoc = createGEOROCaroundGVP() if 'GEOROC' in database else empty_georoc_df()
     df_georoc = process_lat_lon(df_georoc)
     df_georoc['db'] = 'Georoc'
     df_georoc = df_georoc.rename(columns={'SAMPLE NAME': 'Name'})
