@@ -21,7 +21,7 @@
 # * update_onedropdown: creates menus for filtering per date
 # * GEOROC_majorrock: computes major rocks for GEOROC data
 # * update_GEOrockchart
-# * createGEOROCaroundGVP: creates a df of GEOROC samples around GVP volcanoes
+# * create_georoc_around_gvp: creates a df of GEOROC samples around GVP volcanoes
 # * createPetDBaroundGVP: creates a df of PetDB samples around GVP volcanoes
 # * retrieved_fromfigure
 # * update_subtitle: updates subtitles based on user clicks on legends
@@ -44,8 +44,7 @@ import pandas as pd
 import numpy as np
 
 from collections import Counter
-from numpy.linalg import inv
-from plotly.subplots import make_subplots
+from tqdm import tqdm
 
 from constants.rocks import GEOROC_ROCKS, GEOROC_ROCK_COL, ROCK_COL
 from constants.chemicals import MORE_CHEMS, LBLS, LBLS2, CHEM_COLS, OXIDES, COLS_ROCK, ISOTOPES
@@ -348,7 +347,7 @@ def fix_pathname(thisarc):
 
     Returns:
         str: File name with the correct suffix (which contains the date of the latest download).
-    """     
+    """
     if 'ManualDataset' not in thisarc:
         
         # Extract folder and filename from the given path
@@ -1407,117 +1406,93 @@ def update_georock_chart(thisdf, database, dict_georoc_gvp):
     return fig
     
     
-def createGEOROCaroundGVP():
+def create_georoc_around_gvp(df_volcano, df_volcano_no_eruption):
     """
-    Recreates the file GEOROCaroundGVP.csv and returns its content as a DataFrame.
+    Recreates the GEOROCaroundGVP.csv file and returns its content as a DataFrame.
+
+    Args:
+        df_volcano (pd.DataFrame): DataFrame of volcanoes with eruptions.
+        df_volcano_no_eruption (pd.DataFrame): DataFrame of volcanoes without eruptions.
 
     Returns:
-        pd.DataFrame: DataFrame containing the GEOROC samples matching GVP volcanoes.
+        pd.DataFrame: DataFrame containing GEOROC samples matching GVP volcanoes.
     """
 
-    # Combine volcano names and coordinates from erupted and non-erupted data
-    gvp_names = df_volcano[['Volcano Name', 'Latitude', 'Longitude']]
-    gvp_names = gvp_names.append(df_volcano_no_eruption[['Volcano Name', 'Latitude', 'Longitude']])
-    gvp_names = gvp_names[gvp_names['Volcano Name'] != 'Unnamed'] # removes unnamed
-
-    gvp_names['Volcano Name'] = gvp_names['Volcano Name'].apply(lambda name: name.replace('Within ', 'Intra'))
-
-
-    # List all folders in the GEOROC-GVP mapping directory
-    path_for_arcs = os.listdir(GEOROC_GVP_DIR)
-    lst_arcs = []
+    gvp_names = pd.concat([df_volcano[['Volcano Name', 'Latitude', 'Longitude']],
+                           df_volcano_no_eruption[['Volcano Name', 'Latitude', 'Longitude']]])
     
+    # Remove unnamed volcanoes and replace 'Within' with 'Intra' in names
+    gvp_names = gvp_names[gvp_names['Volcano Name'] != 'Unnamed']
+    gvp_names['Volcano Name'] = gvp_names['Volcano Name'].str.replace('Within ', 'Intra')
+
+    # List all folder paths in the GEOROC-GVP mapping directory
+    lst_arcs = [f"{folder}/{f[:-4]}.csv" for folder in os.listdir(GEOROC_GVP_DIR)
+                for f in os.listdir(os.path.join(GEOROC_GVP_DIR, folder))]
+
     # Initialize an empty DataFrame to store GEOROC data
     df_georoc = pd.DataFrame()
 
-    for folder in path_for_arcs:
-        # List all files in each folder, only consider .csv files, takes names from the Mapping folder in case different copies of the csv exist
-        tmp = os.listdir(os.path.join(GEOROC_GVP_DIR, folder))
-        lst_arcs += [f"{folder}/{f[:-4]}.csv" for f in tmp]
-        
+    # Loop through each file and process GEOROC data
     for arc in lst_arcs:
-
-        # this finds the latest file
+        # Fix and read the file path
         newarc = fix_pathname(arc)
-
-        # reads the file
         dftmp = pd.read_csv(os.path.join(GEOROC_DATASET_DIR, newarc), low_memory=False, encoding='latin1')
-        
-        if 'Inclusions_comp' not in arc and 'ManualDataset' not in arc:
-            # adds citations
-            dftmp = load_refs(dftmp)
-            # keeps only volcanic rocks
-            dfvol = dftmp[dftmp["ROCK TYPE"] == 'VOL']
-            dfvol = dfvol.drop('ROCK TYPE', 1)
 
+        # Process based on specific conditions (e.g., Inclusions, volcanic rocks)
+        if 'Inclusions_comp' not in arc and 'ManualDataset' not in arc:
+            dfvol = load_refs(dftmp)[dftmp["ROCK TYPE"] == 'VOL'].drop('ROCK TYPE', axis=1)
+        elif 'Inclusions_comp' in arc:
+            dfvol = fix_inclusion(load_refs(dftmp))
+            dfvol['MATERIAL'] = 'INC'
         else:
-            if 'Inclusions_comp' in arc:
-                # adds citations
-                dftmp = load_refs(dftmp)
-                dfvol = dftmp
-                # different names
-                dfvol = fix_inclusion(dfvol)
-                dfvol['MATERIAL'] = 'INC'
-            else:
-                dfvol = dftmp
-                # missing isotopes
-                # for cl in ['PB206_PB204', 'PB207_PB204', 'PB208_PB204', 'SR87_SR86', 'ND143_ND144']:
-                #   dfvol[cl] = np.nan
-        
-        # gathers the GEOROC data of interest (to be displayed on the map, and before that, for computing rocks)   
-        dfvol = dfvol[['LOCATION', 'LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME', 'CITATIONS', 'MATERIAL'] + OXIDES ] #+ ['PB206_PB204', 'PB207_PB204', 'PB208_PB204', 'SR87_SR86', 'ND143_ND144']]
-        dfvol['arc'] = [arc]*len(dfvol.index)
-        # removes the complete refs and keeps the names and years
-        dfvol['CITATIONS'] = dfvol['CITATIONS'].str.split('===').str[0]
-        df_georoc = df_georoc.append(dfvol)
-        
-    # FEO normalization     
-    df_georoc = normalize_oxides_with_feot(df_georoc)
-    # add rock names
-    df_georoc = guess_rock(df_georoc)
-    # rock names excluding inclusions
+            dfvol = dftmp
+
+        # Keep specific columns of interest and add the 'arc' information
+        dfvol = dfvol[['LOCATION', 'LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX',
+                       'SAMPLE NAME', 'CITATIONS', 'MATERIAL'] + OXIDES]
+        dfvol['arc'] = arc
+        dfvol['CITATIONS'] = dfvol['CITATIONS'].str.split('===').str[0]  # Keep only first part of the citation
+
+        # Append to the GEOROC DataFrame
+        df_georoc = pd.concat([df_georoc, dfvol])
+
+    # Normalize data and assign rock types
+    df_georoc = guess_rock(normalize_oxides_with_feot(df_georoc))
+
+    # Add 'ROCK no inc' column and blank out rock names for inclusions
     df_georoc['ROCK no inc'] = df_georoc['ROCK']
     df_georoc.loc[df_georoc['MATERIAL'] == 'INC', 'ROCK no inc'] = ''
-            
-    # GVP volcanoes, latitudes and longitudes
-    gvp_nm = gvp_names['Volcano Name']
-    gvp_lat = gvp_names['Latitude']
-    gvp_long = gvp_names['Longitude']
 
-    colgr = ['LOCATION', 'LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME', 'CITATIONS', 'ROCK', 'ROCK no inc', 'arc', 'SIO2(WT%)']
-
-    # initializes dataframe to contatin the GEOROC samples matching GVP volcanoes
+    # Initialize DataFrame to store matching volcano samples
     match = pd.DataFrame()
 
-    for nm, lt, lg in zip(gvp_nm, gvp_lat, gvp_long):
-        lt_cond = (df_georoc['LATITUDE MIN'].astype(float)-.5 <= lt) & (df_georoc['LATITUDE MAX'].astype(float)+.5 >= lt)
-        lg_cond = (df_georoc['LONGITUDE MIN'].astype(float)-.5 <= lg) & (df_georoc['LONGITUDE MAX'].astype(float)+.5 >= lg)
-        dfgeo = df_georoc[(lt_cond) & (lg_cond)][colgr]
+    # Match GEOROC samples to GVP volcanoes based on lat/long
+    for name, latitude, longitude in tqdm(zip(gvp_names['Volcano Name'], gvp_names['Latitude'], gvp_names['Longitude']),
+                           total=len(gvp_names)):
+        lat_cond = (df_georoc['LATITUDE MIN'].astype(float)-0.5 <= latitude) & (df_georoc['LATITUDE MAX'].astype(float)+0.5 >= latitude)
+        long_cond = (df_georoc['LONGITUDE MIN'].astype(float)-0.5 <= longitude) & (df_georoc['LONGITUDE MAX'].astype(float)+0.5 >= longitude)
 
+        dfgeo = df_georoc[lat_cond & long_cond][['LOCATION', 'LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN',
+                                                 'LONGITUDE MAX', 'SAMPLE NAME', 'CITATIONS', 'ROCK', 'ROCK no inc',
+                                                 'arc', 'SIO2(WT%)']]
+        
         if not dfgeo.empty:
-            dfgeo['Volcano Name'] = [nm]*len(dfgeo.index)
-            dfgeo['Latitude'] = [lt]*len(dfgeo.index)
-            dfgeo['Longitude'] = [lg]*len(dfgeo.index)
-            match = match.append(dfgeo)
+            dfgeo['Volcano Name'], dfgeo['Latitude'], dfgeo['Longitude'] = name, latitude, longitude
+            match = pd.concat([match, dfgeo])
 
     # Remove duplicate entries
     match = match.drop_duplicates()
 
-    # group sample names when same location
-    matchgroup = match.groupby(['LOCATION', 'LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'arc']).agg(lambda x: list(x))
+    # Group by location and aggregate multiple sample names and rocks
+    matchgroup = match.groupby(['LOCATION', 'LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'arc']).agg(list)
     matchgroup = matchgroup.drop(columns=['Latitude', 'Longitude'])
 
-    # attaches a new tectonic setting 
-    matchgroup['Volcano Name'] = matchgroup['Volcano Name'].apply(lambda x: list(set([find_new_tect_setting(y) for y in x])))
-    
-    # sometimes the same sample is found in the intersection of several volcanoes
-    matchgroup['SAMPLE NAME'] = matchgroup['SAMPLE NAME'].apply(lambda x: list(set([y.split('/')[0].split('[')[0] for y in x])))
-    
-    # this shortens and keeps only the first 3 samples 
-    matchgroup['SAMPLE NAME'] = matchgroup['SAMPLE NAME'].apply(lambda x: x if len(x) <= 3 else list(set(x[0:3]))+['+'+str(len(x)-3)])
-    
-    # this creates a single string out of different sample names attached to one location
-    matchgroup['SAMPLE NAME'] = matchgroup['SAMPLE NAME'].apply(lambda x: " ".join(x))
+    # Assign tectonic setting and process sample names
+    matchgroup['Volcano Name'] = matchgroup['Volcano Name'].apply(lambda x: list(set([find_new_tect_setting(y, df_volcano, df_volcano_no_eruption) for y in x])))
+    matchgroup['SAMPLE NAME'] = matchgroup['SAMPLE NAME'].apply(lambda x: list(set([y.split('/')[0].split('[')[0] for y in x]))[:3] + (['+' + str(len(x)-3)] if len(x) > 3 else []))
+    matchgroup['SAMPLE NAME'] = matchgroup['SAMPLE NAME'].apply(' '.join)
+
+    # Aggregate rock types and calculate SiO2 mean
     matchgroup['ROCK'] = matchgroup['ROCK'].apply(lambda x: list(Counter(x).items()))
     matchgroup['ROCK no inc'] = matchgroup['ROCK no inc'].apply(lambda x: list(Counter(x).items()))
     matchgroup['SIO2(WT%)mean'] = matchgroup['SIO2(WT%)'].apply(lambda x: statistics.mean(x))

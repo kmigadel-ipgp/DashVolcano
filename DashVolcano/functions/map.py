@@ -38,7 +38,7 @@ def create_map_samples(database, thisvolcano, gvp_tect_setting, rock_tect_settin
     dfgeopdb = load_petdb_data(database, df_volcano, df_volcano_no_eruption)
 
     # Load and process GEOROC data
-    dfgeogr = load_georoc_data(database)
+    dfgeogr = load_georoc_data(database, df_volcano, df_volcano_no_eruption)
 
     # Combine PetDB and GEOROC data
     dfgeo = pd.concat([dfgeopdb, dfgeogr[['Latitude', 'Longitude', 'db', 'Volcano Name', 'Name', 'refs', 'ROCK no inc', 'SIO2(WT%)mean']]])
