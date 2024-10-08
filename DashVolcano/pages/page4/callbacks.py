@@ -195,10 +195,11 @@ def register_callbacks_page4(app):
             Input("page4-map", "selectedData"),                     # Input: Data selected on the map (from the selection tool)
             Input('page4-download-button', 'n_clicks'),             # Input: Button for triggering the download action
             Input("page4-GEOROC-PETDB-tectonic-filter", "value"),   # Input: GEOROC tectonic filter value
+            Input('page4-range-slider', "value"),
         ],
         prevent_initial_call=True  # Prevent callback from being triggered on page load
     )
-    def update_tas_download(volcano_name, selectedpts, button, georoc_petdb_tect_setting):
+    def update_tas_download(volcano_name, selectedpts, button, georoc_petdb_tect_setting, sample_interval):
         """
         Updates the TAS diagram, AFM diagram, radar chart, and handles data download.
         
@@ -241,7 +242,7 @@ def register_callbacks_page4(app):
                 dcc.send_bytes(output.getvalue(), f'download_{volcano_name}.xlsx'), 0
 
         # If no download action, return the updated figures without triggering the download
-        return fig, update_afm(volcano_name, tas_data), update_radar(georoc_petdb_tect_setting, volcano_name, tas_data), None, 0
+        return fig, update_afm(volcano_name, tas_data), update_radar(georoc_petdb_tect_setting, volcano_name, tas_data, sample_interval), None, 0
 
 
     # ***************************************************#
