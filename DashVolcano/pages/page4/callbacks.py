@@ -242,7 +242,7 @@ def register_callbacks_page4(app):
             output.seek(0)
 
             # Send the Excel file content as bytes to trigger the download via dcc.Download
-            return fig, update_afm(volcano_name, tas_data), update_radar(rock_database, rock_tect_setting, volcano_name, tas_data), \
+            return fig, update_afm(volcano_name, tas_data), update_radar(rock_database, rock_tect_setting, volcano_name, tas_data, sample_interval), \
                 dcc.send_bytes(output.getvalue(), f'download_{volcano_name}.xlsx'), 0
 
         # If no download action, return the updated figures without triggering the download
