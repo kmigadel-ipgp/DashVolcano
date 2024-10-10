@@ -192,28 +192,23 @@ def update_radar(rock_database, rock_tect_setting, thisvolcano, tas_data, sample
         # Filters based on no of samples
         scount = dftmp['ROCK'].apply(lambda y: sum([x[1] for x in y]))
         dftmp = dftmp[(scount >= min_samples) & (scount <= max_samples)]
-        number_petdb_samples = (scount[(scount >= min_samples) & (scount <= max_samples)].sum())
         # Combines
         dfgeo = pd.concat([dfgeo, dftmp])
     if 'GEOROCaroundGVP.csv' in os.listdir(GEOROC_DATASET_DIR) and 'GEOROC' in rock_database:
         # Load GEOROC data and process the Volcano Name column
         dftmp =  pd.read_csv(GEOROC_AROUND_GVP_FILE)[['ROCK', 'Volcano Name']]
-        dftmp['Volcano Name'] = dftmp['Volcano Name'].apply(lambda x: list(set(ast.literal_eval(x))))
+        dftmp['Volcano Name'] = dftmp['Volcano Name'].apply(lambda x: list(set([name.replace('Within ', 'Intra') for name in ast.literal_eval(x)])))
         dftmp['db'] = 'GEOROC'
         # Convert string representations of lists back to actual lists
         dftmp['ROCK'] = dftmp['ROCK'].apply(lambda y: ast.literal_eval(y) if isinstance(y, str) else [])
         # Filters based on no of samples
         scount = dftmp['ROCK'].apply(lambda y: sum([x[1] for x in y]))
         dftmp = dftmp[(scount >= min_samples) & (scount <= max_samples)]
-        number_georoc_samples = (scount[(scount >= min_samples) & (scount <= max_samples)].sum())
         # Combines
         dfgeo = pd.concat([dfgeo, dftmp])
 
-    # Concatenate sample counts into a display variable
-    number_rock_samples = f"PetDB samples: {number_petdb_samples}, GEOROC samples: {number_georoc_samples}"
-
     # Filter data based on new tectonic settings
-    if set(rock_tect_setting) & set(NEW_TECTONIC_SETTINGS):
+    if rock_tect_setting:
         dfgeo = dfgeo[dfgeo['Volcano Name'].map(lambda x: len(np.intersect1d(x, rock_tect_setting)) > 0)]
         if dfgeo.empty:
             dfgeo = pd.DataFrame({'ROCK': [], 'Volcano Name': [], 'db': []})
@@ -223,6 +218,13 @@ def update_radar(rock_database, rock_tect_setting, thisvolcano, tas_data, sample
     for rock_type in GEOROC_ROCKS:
         rcount = dfgeo['ROCK'].apply(lambda y, rock_type=rock_type: sum([x[1] if x[0] == rock_type else 0 for x in y])).sum()
         rlist.append(rcount)
+
+    counts = dfgeo['db'].value_counts()
+    number_petdb_samples = counts.get('PetDB', 0)
+    number_georoc_samples = counts.get('GEOROC', 0)
+
+    # Concatenate sample counts into a display variable
+    number_rock_samples = f"PetDB samples: {number_petdb_samples}, GEOROC samples: {number_georoc_samples}"
 
     # Create a new radar chart figure
     fig = go.Figure()
