@@ -487,7 +487,13 @@ def guess_rock(thisdf):
     # Initialize a 'ROCK' column with default value 'UNNAMED' for all rows
     thisdf['ROCK'] = 'UNNAMED'
 
+    thisdf = thisdf.fillna(0)
+
     # Extract SiO2 and total alkali (Na2O + K2O) as float values
+    thisdf['SIO2(WT%)'] = pd.to_numeric(thisdf['SIO2(WT%)'], errors='coerce')
+    thisdf['NA2O(WT%)'] = pd.to_numeric(thisdf['NA2O(WT%)'], errors='coerce')
+    thisdf['K2O(WT%)'] = pd.to_numeric(thisdf['K2O(WT%)'], errors='coerce')
+
     x = thisdf['SIO2(WT%)'].astype(float)
     y = thisdf['NA2O(WT%)'].astype(float) + thisdf['K2O(WT%)'].astype(float)
 
@@ -898,25 +904,23 @@ def plot_chem(thisfig, thisdf, chem1, theselbls):
     Returns: Plots a scatter plot of the chemical composition
 
     """
-     
-    # if dataframe contains VEI info, this plots different symbols depending on VEI       
+
+    # if dataframe contains VEI info, this plots different symbols depending on VEI  
     if 'VEI' in list(thisdf):
         thisdf['symbol'] = np.where(thisdf['VEI'].isnull(), 'circle', 
                                     (np.where(thisdf['VEI'].astype('float') <= 2, 'circle', 'triangle-up')))
+        
+        full_symbol = {'circle': 'VEI<=2', 'triangle-up': 'VEI>=3'}
+        short_symbol = ['circle', 'triangle-up'] 
     else:
         # sometimes two materials are present, this is to retrieve the first one
         thisdf['MATERIAL'] = thisdf['MATERIAL'].apply(process_material)
         # adjusts symbol based on material
-        thisdf['symbol'] = thisdf['MATERIAL'].replace(to_replace={'WR': 'circle', 'GL': 'diamond', 'INC': 'square', 'MIN': 'x', 'UNKNOWN': 'diamond-wide'})
-        
-    # plots by symbols (that is material)
-    if 'VEI' in list(thisdf):
-        full_symbol = {'circle': 'VEI<=2', 'triangle-up': 'VEI>=3'}
-        short_symbol = ['circle', 'triangle-up'] 
-    else:
+        thisdf['symbol'] = thisdf['MATERIAL'].replace(to_replace={'WR': 'circle', 'GL': 'diamond', 'INC': 'square', 'MIN': 'x', 'UNKNOWN': 'diamond-wide', 'WHOLE ROCK': 'circle', 'GLASS': 'diamond', 'INCLUSION': 'square'})
+
         full_symbol = {'circle': 'whole rock', 'diamond': 'volcanic glass', 'square': 'inclusion', 'x': 'mineral', 'diamond-wide': 'UNKNKOWN'}
         short_symbol = ['circle', 'diamond', 'square', 'x', 'diamond-wide'] 
-    
+
     for symbol in short_symbol:
         thismat = thisdf[thisdf['symbol'] == symbol]
         # custom data
@@ -924,6 +928,7 @@ def plot_chem(thisfig, thisdf, chem1, theselbls):
             thiscustomdata = thismat[chem1[1]].astype(str)+' '+chem1[1]+' '+thismat['MATERIAL']+' VEI='+thismat['VEI']  
         else:
             thiscustomdata = thismat[chem1[1]].astype(str)+' '+chem1[1]+', '+thismat['ROCK']
+
         # plots
         thisfig.add_traces(
             go.Scatter(
@@ -939,8 +944,7 @@ def plot_chem(thisfig, thisdf, chem1, theselbls):
             ),
             rows=2, cols=1,
         )
-    for symbol in short_symbol:
-        thismat = thisdf[thisdf['symbol'] == symbol]    
+
         # plots histogram on top
         thisfig.add_traces(
             go.Histogram(
@@ -1677,7 +1681,7 @@ def process_georoc_data(dfgeogr, with_text, volcano_name, with_text_match, thisg
             dftmp = fix_inclusion(dftmp)
         dfloc = guess_rock(dftmp[dftmp['LOCATION'].isin(whichlocation)])
         dfloaded = pd.concat([dfloaded, dfloc])
-
+    
     if not dfloaded.empty:
         dfloaded = clean_and_prepare_georoc(dfloaded)
         thisgeogr = pd.concat([thisgeogr, dfloaded])

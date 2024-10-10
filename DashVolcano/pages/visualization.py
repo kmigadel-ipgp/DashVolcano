@@ -18,6 +18,8 @@ from constants.paths import GEOROC_AROUND_GVP_FILE, GEOROC_AROUND_PETDB_FILE, GE
 from functions.georoc import load_georoc, guess_rock, detects_chems, plot_chem, process_georoc_data, clean_and_prepare_georoc, update_onedropdown, update_chemchart, add_alkaline_line, add_alkaline_series, update_subtitle, plot_tas, match_GVPdates, find_new_tect_setting, rocks_to_color
 from functions.gvp import retrieve_vinfo
 
+from helpers.helpers import expand_rows_with_lists, replace_nan_in_string_list
+
 def clean_tas_data(tas_data):
     """
     Helper function to clean the TAS data by removing unnecessary columns and duplicates.
@@ -81,12 +83,13 @@ def update_tas(fig, volcano_name, selectedpts, rock_tect_setting):
 
         # Process PetDB data
         if without_text:
-            thisgeopdb = dfgeopdb.set_index(['LATITUDE', 'LONGITUDE']).loc[without_text, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)', 'CAO(WT%)', 'FEOT(WT%)', 'MGO(WT%)', 'MATERIAL']]
+            thisgeopdb = dfgeopdb.set_index(['LATITUDE', 'LONGITUDE']).loc[without_text, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)', 'CAO(WT%)', 'FEOT(WT%)', 'MGO(WT%)', 'MATERIAL', 'ROCK']]
             thisgeopdb = clean_and_convert_geopdb(thisgeopdb)
             thisgeogr = pd.concat([thisgeogr, thisgeopdb])
 
         # Process GEOROC data based on selected points
-        thisgeogr = process_georoc_data(dfgeogr, with_text, volcano_name, with_text_match, thisgeogr, dict_georoc_sl, dict_volcano_file)
+        if with_text:
+            thisgeogr = process_georoc_data(dfgeogr, with_text, volcano_name, with_text_match, thisgeogr, dict_georoc_sl, dict_volcano_file)
 
     # If no points are selected, process the volcano name
     elif volcano_name and volcano_name != "start":
@@ -114,32 +117,12 @@ def clean_and_convert_geopdb(thisgeopdb):
     Returns:
         Cleaned and processed DataFrame with corrected formats and types.
     """
-
-    # Step 1: Replace string 'nan' with '0', apply ast.literal_eval to convert strings to lists or proper types,
-    # and flatten each column's values into a dictionary.
-    convert_df = {
-        column: [item for sublist in thisgeopdb[column].str.replace('nan', '0').apply(ast.literal_eval) for item in sublist]
-        for column in thisgeopdb.columns
-    }
-
-    # Step 2: Convert the dictionary back to a DataFrame after cleaning.
-    thisgeopdb = pd.DataFrame(convert_df)
-
-    # Step 3: Convert all columns to floats except for the 'MATERIAL' column.
-    thisgeopdb.loc[:, thisgeopdb.columns != 'MATERIAL'] = thisgeopdb.loc[:, thisgeopdb.columns != 'MATERIAL'].astype(float)
-
-    # Step 4: Infer and update the rock types in the 'MATERIAL' column.
-    thisgeopdb = guess_rock(thisgeopdb)
-
-    # Step 5: Add a new column 'db' to indicate the data source as 'PetDB'.
-    thisgeopdb['db'] = 'PetDB'
-
-    # Step 6: Drop rows where all relevant chemical values are missing (e.g., SIO2, NA2O, K2O).
-    thisgeopdb = thisgeopdb.dropna(subset=['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], how='all')
-
-    # Step 7: Detect abnormal or outlier chemical compositions and flag them for further analysis.
+    
     morechemsh = ['FEOT(WT%)', 'CAO(WT%)', 'MGO(WT%)']  # Additional chemical columns to check.
+    thisgeopdb = thisgeopdb.apply(lambda col: col.apply(lambda val: replace_nan_in_string_list(val, col.name)))
+    thisgeopdb = expand_rows_with_lists(thisgeopdb)
     thisgeopdb = detects_chems(thisgeopdb, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], morechemsh, LBLS2)
+    thisgeopdb['db'] = 'PetDB'
 
     # Return the cleaned and processed DataFrame.
     return thisgeopdb

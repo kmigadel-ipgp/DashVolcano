@@ -1,4 +1,5 @@
 import os
+import ast
 import pandas as pd
 import numpy as np
 import json
@@ -434,3 +435,83 @@ def show_boundaries_plates(fig, file_path, line_color, zoom, center):
         fig.add_trace(go.Scattermapbox(lon=x, lat=y, mode='lines', line_color=line_color, opacity=0.6, name=names[idx], showlegend=False))
     
     return fig.update_layout(mapbox={'style': "carto-positron", 'zoom': zoom, 'center': center})
+
+
+def replace_nan_in_string_list(val, column_name):
+    """
+    Processes a value by replacing 'nan' with '0' and converting strings representing 
+    lists into actual lists. For the 'MATERIAL' column, elements are converted to strings.
+    For other columns, elements are converted to floats.
+    
+    Parameters:
+    val (str or other): The value to process, which could be a string, list, or other.
+    column_name (str): The name of the column where the value is located.
+    
+    Returns:
+    list or original value: A list of floats/strings or the original value if no processing is needed.
+    """
+    if isinstance(val, str):  # Only process if it's a string
+        try:
+            if "nan" in val:
+                val = val.replace("nan", "0")  # Replace 'nan' with '0'
+            val_list = ast.literal_eval(val)  # Attempt to evaluate the string as a Python literal (list)
+            
+            # Check if the evaluated result is a list
+            if isinstance(val_list, list):
+                # For the 'MATERIAL' column, convert each element to string
+                if column_name == 'MATERIAL':
+                    return [str(x) for x in val_list]
+                else:
+                    # For other columns, convert elements to floats
+                    return [float(x) for x in val_list]
+        except:
+            # If evaluation fails (e.g., invalid string), return the original value
+            return val
+    return val  # Return the original value if no changes were made
+
+
+def expand_rows_with_lists(df):
+    """
+    Expands rows in a DataFrame where certain columns contain lists. Each list element 
+    will become a new row, duplicating non-list columns. If Latitude and Longitude are 
+    part of the DataFrame index, they are retained as regular columns during expansion.
+    
+    Parameters:
+    df (pd.DataFrame): The DataFrame with columns that may contain lists and indexed by Latitude and Longitude.
+    
+    Returns:
+    pd.DataFrame: A new DataFrame where rows have been expanded to account for list elements, 
+    with Latitude and Longitude retained.
+    """
+    new_rows = []  # List to store the new rows after expansion
+    
+    # Reset index to bring Latitude and Longitude back as columns
+    df_reset = df.reset_index()
+    
+    # Iterate through each row in the DataFrame
+    for index, row in df_reset.iterrows():
+        # Identify the columns that contain lists (assumed to be after the index columns)
+        list_columns = df_reset.columns[2:]  # List columns start from the 3rd column (after Latitude and Longitude)
+        
+        # Determine the maximum number of elements in any list column for this row
+        max_elements = max(len(row[col]) for col in list_columns if isinstance(row[col], list))
+        
+        # Generate new rows based on the maximum number of elements in list columns
+        for i in range(max_elements):
+            new_row = row.copy()  # Copy the current row
+            
+            # Replace list values with the i-th element for each list column
+            for col in list_columns:
+                if isinstance(row[col], list):
+                    new_row[col] = row[col][i]  # Use the i-th element from the list
+            
+            # Append the new row to the list of expanded rows
+            new_rows.append(new_row)
+    
+    # Create a new DataFrame from the expanded rows
+    expanded_df = pd.DataFrame(new_rows)
+    
+    # Reset the index of the new DataFrame to maintain continuity
+    expanded_df = expanded_df.reset_index(drop=True)
+    
+    return expanded_df
