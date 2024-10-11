@@ -265,7 +265,7 @@ def register_callbacks_page4(app):
         volcanoesbycountry = extract_by_filter(country_name, gvp_tect_setting, df_volcano) if country_name and country_name != 'start' else []
 
         # Update the rock chart with the filtered volcano data
-        fig = update_rockchart(volcanoesbycountry, fig, df_volcano)
+        fig = update_rockchart(volcanoesbycountry, fig, df_volcano, gvp_tect_setting)
         
         thisdf = pd.DataFrame()  # Initialize an empty DataFrame for combined data
         database = []  # List to track data sources (PetDB and GEOROC)
@@ -310,7 +310,7 @@ def register_callbacks_page4(app):
             thisdf = thisdf[['Volcano Name', 'db Major Rock 1', 'db Major Rock 2', 'db Major Rock 3', 'cnt 1', 'cnt 2', 'cnt 3', 'db']]
 
         # Update the GEO rock chart with the combined data and sources
-        fig2 = update_georock_chart(thisdf, database, dict_georoc_gvp)
+        fig2 = update_georock_chart(thisdf, database, dict_georoc_gvp, rock_tect_setting)
         
         return fig, fig2  # Return the updated figures for both charts
 
