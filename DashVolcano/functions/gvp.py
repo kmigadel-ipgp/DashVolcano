@@ -519,7 +519,7 @@ def fix_events(df_be, bns, df_events):
     return df4
 
 
-def update_rockchart(volcanoes, fig, df_volcano):
+def update_rockchart(volcanoes, fig, df_volcano, gvp_tect_setting):
     """
     Updates the given figure with a sunburst chart representing the rock composition
     of specified volcanoes.
@@ -528,6 +528,7 @@ def update_rockchart(volcanoes, fig, df_volcano):
         volcanoes (list): List of names of GVP volcanoes to include in the chart.
         fig (plotly.graph_objects.Figure): The figure to be updated with the sunburst chart.
         df_volcano (DataFrame): DataFrame containing volcano data, including rock types.
+        gvp_tect_setting (list): Selected tectonic settings from GVP.
 
     Returns:
         plotly.graph_objects.Figure: Updated figure with a sunburst chart of major rocks 
@@ -559,11 +560,13 @@ def update_rockchart(volcanoes, fig, df_volcano):
             for lab, col in zip(fig['data'][0]['labels'], fig['data'][0]['marker']['colors'])
         ]
 
+        tect_settings_str = ', '.join(gvp_tect_setting) if gvp_tect_setting else 'No specific tectonic setting'
+
         # Add volcano count annotation
         fig.add_annotation(
             xref='paper', yref='paper', x=0.5, y=-0.25,
             showarrow=False,
-            text=f"{len(dff)} volcano(es)"
+            text=f"{len(dff)} volcano(es)<br><sub>Tectonic settings: {tect_settings_str}</sub>"
         )
 
     else:

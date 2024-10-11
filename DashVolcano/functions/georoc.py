@@ -1306,7 +1306,7 @@ def georoc_majorrocks(rock_tect_setting, df_volcano, dict_georoc_sl, dict_georoc
     return alldf
 
 
-def update_georock_chart(thisdf, database, dict_georoc_gvp): 
+def update_georock_chart(thisdf, database, dict_georoc_gvp, rock_tect_setting): 
     """
     Updates the GEOROC major rocks sunburst chart.
 
@@ -1314,6 +1314,7 @@ def update_georock_chart(thisdf, database, dict_georoc_gvp):
         thisdf: DataFrame containing rock data from GEOROC and/or PetDB.
         database: Indicates if GEOROC and/or PetDB data is being used.
         dict_georoc_gvp: Dictionary mapping Georoc names to GVP names.
+        rock_tect_setting (list): Selected tectonic settings from GEOROC and PetDB.
 
     Returns: 
         A Plotly sunburst chart representing major rock compositions.
@@ -1372,6 +1373,7 @@ def update_georock_chart(thisdf, database, dict_georoc_gvp):
         # Create a new DataFrame with the major rocks
         thisdf = pd.DataFrame({'db Major Rock 1': mr1, 'db Major Rock 2': mr2, 'db Major Rock 3': mr3})             
     else:
+
         thistitle = '<b>Rock Composition</b><br>'
 
     # Create the sunburst chart if data exists
@@ -1399,8 +1401,11 @@ def update_georock_chart(thisdf, database, dict_georoc_gvp):
             marker=dict(colorscale='Greys')
         ))
 
+    # Prepare tectonic settings to include in the title
+    tect_settings_str = ', '.join(rock_tect_setting) if rock_tect_setting else 'No specific tectonic setting'
+
     # Add a footer with the count of volcanoes
-    txt = f'{len(thisdf.index)} volcano(es)'
+    txt = f'{len(thisdf.index)} volcano(es)<br><sub>Tectonic settings: {tect_settings_str}</sub>'
     fig.update_layout(
         annotations=[dict(
             xref='paper', yref='paper',
