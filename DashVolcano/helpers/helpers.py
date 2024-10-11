@@ -218,7 +218,7 @@ def process_lat_lon(df):
     return df
 
 
-def highlight_volcano_samples(dfgeo, thisvolcano, georoc_petdb_tect_setting, db, dict_georoc_sl, dict_volcano_file):
+def highlight_volcano_samples(dfgeo, thisvolcano, georoc_petdb_tect_setting, db, dict_georoc_sl, dict_georoc_ls, dict_volcano_file):
     """
     Highlights samples from the selected volcano.
 
@@ -235,7 +235,7 @@ def highlight_volcano_samples(dfgeo, thisvolcano, georoc_petdb_tect_setting, db,
         db: Updated list of databases.
     """
     # Load samples for the specified volcano
-    dfzoom = load_georoc(thisvolcano, dict_georoc_sl, dict_volcano_file)
+    dfzoom = load_georoc(thisvolcano, dict_georoc_sl, dict_georoc_ls, dict_volcano_file)
     
     # Process latitude and longitude in the loaded samples
     dfzoom = process_lat_lon(dfzoom)

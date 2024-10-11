@@ -45,12 +45,12 @@ import numpy as np
 
 from collections import Counter
 from tqdm import tqdm
+from plotly.subplots import make_subplots
 
 from constants.rocks import GEOROC_ROCKS, GEOROC_ROCK_COL, ROCK_COL
 from constants.chemicals import MORE_CHEMS, LBLS, LBLS2, CHEM_COLS, OXIDES, COLS_ROCK, ISOTOPES
 from constants.tectonics import NEW_TECTONIC_DICT, NEW_TECTONIC_SETTINGS
 from constants.paths import GEOROC_DATASET_DIR, GEOROC_GVP_DIR, GEOROC_AROUND_GVP_FILE
-from constants.shared_data import df_volcano, dict_gvp_georoc, dict_georoc_ls, df_volcano_no_eruption
 
 def rocks_to_color(rid):
     """
@@ -174,7 +174,7 @@ def find_new_tect_setting(thisvolcano, df_volcano, df_volcano_no_eruption):
 
 
 
-def load_georoc(thisvolcano, dict_georoc_sl, dict_volcano_file):
+def load_georoc(thisvolcano, dict_georoc_sl, dict_georoc_ls, dict_volcano_file):
     """
 
     Args:
@@ -694,16 +694,16 @@ def extract_date(entry):
     return result                              
 
 
-def plot_tas(fig):
+def plot_tas():
     """
     Plots a TAS (Total Alkali-Silica) diagram in the background of the given figure.
-
-    Args:
-        fig: The figure to be updated with TAS data.
 
     Returns:
         fig: The updated figure with TAS diagram plotted.
     """
+
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, row_width=[0.85, 0.2], vertical_spacing=0.05)
+    fig.update_layout(title='<b>Chemical Rock Composition from Georoc</b> <br>')  # Set TAS diagram title
 
     # Define the x and y coordinates for different TAS regions
     X = [
@@ -774,6 +774,8 @@ def plot_tas(fig):
             ),
             rows=2, cols=1  # Position in the figure
         )
+
+    fig = add_alkaline_line(fig)
 
     return fig
     
@@ -981,7 +983,7 @@ def plot_chem(thisfig, thisdf, chem1, theselbls):
     return thisfig
     
         
-def match_GVPdates(volcano_name, date, gvpvname, dict_georoc_sl, dict_volcano_file, df_eruption):
+def match_GVPdates(volcano_name, date, gvpvname, dict_georoc_sl, dict_georoc_ls, dict_volcano_file, df_eruption):
     """
 
     Args:
@@ -995,7 +997,7 @@ def match_GVPdates(volcano_name, date, gvpvname, dict_georoc_sl, dict_volcano_fi
     date_gvp = []   
     
     # retrieves dates from georoc
-    dfgeoroc = load_georoc(volcano_name, dict_georoc_sl, dict_volcano_file)
+    dfgeoroc = load_georoc(volcano_name, dict_georoc_sl, dict_georoc_ls, dict_volcano_file)
     dvv = dfgeoroc[dfgeoroc['LOCATION-4'] == ' ' + volcano_name]
     dmy = dvv[['ERUPTION DAY', 'ERUPTION MONTH', 'ERUPTION YEAR']]
     dmy = dmy.dropna(how='all')
@@ -1089,7 +1091,7 @@ def filter_date(thisdate, dff):
     return dff
     
 
-def update_chemchart(thisvolcano_name, thisfig, thisdate, grnames, dict_georoc_sl, dict_volcano_file):
+def update_chemchart(thisvolcano_name, thisdate, grnames, dict_georoc_sl, dict_georoc_ls, dict_volcano_file):
     """
 
     Args:
@@ -1105,7 +1107,7 @@ def update_chemchart(thisvolcano_name, thisfig, thisdate, grnames, dict_georoc_s
     
     # not sure why I need to load again but anyway
     if thisvolcano_name != "start" and thisvolcano_name is not None:
-        dfgeoroc = load_georoc(thisvolcano_name, dict_georoc_sl, dict_volcano_file)
+        dfgeoroc = load_georoc(thisvolcano_name, dict_georoc_sl, dict_georoc_ls, dict_volcano_file)
     
     # checks if data is present
     if thisvolcano_name is not None and thisvolcano_name.upper() in grnames:
@@ -1128,7 +1130,7 @@ def update_chemchart(thisvolcano_name, thisfig, thisdate, grnames, dict_georoc_s
         dff = pd.DataFrame(data=d)
 
     # adds the TAS layout
-    thisfig = plot_tas(thisfig)
+    thisfig = plot_tas()
     # draws the scatter plot
     thisfig = plot_chem(thisfig, dff, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], LBLS)
     
@@ -1152,7 +1154,7 @@ def update_chemchart(thisvolcano_name, thisfig, thisdate, grnames, dict_georoc_s
     return thisfig, dff
     
 
-def update_onedropdown(thisvolcano_name, grnames, dict_georoc_sl, dict_volcano_file):
+def update_onedropdown(thisvolcano_name, grnames, dict_georoc_sl, dict_georoc_ls, dict_volcano_file):
     """
 
     Args:
@@ -1166,7 +1168,7 @@ def update_onedropdown(thisvolcano_name, grnames, dict_georoc_sl, dict_volcano_f
     if thisvolcano_name is not None and thisvolcano_name != "start" and thisvolcano_name.upper() in grnames:
         # extracts by name
         # loads Georoc data based on volcano_name
-        dfgeoroc = load_georoc(thisvolcano_name, dict_georoc_sl, dict_volcano_file)
+        dfgeoroc = load_georoc(thisvolcano_name, dict_georoc_sl, dict_georoc_ls, dict_volcano_file)
 
         # removes the nan rows for the 3 chemicals of interest
         dff = dfgeoroc.dropna(
@@ -1203,7 +1205,7 @@ def update_onedropdown(thisvolcano_name, grnames, dict_georoc_sl, dict_volcano_f
     return opts
 
 
-def georoc_majorrocks(rock_tect_setting, dict_georoc_sl, dict_volcano_file): 
+def georoc_majorrocks(rock_tect_setting, df_volcano, dict_georoc_sl, dict_georoc_ls, dict_volcano_file, dict_gvp_georoc): 
     """
     Generates a dataframe containing volcano names and their corresponding GEOROC major rocks (1, 2, and 3)
     for specified tectonic settings.
@@ -1257,7 +1259,7 @@ def georoc_majorrocks(rock_tect_setting, dict_georoc_sl, dict_volcano_file):
             for thisvolcano in volcanoesbyts:
                 # Map GVP volcano name to GEOROC name
                 thisvolcano = dict_gvp_georoc[thisvolcano]
-                thisdf = load_georoc(thisvolcano, dict_georoc_sl, dict_volcano_file)
+                thisdf = load_georoc(thisvolcano, dict_georoc_sl, dict_georoc_ls, dict_volcano_file)
                 
                 for mat in ['WR', 'GL', 'INC']:   
                     thisdftmp = thisdf[thisdf['MATERIAL'].str.contains(mat)]
@@ -1662,7 +1664,7 @@ def perc_rock():
     return vperc
 
 
-def process_georoc_data(dfgeogr, with_text, volcano_name, with_text_match, thisgeogr, dict_georoc_sl, dict_volcano_file):
+def process_georoc_data(dfgeogr, with_text, volcano_name, with_text_match, thisgeogr, dict_georoc_sl, dict_georoc_ls, dict_volcano_file):
     """Processes GEOROC data for selected points."""
     gr_idx = dfgeogr.set_index(['LATITUDE', 'LONGITUDE'])
     whichfiles = list(gr_idx.loc[with_text, 'arc'].unique())
@@ -1670,7 +1672,7 @@ def process_georoc_data(dfgeogr, with_text, volcano_name, with_text_match, thisg
 
     dfloaded = pd.DataFrame()
     if with_text_match:
-        dfloaded = load_georoc(volcano_name, dict_georoc_sl, dict_volcano_file)
+        dfloaded = load_georoc(volcano_name, dict_georoc_sl, dict_georoc_ls, dict_volcano_file)
 
     for pathcsv in set(whichfiles):
         pathcsv = fix_pathname(pathcsv)

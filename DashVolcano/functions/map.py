@@ -8,7 +8,7 @@ from dataloader.data_loader_georoc import load_georoc_data
 from dataloader.data_loader_petdb import load_petdb_data
 from dataloader.data_loader_gvp import filter_volcano_data
 
-from constants.shared_data import df_volcano, df_volcano_no_eruption, dict_georoc_sl, dict_volcano_file
+from constants.shared_data import df_volcano, df_volcano_no_eruption, dict_georoc_sl, dict_georoc_ls, dict_volcano_file
 from constants.tectonics import ALL_TECTONIC_SETTINGS
 from constants.chemicals import CHEMICALS_SETTINGS
 from constants.rocks import GEOROC_ROCKS
@@ -48,7 +48,7 @@ def create_map_samples(database, thisvolcano, gvp_tect_setting, rock_tect_settin
 
     # Highlight samples from the selected volcano if specified
     if thisvolcano and thisvolcano != "start":
-        dfgeo, database = highlight_volcano_samples(dfgeo, thisvolcano, rock_tect_setting, database, dict_georoc_sl, dict_volcano_file)
+        dfgeo, database = highlight_volcano_samples(dfgeo, thisvolcano, rock_tect_setting, database, dict_georoc_sl, dict_georoc_ls, dict_volcano_file)
         
     # Clean GVP tectonic settings and ensure at least one setting is available
     if not gvp_tect_setting:

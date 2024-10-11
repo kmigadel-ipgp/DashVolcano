@@ -17,20 +17,18 @@ import plotly.graph_objs as go
 import pandas as pd
 import plotly.graph_objs as go
 
-from plotly.subplots import make_subplots
-
 from dash import dcc
 from dash import Input, Output
 
-from constants.shared_data import df_volcano, df_volcano_no_eruption, dict_georoc_sl, dict_volcano_file, dict_georoc_gvp
+from constants.shared_data import df_volcano, df_volcano_no_eruption, dict_georoc_sl, dict_georoc_ls, dict_volcano_file, dict_georoc_gvp, dict_gvp_georoc
 
 # import functions to process GVP, GEOROC and PetDB data
 from functions.gvp import extract_by_filter, update_rockchart, update_tectonicmenu
-from functions.georoc import update_subtitle, plot_tas, georoc_majorrocks, update_georock_chart
+from functions.georoc import plot_tas, georoc_majorrocks, update_georock_chart
 from functions.petdb import petdb_majorrocks
 from functions.map import create_map_samples, displays_map_samples
 
-from pages.visualization import update_afm, update_radar, update_tas, clean_tas_data
+from pages.visualization import update_afm, update_radar, update_tas, clean_tas_data, update_store
 
 def register_callbacks_page4(app):
     """Register all callbacks related to Page 4"""
@@ -153,7 +151,7 @@ def register_callbacks_page4(app):
         Output("page4-tas-title", "children"),  # Output: TAS diagram title or subtitle
         Input("page4-tas", "figure"),           # Input: Current TAS figure
     )
-    def update_store(fig):
+    def update_store_callback(fig):
         """
         Updates the store and subtitle based on selected dropdown and TAS plot interactions.
         
@@ -163,21 +161,7 @@ def register_callbacks_page4(app):
         Returns:
             str: Updated TAS diagram subtitle (or empty if no markers).
         """
-        
-        # Check if fig is None
-        if fig is None:
-            return ''  # Return empty string if fig is None
-
-        # Filter for records with 'customdata' key and non-empty marker symbols on the TAS plot
-        recs = [d for d in fig['data'] if 'customdata' in d.keys() and len(d['marker']['symbol']) > 0]
-
-        # If there are valid markers in the TAS plot, update the store and subtitle
-        if recs:
-            subtitle = update_subtitle(fig)
-        else:
-            subtitle = ''  # If no valid markers, clear the subtitle
-
-        return subtitle
+        return update_store(fig)
 
 
 
@@ -219,9 +203,7 @@ def register_callbacks_page4(app):
         """
 
         # Initialize a subplot figure for the TAS diagram
-        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, row_width=[0.85, 0.2], vertical_spacing=0.05)
-        fig.update_layout(title='<b>Chemical Rock Composition from Georoc</b> <br>')  # Set TAS diagram title
-        fig = plot_tas(fig)  # Plot initial TAS diagram structure
+        fig = plot_tas()  # Plot initial TAS diagram structure
 
         # Update TAS plot with volcano and database data, return the figure and associated data
         fig, tas_data = update_tas(fig, volcano_name, selectedpts, rock_database)
@@ -290,7 +272,7 @@ def register_callbacks_page4(app):
 
         # Process PetDB data if selected in the rock_database input
         if 'PetDB' in rock_database:
-            dftmp = petdb_majorrocks(rock_tect_setting)  # Retrieve PetDB major rock data
+            dftmp = petdb_majorrocks(rock_tect_setting, df_volcano)  # Retrieve PetDB major rock data
             if not dftmp.empty:  # Check if the DataFrame is not empty
                 # Filter for whole rock samples and valid major rock data
                 dftmp = dftmp[dftmp['material'] == 'WR']
@@ -307,7 +289,7 @@ def register_callbacks_page4(app):
 
         # Process GEOROC data if selected in the rock_database input
         if 'GEOROC' in rock_database:
-            dftmp = georoc_majorrocks(rock_tect_setting, dict_georoc_sl, dict_volcano_file)  # Retrieve GEOROC major rock data
+            dftmp = georoc_majorrocks(rock_tect_setting, df_volcano, dict_georoc_sl, dict_georoc_ls, dict_volcano_file, dict_gvp_georoc)  # Retrieve GEOROC major rock data
             if not dftmp.empty:  # Check if the DataFrame is not empty
                 # Filter for whole rock samples and valid major rock data
                 dftmp = dftmp[(dftmp['material'] == 'WR') & (dftmp['GEOROC Major Rock 1'] != 'No Data')]

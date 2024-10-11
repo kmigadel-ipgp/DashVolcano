@@ -72,25 +72,25 @@ def register_callbacks_page2(app):
     )
     def update_charts_rock_vei_callback(volcano_name, date):
         """Updates the TAS, VEI, and oxide charts based on the selected volcano and date for the first dropdown"""
-        return update_charts_rock_vei(volcano_name, date)
+        fig_chem, fig_vei, fig_oxyde, _ =  update_charts_rock_vei(volcano_name, date)
+        return fig_chem, fig_vei, fig_oxyde
 
     # part 1: Store data and update title for TAS diagram (first set)
     @app.callback(
-        [
-            Output("page2-store-1", "data"),        # Store data for the first TAS diagram
-            Output("page2-tas-title-1", "children") # Output for the title of the first TAS diagram
-        ],
-        [
-            Input("page2-region-filter-1", "value"),        # Input from the first volcano dropdown
-            Input("page2-erup-filter-1", "value"),          # Input from the eruption date dropdown
-            Input("page2-chem-chart-georoc-1", "figure"),   # Input from the TAS chart figure
-            Input("page2-store-1", "data"),                 # Input from stored data for comparison
-            Input("page2-chem-chart-georoc-1", "restyleData"),  # Input for restyle actions on TAS chart
-        ]
+            Output("page2-tas-title-1", "children"),        # Output for the title of the first TAS diagram
+            Input("page2-chem-chart-georoc-1", "figure")    # Input from the TAS chart figure
     )
-    def update_store_callback(volcano_name, date, current_fig, store, restyle):
-        """Updates store and TAS title for the first volcano based on the chart data and restyle changes"""
-        return update_store(volcano_name, date, current_fig, store, restyle)
+    def update_store_callback(fig):
+        """
+        Updates the store and subtitle based on selected dropdown and TAS plot interactions.
+        
+        Args:
+            fig: Current TAS diagram figure.
+
+        Returns:
+            str: Updated TAS diagram subtitle (or empty if no markers).
+        """
+        return update_store(fig)
     
     # part 2: Update figures (TAS, VEI, and oxide) for the second volcano selection
     @app.callback(
@@ -108,22 +108,22 @@ def register_callbacks_page2(app):
     )
     def update_charts_rock_vei2_callback(volcano_name, date):
         """Updates the TAS, VEI, and oxide charts based on the selected volcano and date for the second dropdown"""
-        return update_charts_rock_vei(volcano_name, date)
+        fig_chem, fig_vei, fig_oxyde, _ =  update_charts_rock_vei(volcano_name, date)
+        return fig_chem, fig_vei, fig_oxyde
 
     # part 2: Store data and update title for TAS diagram (second set)
     @app.callback(
-        [
-            Output("page2-store-2", "data"),        # Store data for the second TAS diagram
-            Output("page2-tas-title-2", "children") # Output for the title of the second TAS diagram
-        ],
-        [
-            Input("page2-region-filter-2", "value"),        # Input from the second volcano dropdown
-            Input("page2-erup-filter-2", "value"),          # Input from the eruption date dropdown
-            Input("page2-chem-chart-georoc-2", "figure"),   # Input from the TAS chart figure
-            Input("page2-store-2", "data"),                 # Input from stored data for comparison
-            Input("page2-chem-chart-georoc-2", "restyleData"),  # Input for restyle actions on TAS chart
-        ]
+        Output("page2-tas-title-2", "children"),        # Output for the title of the second TAS diagram
+        Input("page2-chem-chart-georoc-2", "figure"),   # Input from the TAS chart figure
     )
-    def update_store2_callback(volcano_name, date, current_fig, store, restyle):
-        """Updates store and TAS title for the second volcano based on the chart data and restyle changes"""
-        return update_store(volcano_name, date, current_fig, store, restyle)
+    def update_store2_callback(fig):
+        """
+        Updates the store and subtitle based on selected dropdown and TAS plot interactions.
+        
+        Args:
+            fig: Current TAS diagram figure.
+
+        Returns:
+            str: Updated TAS diagram subtitle (or empty if no markers).
+        """
+        return update_store(fig)
