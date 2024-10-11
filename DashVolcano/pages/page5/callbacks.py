@@ -19,13 +19,13 @@ from plotly.subplots import make_subplots
 
 # import variables common to all files
 # this includes loading the dataframes
-from constants.shared_data import df_eruption, grnames, dict_georoc_sl, dict_georoc_gvp, dict_volcano_file, df_events
+from constants.shared_data import df_eruption, dict_georoc_sl, dict_georoc_gvp, df_events
 
 # import functions to process GVP and GEOROC data
 from functions.gvp import update_chronogram
-from functions.georoc import update_chemchart, plot_tas
+from functions.georoc import plot_tas
 
-from pages.visualization import set_date_options, update_joint_chemchart, add_chems
+from pages.visualization import set_date_options, update_joint_chemchart, add_chems, update_store, update_charts_rock_vei
 
 def register_callbacks_page5(app):
     """Register all callbacks related to Page 5"""
@@ -69,7 +69,7 @@ def register_callbacks_page5(app):
             Input("page5-georoc-sample-filter", "value"), # GEOROC sample filter (checkbox)
         ]
     )
-    def update_charts_rock_vei(volcano_name, date, period_choice, add_georoc):
+    def update_charts_rock_vei_callback(volcano_name, date, period_choice, add_georoc):
         """
         Updates charts based on user inputs: volcano name, eruption date, period choice, and whether to add GEOROC samples.
 
@@ -84,13 +84,8 @@ def register_callbacks_page5(app):
         """
 
         # 1. First figure: TAS diagram with GEOROC chemical data
-        fig = make_subplots(
-            rows=2, cols=1, shared_xaxes=True, row_width=[0.85, 0.2], vertical_spacing=0.05
-        )
-        
-        # Update the chemical chart based on the volcano name and eruption dates
-        fig, dfchem = update_chemchart(volcano_name, fig, date, grnames, dict_georoc_sl, dict_volcano_file)
-        
+        fig, _, _, dfchem = update_charts_rock_vei(volcano_name, date)
+                
         # 2. Second figure: Chronogram for VEI (Volcanic Explosivity Index)
         if volcano_name and volcano_name != "start":  # Ensure a valid volcano name is selected
             # Handle long or alternative volcano names
@@ -113,14 +108,30 @@ def register_callbacks_page5(app):
         else:
             # If no valid volcano is selected, return empty or default plots
             fig2 = go.Figure()  # Empty chronogram figure
-            figgvp = make_subplots(
-                rows=2, cols=1, shared_xaxes=True, row_width=[0.85, 0.2], vertical_spacing=0.05
-            )
-            figgvp = plot_tas(figgvp)  # Default TAS diagram plot
+            figgvp = plot_tas()  # Default TAS diagram plot
 
         # Set the height of the figgvp figure to 700
         figgvp.update_layout(height=700)
+        figgvp.update_layout(title='<b>Chemical Rock Composition from Georoc (with known eruptions)</b><br>')
 
         # Return the updated figures for all three charts
         return fig, fig2, figgvp
+    
+
+    # part 1: Store data and update title for TAS diagram (first set)
+    @app.callback(
+        Output("page5-tas-title-1", "children"),        # Output for the title of the second TAS diagram
+        Input("page5-chem-chart-georoc-1", "figure"),   # Input from the TAS chart figure
+    )
+    def update_store_callback(fig):
+        """
+        Updates the store and subtitle based on selected dropdown and TAS plot interactions.
+        
+        Args:
+            fig: Current TAS diagram figure.
+
+        Returns:
+            str: Updated TAS diagram subtitle (or empty if no markers).
+        """
+        return update_store(fig)
 

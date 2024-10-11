@@ -19,7 +19,6 @@ from constants.tectonics import NEW_TECTONIC_DICT, NEW_TECTONIC_SETTINGS
 from constants.rocks import GEOROC_ROCK_COL, GEOROC_ROCKS
 from constants.paths import PETDB_GVP_DIR, PETDB_DIR
 
-from constants.shared_data import df_volcano
 from dataloader.data_loader_petdb import load_and_preprocess_petdb_data
 
 
@@ -36,7 +35,7 @@ def get_volcano_names_from_petdb():
     return list(set([item for sublist in dic_petdb for item in sublist]))
 
 
-def match_volcanoes_to_tectonic_setting(ts, volcano_names):
+def match_volcanoes_to_tectonic_setting(ts, volcano_names, df_volcano):
     """
     Matches volcanoes to a given tectonic setting.
 
@@ -150,7 +149,7 @@ def save_major_rocks_dataframe(df, file_path):
     df.to_csv(file_path, index=False)
 
 
-def petdb_majorrocks(rock_tect_setting): 
+def petdb_majorrocks(rock_tect_setting, df_volcano): 
     """
     Args:
         rock_tect_setting (list): List of tectonic settings from Georoc and PetDB.
@@ -182,7 +181,7 @@ def petdb_majorrocks(rock_tect_setting):
             # file needs to be created    
             # PetDB volcanoes    
             volcano_names = get_volcano_names_from_petdb()
-            matched_volcanoes = match_volcanoes_to_tectonic_setting(ts, volcano_names)   
+            matched_volcanoes = match_volcanoes_to_tectonic_setting(ts, volcano_names, df_volcano)   
             thisdf = create_major_rocks_dataframe(matched_volcanoes)
             save_major_rocks_dataframe(thisdf, file_path)
     

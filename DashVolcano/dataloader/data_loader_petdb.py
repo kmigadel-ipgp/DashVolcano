@@ -43,14 +43,16 @@ from constants.chemicals import OXIDES
 from constants.paths import PETDB_GVP_DIR, PETDB_EARTHCHEM_DIR, GEOROC_DATASET_DIR, GEOROC_AROUND_PETDB_FILE
 
 from functions.georoc import normalize_oxides_with_feot, guess_rock, find_new_tect_setting
-from constants.shared_data import df_volcano
 
 
-def create_petdb_around_gvp():
+def create_petdb_around_gvp(df_volcano):
     """
     Recreates the file PetDBaroundGVP.csv and returns its content as a DataFrame.
     This function merges PetDB data with GVP (Global Volcanism Program) volcano locations 
     within a certain distance and performs several data cleaning and normalization operations.
+
+    Args:
+        df_volcano (pd.DataFrame): DataFrame of volcanoes with eruptions.
     
     Returns:
         pd.DataFrame: DataFrame containing PetDB data around GVP volcanoes.
@@ -254,7 +256,7 @@ def load_petdb_data(database, df_volcano, df_volcano_no_eruption):
         dfgeo = rename_columns(dfgeo, 'PetDB')
     else:
         # If PetDB data file does not exist or PetDB is not in settings, create an empty DataFrame or load the data
-        dfgeo = create_petdb_around_gvp() if 'PetDB' in database else empty_petdb_df()
+        dfgeo = create_petdb_around_gvp(df_volcano) if 'PetDB' in database else empty_petdb_df()
 
     # Rename specific columns for consistency
     dfgeo = dfgeo.rename(columns={"LATITUDE": "Latitude", "LONGITUDE": "Longitude"})

@@ -8,14 +8,13 @@ import plotly.graph_objs as go
 
 from plotly.subplots import make_subplots
 
-from constants.shared_data import df_volcano, df_volcano_no_eruption, dict_georoc_sl, dict_volcano_file, dict_georoc_gvp, lst_names, df_eruption, grnames
-from constants.tectonics import NEW_TECTONIC_SETTINGS
+from constants.shared_data import df_volcano, df_volcano_no_eruption, dict_georoc_sl, dict_georoc_ls, dict_volcano_file, dict_georoc_gvp, lst_names, df_eruption, grnames
 from constants.chemicals import LBLS, LBLS2
 from constants.rocks import GEOROC_ROCKS, ALL_ROCKS, ROCK_COL
 from constants.paths import GEOROC_AROUND_GVP_FILE, GEOROC_AROUND_PETDB_FILE, GEOROC_DATASET_DIR
 
 # import functions to process GVP, GEOROC and PetDB data
-from functions.georoc import load_georoc, guess_rock, detects_chems, plot_chem, process_georoc_data, clean_and_prepare_georoc, update_onedropdown, update_chemchart, add_alkaline_line, add_alkaline_series, update_subtitle, plot_tas, match_GVPdates, find_new_tect_setting, rocks_to_color
+from functions.georoc import load_georoc, detects_chems, plot_chem, process_georoc_data, clean_and_prepare_georoc, update_onedropdown, update_chemchart, add_alkaline_series, update_subtitle, plot_tas, match_GVPdates, find_new_tect_setting, rocks_to_color
 from functions.gvp import retrieve_vinfo
 
 from helpers.helpers import expand_rows_with_lists, replace_nan_in_string_list
@@ -89,11 +88,11 @@ def update_tas(fig, volcano_name, selectedpts, rock_tect_setting):
 
         # Process GEOROC data based on selected points
         if with_text:
-            thisgeogr = process_georoc_data(dfgeogr, with_text, volcano_name, with_text_match, thisgeogr, dict_georoc_sl, dict_volcano_file)
+            thisgeogr = process_georoc_data(dfgeogr, with_text, volcano_name, with_text_match, thisgeogr, dict_georoc_sl, dict_georoc_ls, dict_volcano_file)
 
     # If no points are selected, process the volcano name
     elif volcano_name and volcano_name != "start":
-        dfloaded = load_georoc(volcano_name, dict_georoc_sl, dict_volcano_file)
+        dfloaded = load_georoc(volcano_name, dict_georoc_sl, dict_georoc_ls, dict_volcano_file)
         dfloaded = clean_and_prepare_georoc(dfloaded)
         thisgeogr = pd.concat([thisgeogr, dfloaded])
 
@@ -228,7 +227,7 @@ def update_radar(rock_database, rock_tect_setting, thisvolcano, tas_data, sample
         rcount = tas_data['ROCK'].value_counts()
     else:
         if thisvolcano not in ['start', None]:
-            rcount = load_georoc(thisvolcano)['ROCK'].value_counts()
+            rcount = load_georoc(thisvolcano, dict_georoc_sl, dict_georoc_ls, dict_volcano_file)['ROCK'].value_counts()
         else:
             rcount = {}
 
@@ -278,7 +277,7 @@ def update_afm(volcanoname, tas_data):
     else:
         
         # Load data from tas_data if available, otherwise from georoc
-        df = tas_data if len(tas_data.index) > 0 else load_georoc(volcanoname)
+        df = tas_data if len(tas_data.index) > 0 else load_georoc(volcanoname, dict_georoc_sl, dict_georoc_ls, dict_volcano_file)
         df = df[['FEOT(WT%)', 'NA2O(WT%)', 'K2O(WT%)', 'MGO(WT%)', 'MATERIAL']]
         
         # Add NA2O + K2O column and clean the MATERIAL column
@@ -454,14 +453,31 @@ def update_oxyde(thisdf):
 
 
 # Helper function to update the store and subtitle based on current figure data
-def update_store(volcanoname, date, currentfig, store, restyle):
-    """Processes the figure data and updates the store and subtitle for a given volcano"""
-    recs = [d for d in currentfig['data'] if 'customdata' in d.keys() and len(d['marker']['symbol']) > 0] 
-    if len(recs) > 0:
-        store, subtitle = update_subtitle(currentfig, store, restyle, volcanoname, date)
+def update_store(fig):
+    """
+    Processes the figure data and updates the subtitle for a given volcano.
+    
+    Args:
+        currentfig (dict): The current figure's data, containing information 
+                           about markers, custom data, and other plot details.
+
+    Returns:
+        str: The updated subtitle if valid data is found, otherwise an empty string.
+    """
+    # Check if fig is None
+    if fig is None:
+        return ''  # Return empty string if fig is None
+
+    # Filter for records with 'customdata' key and non-empty marker symbols on the TAS plot
+    recs = [d for d in fig['data'] if 'customdata' in d.keys() and len(d['marker']['symbol']) > 0]
+
+    # If there are valid markers in the TAS plot, update the store and subtitle
+    if recs:
+        subtitle = update_subtitle(fig)
     else:
-        subtitle = ''
-    return store, subtitle
+        subtitle = ''  # If no valid markers, clear the subtitle
+
+    return subtitle
 
 # Helper function to set the date options based on the selected volcano
 def set_date_options(volcano_name):
@@ -472,7 +488,7 @@ def set_date_options(volcano_name):
     Returns: 
         Updates eruption date options and selects the default 'all' option for the dropdown
     """
-    opts = update_onedropdown(volcano_name, grnames, dict_georoc_sl, dict_volcano_file)
+    opts = update_onedropdown(volcano_name, grnames, dict_georoc_sl, dict_georoc_ls, dict_volcano_file)
     return opts, 'all'
 
 # Helper function to update the TAS, VEI, and oxide charts
@@ -486,9 +502,7 @@ def update_charts_rock_vei(volcano_name, date):
         Updated figures for the TAS diagram, VEI chart, and oxide chart
     """
     # Initialize subplots for the TAS chart
-    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, row_width=[0.85, 0.2], vertical_spacing=0.05)
-    fig, tmp = update_chemchart(volcano_name, fig, date, grnames, dict_georoc_sl, dict_volcano_file)  # Update TAS chart
-    fig = add_alkaline_line(fig)                          # Add alkaline line to TAS chart
+    fig, tmp = update_chemchart(volcano_name, date, grnames, dict_georoc_sl, dict_georoc_ls, dict_volcano_file)  # Update TAS chart
     
     # Update the oxide chart
     figa = update_oxyde(tmp)
@@ -498,7 +512,7 @@ def update_charts_rock_vei(volcano_name, date):
     fig2 = go.Figure()
     fig2 = update_veichart(volcano_name, fig2)
 
-    return fig, fig2, figa  # Return updated figures
+    return fig, fig2, figa, tmp  # Return updated figures
 
 
 
@@ -530,9 +544,9 @@ def update_joint_chemchart(thisvolcano_name, thisdf, thisfig, thisdate):
         # Match eruption dates based on user's input
         all_dates_gvp = []
         if thisdate == 'all':
-            all_dates_gvp = match_GVPdates(thisvolcano_name, 'forall', volcano_key, dict_georoc_sl, dict_volcano_file, df_eruption)
+            all_dates_gvp = match_GVPdates(thisvolcano_name, 'forall', volcano_key, dict_georoc_sl, dict_georoc_ls, dict_volcano_file, df_eruption)
         else:
-            this_date_gvp = match_GVPdates(thisvolcano_name, thisdate, volcano_key, dict_georoc_sl, dict_volcano_file, df_eruption)
+            this_date_gvp = match_GVPdates(thisvolcano_name, thisdate, volcano_key, dict_georoc_sl, dict_georoc_ls, dict_volcano_file, df_eruption)
             if this_date_gvp[0] != 'not found':
                 all_dates_gvp = [[int(thisdate.split('-')[0]), this_date_gvp]]
 
@@ -558,14 +572,13 @@ def update_joint_chemchart(thisvolcano_name, thisdf, thisfig, thisdate):
     # Default to an empty dataframe if no match found
     if df_gvp_geo.empty:
         dff = pd.DataFrame(columns=['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)', 'NA2O(WT%)+K2O(WT%)', 
-                                    'FEO(WT%)', 'CAO(WT%)', 'MGO(WT%)', 'ERUPTION YEAR', 'MATERIAL'])
+                                    'FEO(WT%)', 'ROCK', 'CAO(WT%)', 'MGO(WT%)', 'ERUPTION YEAR', 'MATERIAL'])
     else:
         dff = df_gvp_geo
 
     # Update the plot with the TAS layout and chemical scatter plot
-    thisfig = plot_tas(thisfig)
+    thisfig = plot_tas()
     thisfig = plot_chem(thisfig, dff, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], LBLS)
-    thisfig.update_layout(title='<b>Chemical Rock Composition from Georoc (with known eruptions)</b><br>')
 
     return thisfig
 

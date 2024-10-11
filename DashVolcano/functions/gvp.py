@@ -31,7 +31,6 @@ from datetime import datetime
 
 from constants.rocks import ROCK_COL, ROCK_SORTED
 from constants.tectonics import ALL_TECTONIC_SETTINGS
-from constants.shared_data import df_volcano, df_events, df_eruption, dict_gvp_georoc, dict_volcano_file
 
 from functions.georoc import rocks_to_color
 
@@ -99,40 +98,40 @@ def extract_by_filter(country_name, gvp_tect_setting, df_volcano):
 
 
 
-def extract_by_event(lstvolc, lstev):
-    """
+# def extract_by_event(lstvolc, lstev):
+#     """
 
-    Args:
-        lstvolc: a list of volcanoes
-        lstev: a list of events
+#     Args:
+#         lstvolc: a list of volcanoes
+#         lstev: a list of events
 
-    Returns: events associated to volcanoes
+#     Returns: events associated to volcanoes
 
-    """
-    events_cols = []
-    dfevent = pd.DataFrame()
-    # narrows down events to volcanoes in lstvolc (possibly empty)
-    dftmp = df_events[df_events['Volcano Name'].isin(lstvolc)]
+#     """
+#     events_cols = []
+#     dfevent = pd.DataFrame()
+#     # narrows down events to volcanoes in lstvolc (possibly empty)
+#     dftmp = df_events[df_events['Volcano Name'].isin(lstvolc)]
 
-    if len(dftmp.index) > 0:
-        # shortlists based on input
-        event_type = lstev
-        for nm in lstvolc:
-            # extracts events per volcano
-            events_pervolc = list(dftmp[dftmp['Volcano Name'] == nm]['Event Type'].values)
-            # for every volcano, keeps a list that counts each event
-            eidx = [0] * len(event_type)
-            for ev in events_pervolc:
-                if ev in event_type:
-                    eidx[event_type.index(ev)] = len([x for x in events_pervolc if x == ev])
-            events_cols.append(eidx)
-        # attach event types to volcanoes
-        dfevent['Volcano Name'] = pd.Series(np.array(lstvolc)).values
-        for event in event_type:
-            newcol = [x[event_type.index(event)] for x in events_cols]
-            dfevent[event] = pd.Series(np.array(newcol)).values
+#     if len(dftmp.index) > 0:
+#         # shortlists based on input
+#         event_type = lstev
+#         for nm in lstvolc:
+#             # extracts events per volcano
+#             events_pervolc = list(dftmp[dftmp['Volcano Name'] == nm]['Event Type'].values)
+#             # for every volcano, keeps a list that counts each event
+#             eidx = [0] * len(event_type)
+#             for ev in events_pervolc:
+#                 if ev in event_type:
+#                     eidx[event_type.index(ev)] = len([x for x in events_pervolc if x == ev])
+#             events_cols.append(eidx)
+#         # attach event types to volcanoes
+#         dfevent['Volcano Name'] = pd.Series(np.array(lstvolc)).values
+#         for event in event_type:
+#             newcol = [x[event_type.index(event)] for x in events_cols]
+#             dfevent[event] = pd.Series(np.array(newcol)).values
 
-    return dfevent
+#     return dfevent
     
     
 def update_chronogram(thesevolcanoes, period, df_eruption, df_events):
@@ -612,47 +611,47 @@ def update_tectonicmenu(thiscountry, df_volcano):
     return create_menu_options(ALL_TECTONIC_SETTINGS, disable_state)
     
   
-def filter_GVPtoGeoroc(country, gvp_tectonic):
-    """
-    Args:
+# def filter_GVPtoGeoroc(country, dict_gvp_georoc, gvp_tectonic):
+#     """
+#     Args:
 
-    Returns: 
-        list of GEOROC tectonic settings matching GVP names
-    """    
+#     Returns: 
+#         list of GEOROC tectonic settings matching GVP names
+#     """    
      
-    # GVP tectonic settings
-    chosen_gvp = [x.strip() for x in gvp_tectonic if x != 'start']
+#     # GVP tectonic settings
+#     chosen_gvp = [x.strip() for x in gvp_tectonic if x != 'start']
     
-    # country fiilter  
-    if country != 'all' and country != 'start':
-        if len(chosen_gvp) == 0:
-            # a country is chosen, but no tectonic setting
-            filter_gvp = list(df_volcano[df_volcano['Country'] == country]['Volcano Name'])     
-        else:
-            # a country is chosen, and tectonic settings are
-            filter_gvp = list(df_volcano[(df_volcano['Country'] == country) & (df_volcano['Tectonic Settings'].isin(chosen_gvp))]['Volcano Name']) 
-    elif country == 'all':
-        if len(chosen_gvp) == 0:
-            # all countries, but no tectonic setting
-            filter_gvp = list(df_volcano['Volcano Name'])     
-        else:
-            # all countries are  chosen, and tectonic settings are
-            filter_gvp = list(df_volcano[df_volcano['Tectonic Settings'].isin(chosen_gvp)]['Volcano Name']) 
-    else:
-        filter_gvp = []
+#     # country fiilter  
+#     if country != 'all' and country != 'start':
+#         if len(chosen_gvp) == 0:
+#             # a country is chosen, but no tectonic setting
+#             filter_gvp = list(df_volcano[df_volcano['Country'] == country]['Volcano Name'])     
+#         else:
+#             # a country is chosen, and tectonic settings are
+#             filter_gvp = list(df_volcano[(df_volcano['Country'] == country) & (df_volcano['Tectonic Settings'].isin(chosen_gvp))]['Volcano Name']) 
+#     elif country == 'all':
+#         if len(chosen_gvp) == 0:
+#             # all countries, but no tectonic setting
+#             filter_gvp = list(df_volcano['Volcano Name'])     
+#         else:
+#             # all countries are  chosen, and tectonic settings are
+#             filter_gvp = list(df_volcano[df_volcano['Tectonic Settings'].isin(chosen_gvp)]['Volcano Name']) 
+#     else:
+#         filter_gvp = []
         
-    filter_georoc = [dict_gvp_georoc[x] for x in filter_gvp if x in dict_gvp_georoc.keys()]     
+#     filter_georoc = [dict_gvp_georoc[x] for x in filter_gvp if x in dict_gvp_georoc.keys()]     
     
-    georoc_tectonic = []
-    for x in filter_georoc: 
-        georoc_tectonic += dict_volcano_file[x] 
-    georoc_tectonic = list(set(georoc_tectonic))
-    georoc_tectonic = list(set([x.split('/')[0].split('_comp')[0].replace('_', ' ') for x in georoc_tectonic]))
+#     georoc_tectonic = []
+#     for x in filter_georoc: 
+#         georoc_tectonic += dict_volcano_file[x] 
+#     georoc_tectonic = list(set(georoc_tectonic))
+#     georoc_tectonic = list(set([x.split('/')[0].split('_comp')[0].replace('_', ' ') for x in georoc_tectonic]))
     
-    return georoc_tectonic
+#     return georoc_tectonic
 
 
-def compute_eruptionperiods(keys):   
+def compute_eruptionperiods(keys, df_eruption):   
     """
     Args:
         keys = list of volcanoes coming from a dictionary
