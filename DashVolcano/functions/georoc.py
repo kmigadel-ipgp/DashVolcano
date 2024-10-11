@@ -1520,7 +1520,7 @@ def retrievedf_fromfigure(currentfig):
     """
     # retrieves records from the figure
     recs = [d for d in currentfig['data'] if 'customdata' in d.keys() and len(d['marker']['symbol']) > 0]
-    rocks = [[x.split(',')[1].strip() for x in d['customdata']] for d in recs]
+    rocks = [[x.split(',')[1].strip().replace("[('","").replace("'","") for x in d['customdata']] for d in recs]
     mats = [d['marker']['symbol'] for d in recs]
     xs = [d['x'] for d in recs]
     ys = [d['y'] for d in recs]
