@@ -205,9 +205,6 @@ def update_radar(rock_database, rock_tect_setting, thisvolcano, tas_data, sample
     number_petdb_samples = counts.get('PetDB', 0)
     number_georoc_samples = counts.get('GEOROC', 0)
 
-    # Concatenate sample counts into a display variable
-    number_rock_samples = f"PetDB samples: {number_petdb_samples}, GEOROC samples: {number_georoc_samples}"
-
     # Create a new radar chart figure
     fig = go.Figure()
 
@@ -233,6 +230,9 @@ def update_radar(rock_database, rock_tect_setting, thisvolcano, tas_data, sample
 
     # Prepare rock counts for the volcano
     rlist = [rcount.get(rock_type, 0) for rock_type in GEOROC_ROCKS]
+
+        # Concatenate sample counts into a display variable
+    number_rock_samples = f"PetDB samples: {number_petdb_samples}, GEOROC samples: {number_georoc_samples} <br> Volcano: {thisvolcano}, Number of samples: {sum(rlist)}"
 
     # Add trace for the selected volcano if there are any rocks
     if sum(rlist) > 0:
