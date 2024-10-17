@@ -37,7 +37,7 @@ def register_callbacks_page4(app):
     # 1st Callback: Update Tectonic Filter
     # ************************************#
     @app.callback(
-        Output("ppage4-GVP-tectonic-settings", "options"),  # Output: Options for the tectonic filter dropdown
+        Output("page4-GVP-tectonic-settings", "options"),   # Output: Options for the tectonic filter dropdown
         Input("page4-country-filter", "value"),             # Input: Selected country from the country filter
     )
     def set_tectonic_options(country_name):

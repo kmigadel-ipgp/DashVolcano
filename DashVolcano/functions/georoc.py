@@ -225,7 +225,7 @@ def load_georoc(thisvolcano, dict_georoc_sl, dict_georoc_ls, dict_volcano_file):
             dftmp = dftmp[['LOCATION']+['LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME', 'CITATIONS'] + CHEM_COLS + COLS_ROCK + ['LOI(WT%)']]
           
         dfloaded = pd.concat([dfloaded, dftmp])
-  
+
     # most volcanoes are located after the 3rd backslash,
     # but sometimes we need the location after the 2nd
     # in fact, in inclusion, they can be anywhere
@@ -295,7 +295,7 @@ def load_georoc(thisvolcano, dict_georoc_sl, dict_georoc_ls, dict_volcano_file):
 
 
 def load_refs(dftmp):
- 
+
     if 'CITATIONS' in list(dftmp):
         dftmp['CITATIONS'] = dftmp['CITATIONS'].fillna(' ')
         # finds where the references start in the excel file
@@ -329,8 +329,7 @@ def load_refs(dftmp):
             cc = np.where(spltname[c] == '', '', '+')
             nycol += cc + spltname[n] + spltyear[y]
 
-        dftmp['CITATIONS'] = nycol + '===' + refcol
-        
+        dftmp['CITATIONS'] = nycol + '===' + refcol            
     else:
         # inclusions
         dftmp['CITATION'] = dftmp['CITATION'].str.split(']').str[1]    
