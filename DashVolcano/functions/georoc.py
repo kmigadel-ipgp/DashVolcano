@@ -198,7 +198,6 @@ def load_georoc(thisvolcano, dict_georoc_sl, dict_georoc_ls, dict_volcano_file):
     for pathcsv in all_pathcsv:
         # find the latest version of the file to use
         pathcsv = fix_pathname(pathcsv)
-        # print('GEOROC file used:', pathcsv)
         
         dftmp = pd.read_csv(os.path.join(GEOROC_DATASET_DIR, pathcsv), low_memory=False, encoding='latin1')
 
@@ -225,7 +224,7 @@ def load_georoc(thisvolcano, dict_georoc_sl, dict_georoc_ls, dict_volcano_file):
             dftmp = dftmp[dftmp['ROCK TYPE'] == 'VOL']
             dftmp = dftmp[['LOCATION']+['LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME', 'CITATIONS'] + CHEM_COLS + COLS_ROCK + ['LOI(WT%)']]
           
-        dfloaded = dftmp.copy()
+        dfloaded = pd.concat([dfloaded, dftmp])
   
     # most volcanoes are located after the 3rd backslash,
     # but sometimes we need the location after the 2nd
