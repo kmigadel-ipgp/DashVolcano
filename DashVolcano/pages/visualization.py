@@ -14,7 +14,7 @@ from constants.rocks import GEOROC_ROCKS, ALL_ROCKS, ROCK_COL
 from constants.paths import GEOROC_AROUND_GVP_FILE, GEOROC_AROUND_PETDB_FILE, GEOROC_DATASET_DIR
 
 # import functions to process GVP, GEOROC and PetDB data
-from functions.georoc import load_georoc, detects_chems, plot_chem, process_georoc_data, clean_and_prepare_georoc, update_onedropdown, update_chemchart, add_alkaline_series, update_subtitle, plot_tas, match_GVPdates, find_new_tect_setting, rocks_to_color
+from functions.georoc import load_georoc, detects_chems, plot_chem, process_georoc_data, clean_and_prepare_georoc, update_onedropdown, update_chemchart, add_alkaline_series, update_subtitle, plot_tas, match_GVPdates, find_new_tect_setting, rocks_to_color, guess_rock
 from functions.gvp import retrieve_vinfo
 
 from helpers.helpers import expand_rows_with_lists, replace_nan_in_string_list
@@ -121,6 +121,7 @@ def clean_and_convert_geopdb(thisgeopdb):
     thisgeopdb = thisgeopdb.apply(lambda col: col.apply(lambda val: replace_nan_in_string_list(val, col.name)))
     thisgeopdb = expand_rows_with_lists(thisgeopdb)
     thisgeopdb = detects_chems(thisgeopdb, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], morechemsh, LBLS2)
+    thisgeopdb = guess_rock(thisgeopdb)
     thisgeopdb['db'] = 'PetDB'
 
     # Return the cleaned and processed DataFrame.
@@ -221,18 +222,18 @@ def update_radar(rock_database, rock_tect_setting, thisvolcano, tas_data, sample
 
     # Count rocks from tas_data or load from GEOROC based on volcano selection
     if not tas_data.empty:
-        rcount = tas_data['ROCK'].value_counts()
+        # Filter the dataframe by 'MATERIAL' where the value is either 'WR' or 'WHOLE ROCK'
+        wr_filtered_data = tas_data[tas_data['MATERIAL'].isin(['WR', 'WHOLE ROCK'])]
+        # Now count the values in the 'ROCK' column of the filtered data
+        rcount = wr_filtered_data['ROCK'].value_counts()
     else:
-        if thisvolcano not in ['start', None]:
-            rcount = load_georoc(thisvolcano, dict_georoc_sl, dict_georoc_ls, dict_volcano_file)['ROCK'].value_counts()
-        else:
-            rcount = {}
+        rcount = {}
 
     # Prepare rock counts for the volcano
     rlist = [rcount.get(rock_type, 0) for rock_type in GEOROC_ROCKS]
 
-        # Concatenate sample counts into a display variable
-    number_rock_samples = f"PetDB samples: {number_petdb_samples}, GEOROC samples: {number_georoc_samples} <br> Volcano: {thisvolcano}, Number of samples: {sum(rlist)}"
+    # Concatenate sample counts into a display variable
+    number_rock_samples = f"PetDB samples: {number_petdb_samples}, GEOROC samples: {number_georoc_samples} <br> Volcano: {thisvolcano}, Number of samples (WHOLE ROCK): {sum(rlist)}"
 
     # Add trace for the selected volcano if there are any rocks
     if sum(rlist) > 0:
