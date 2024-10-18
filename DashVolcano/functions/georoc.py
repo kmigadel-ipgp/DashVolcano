@@ -485,8 +485,6 @@ def guess_rock(thisdf):
     # Initialize a 'ROCK' column with default value 'UNNAMED' for all rows
     thisdf['ROCK'] = 'UNNAMED'
 
-    thisdf = thisdf.fillna(0)
-
     # Extract SiO2 and total alkali (Na2O + K2O) as float values
     thisdf['SIO2(WT%)'] = pd.to_numeric(thisdf['SIO2(WT%)'], errors='coerce')
     thisdf['NA2O(WT%)'] = pd.to_numeric(thisdf['NA2O(WT%)'], errors='coerce')
@@ -1688,6 +1686,7 @@ def process_georoc_data(dfgeogr, with_text, volcano_name, with_text_match, thisg
         dfloaded = pd.concat([dfloaded, dfloc])
     
     if not dfloaded.empty:
+        dfloaded = normalize_oxides_with_feot(dfloaded)
         dfloaded = clean_and_prepare_georoc(dfloaded)
         thisgeogr = pd.concat([thisgeogr, dfloaded])
 
@@ -1696,7 +1695,6 @@ def process_georoc_data(dfgeogr, with_text, volcano_name, with_text_match, thisg
 
 def clean_and_prepare_georoc(dfloaded):
     """Clean and normalize GEOROC data."""
-    dfloaded = normalize_oxides_with_feot(dfloaded)
     dfloaded = dfloaded.dropna(subset=['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], how='all')
     dfloaded = detects_chems(dfloaded, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], MORE_CHEMS, LBLS)
     dfloaded['db'] = 'GEOROC'
