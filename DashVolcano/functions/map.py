@@ -73,7 +73,7 @@ def create_map_samples(database, thisvolcano, gvp_tect_setting, rock_tect_settin
     return dfgeo
 
 
-def displays_map_samples(thisdf, thiszoom, thiscenter, plates_boundaries_setting, rock_tect_setting, rocks_density_filter):
+def displays_map_samples(thisdf, thiszoom, thiscenter, plates_boundaries_setting, rocks_density_filter):
     """
     Displays a world map with geological data.
     
@@ -82,14 +82,13 @@ def displays_map_samples(thisdf, thiszoom, thiscenter, plates_boundaries_setting
         thiszoom (int): Zoom level for the map.
         thiscenter (dict): Coordinates for the center of the map.
         plates_boundaries_setting (list): List of plates boundaries to display.
-        rock_tect_setting (list): GEOROC and PetDB tectonic settings to filter data.
         rocks_density_filter (list): List of selected rock types for filtering map samples.
     
     Returns:
         go.Figure: A Plotly figure with samples and tectonic layers plotted.
     """ 
     # Determine color column and set filter for SIO2 values
-    if len(list(set(rocks_density_filter) & set(CHEMICALS_SETTINGS))) > 0 and rock_tect_setting:
+    if len(list(set(rocks_density_filter) & set(CHEMICALS_SETTINGS))) > 0:
         colorcol = 'SIO2(WT%)mean'
         thisdf['SIO2(WT%)mean'] = thisdf['SIO2(WT%)mean'].fillna(0)
         # Filter ranges of silica
@@ -108,7 +107,7 @@ def displays_map_samples(thisdf, thiszoom, thiscenter, plates_boundaries_setting
             'Matching rock sample (GEOROC)': 'cornflowerblue'
         }
                 
-    if len(list(set(rocks_density_filter) & set(GEOROC_ROCKS))) > 0 and rock_tect_setting:
+    if len(list(set(rocks_density_filter) & set(GEOROC_ROCKS))) > 0:
         # Reads list format from a string in list format
         # ROCK for all rocks, and ROCK no inc to remove inclusions
         thisdf['ROCK no inc'] = thisdf['ROCK no inc'].apply(lambda y: ast.literal_eval(y) if isinstance(y, str) else [])

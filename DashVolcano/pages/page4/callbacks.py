@@ -135,7 +135,7 @@ def register_callbacks_page4(app):
         dffig = create_map_samples(database, volcano_name, gvp_tect_setting, rock_tect_setting, country)
         
         # Generate the map figure with the filtered data
-        fig = displays_map_samples(dffig, thiszoom, thiscenter, plates_boundaries_setting, rock_tect_setting, rocks_density_filter)
+        fig = displays_map_samples(dffig, thiszoom, thiscenter, plates_boundaries_setting, rocks_density_filter)
 
         # Update the layout of the map figure to include a legend
         fig.update_layout(legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01))
