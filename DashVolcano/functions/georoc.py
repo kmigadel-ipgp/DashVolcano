@@ -6,7 +6,7 @@
 # * load_refs: loads references
 # * fix_pathname
 # * fix_inclusion
-# * with_FEOnorm: handles FEOT and normalizes oxides 
+# * normalize_oxides_with_feot: handles FEOT and normalizes oxides 
 # * guess_rock: associates a rock name based on chemicals and TAS diagram
 # * extract_date: extract date information from comments
 # * plot_TAS: draws the TAS background
@@ -21,7 +21,7 @@
 # * update_onedropdown: creates menus for filtering per date
 # * GEOROC_majorrock: computes major rocks for GEOROC data
 # * update_GEOrockchart
-# * createGEOROCaroundGVP: creates a df of GEOROC samples around GVP volcanoes
+# * create_georoc_around_gvp: creates a df of GEOROC samples around GVP volcanoes
 # * createPetDBaroundGVP: creates a df of PetDB samples around GVP volcanoes
 # * retrieved_fromfigure
 # * update_subtitle: updates subtitles based on user clicks on legends
@@ -44,14 +44,13 @@ import pandas as pd
 import numpy as np
 
 from collections import Counter
-from numpy.linalg import inv
+from tqdm import tqdm
 from plotly.subplots import make_subplots
 
 from constants.rocks import GEOROC_ROCKS, GEOROC_ROCK_COL, ROCK_COL
 from constants.chemicals import MORE_CHEMS, LBLS, LBLS2, CHEM_COLS, OXIDES, COLS_ROCK, ISOTOPES
 from constants.tectonics import NEW_TECTONIC_DICT, NEW_TECTONIC_SETTINGS
 from constants.paths import GEOROC_DATASET_DIR, GEOROC_GVP_DIR, GEOROC_AROUND_GVP_FILE
-from constants.shared_data import df_volcano, dict_gvp_georoc, dict_georoc_ls, df_volcano_no_eruption
 
 def rocks_to_color(rid):
     """
@@ -91,60 +90,91 @@ def rocks_to_color(rid):
 
     return cc_r, cc_g, cc_b
 
+
 def find_new_tect_setting(thisvolcano, df_volcano, df_volcano_no_eruption):
     """
-    Args:
-               
-    """
-    if thisvolcano in ['Northern Lake Abaya Volcanic Field', 'Kaikohe-Bay of Islands', 'Garove', 'Eastern Gemini Seamount', 'Vitim Volcanic Field']:
-        if thisvolcano in ['Northern Lake Abaya Volcanic Field', 'Vitim Volcanic Field']:
-            newts = 'Rift at plate boundaries / Continental'
-        if thisvolcano == 'Kaikohe-Bay of Islands':
-            newts = 'Intraplate / Continental'
-        if thisvolcano in ['Garove', 'Eastern Gemini Seamount']:
-            newts = 'Subduction zone / Continental'
-    
-    else:
-        # for other volcanoes
-        thistecset = df_volcano[df_volcano['Volcano Name'] == thisvolcano]['Tectonic Settings'].values
-        if len(thistecset) == 0:
-            thistecset = df_volcano_no_eruption[df_volcano_no_eruption['Volcano Name'] == thisvolcano]['Tectonic Settings'].values[0]
-        else:
-            thistecset = thistecset[0]
-    
-        if thistecset == 'Subduction zone / Oceanic crust (< 15 km)':
-            newts = 'Subduction zone / Oceanic'
-        elif thistecset in ['Subduction zone / Continental crust (>25 km)', 'Subduction zone / Intermediate crust (15-25 km)']:
-            newts = 'Subduction zone / Continental'
-        elif thistecset == 'Intraplate / Oceanic crust (< 15 km)':
-            newts = 'Intraplate / Oceanic'
-        elif thistecset in ['Intraplate / Continental crust (>25 km)', 'Intraplate / Intermediate crust (15-25 km)']:
-            newts = 'Intraplate / Continental'
-        elif thistecset == 'Rift zone / Oceanic crust (< 15 km)':     
-            newts = 'Rift at plate boundaries / Oceanic'
-        elif thistecset in ['Rift zone / Continental crust (>25 km)', 'Rift zone / Intermediate crust (15-25 km)']:
-            newts = 'Rift at plate boundaries / Continental'
-        elif thistecset == 'Subduction zone / Crustal thickness unknown':
-            thissubregion = df_volcano[df_volcano['Volcano Name'] == thisvolcano]['Subregion'].values
-            if len(thissubregion) == 0:
-                thissubregion = df_volcano_no_eruption[df_volcano_no_eruption['Volcano Name'] == thisvolcano]['Subregion'].values[0]
-            else:
-                thissubregion = thissubregion[0]
-       
-            if thissubregion in ['Bougainville and Solomon Islands', 'Izu, Volcano, and Mariana Islands', 'New Ireland', 'Santa Cruz Islands']:
-                newts = 'Subduction zone / Oceanic'
-            elif thissubregion in ['Pacific Ocean (southwestern)', 'North of Luzon', 'Lesser Sunda Islands', 'Fiji Islands']:
-                newts = 'Subduction zone / Continental'
-            else:
-                print('Warning: missed subregion')
-        else:    
-            if thistecset == 'Unknown':
-                newts = 'Unknown'
-            else:
-                print('Warning: missed subregion')         
-    return newts
+    Determines the tectonic setting for a given volcano, accounting for specific known exceptions,
+    and looks up the tectonic setting in the provided volcano dataframes.
 
-def load_georoc(thisvolcano, dict_georoc_sl, dict_volcano_file):
+    Args:
+        thisvolcano (str): Name of the volcano.
+        df_volcano (pd.DataFrame): DataFrame containing volcanoes with known eruptions.
+        df_volcano_no_eruption (pd.DataFrame): DataFrame containing volcanoes without known eruptions.
+
+    Returns:
+        str: The tectonic setting of the volcano.
+    """
+    
+    # Check for specific volcanoes with predefined tectonic settings
+    specific_volcanoes = {
+        'Northern Lake Abaya Volcanic Field': 'Rift at plate boundaries / Continental',
+        'Vitim Volcanic Field': 'Rift at plate boundaries / Continental',
+        'Kaikohe-Bay of Islands': 'Intraplate / Continental',
+        'Garove': 'Subduction zone / Continental',
+        'Eastern Gemini Seamount': 'Subduction zone / Continental'
+    }
+    
+    # Return predefined tectonic setting if the volcano is in the list
+    if thisvolcano in specific_volcanoes:
+        return specific_volcanoes[thisvolcano]
+
+    # Look up the tectonic setting from the dataframes
+    tectonic_setting = df_volcano[df_volcano['Volcano Name'] == thisvolcano]['Tectonic Settings'].values
+    
+    # If not found in the main DataFrame, check the secondary one (no eruption data)
+    if len(tectonic_setting) == 0:
+        tectonic_setting = df_volcano_no_eruption[df_volcano_no_eruption['Volcano Name'] == thisvolcano]['Tectonic Settings'].values[0]
+    else:
+        tectonic_setting = tectonic_setting[0]
+    
+    # Map the tectonic setting to simplified categories
+    tectonic_mapping = {
+        'Subduction zone / Oceanic crust (< 15 km)': 'Subduction zone / Oceanic',
+        'Subduction zone / Continental crust (>25 km)': 'Subduction zone / Continental',
+        'Subduction zone / Intermediate crust (15-25 km)': 'Subduction zone / Continental',
+        'Intraplate / Oceanic crust (< 15 km)': 'Intraplate / Oceanic',
+        'Intraplate / Continental crust (>25 km)': 'Intraplate / Continental',
+        'Intraplate / Intermediate crust (15-25 km)': 'Intraplate / Continental',
+        'Rift zone / Oceanic crust (< 15 km)': 'Rift at plate boundaries / Oceanic',
+        'Rift zone / Continental crust (>25 km)': 'Rift at plate boundaries / Continental',
+        'Rift zone / Intermediate crust (15-25 km)': 'Rift at plate boundaries / Continental'
+    }
+
+    # Return mapped tectonic setting if found
+    if tectonic_setting in tectonic_mapping:
+        return tectonic_mapping[tectonic_setting]
+
+    # Handle subduction zone with unknown crustal thickness
+    if tectonic_setting == 'Subduction zone / Crustal thickness unknown':
+        subregion = df_volcano[df_volcano['Volcano Name'] == thisvolcano]['Subregion'].values
+        if len(subregion) == 0:
+            subregion = df_volcano_no_eruption[df_volcano_no_eruption['Volcano Name'] == thisvolcano]['Subregion'].values[0]
+        else:
+            subregion = subregion[0]
+        
+        # Map subregion to tectonic setting
+        oceanic_subregions = ['Bougainville and Solomon Islands', 'Izu, Volcano, and Mariana Islands', 'New Ireland', 'Santa Cruz Islands']
+        continental_subregions = ['Pacific Ocean (southwestern)', 'North of Luzon', 'Lesser Sunda Islands', 'Fiji Islands']
+        
+        if subregion in oceanic_subregions:
+            return 'Subduction zone / Oceanic'
+        elif subregion in continental_subregions:
+            return 'Subduction zone / Continental'
+        else:
+            print('Warning: missed subregion')
+            return 'Unknown'
+    
+    # Handle unknown or unclassified tectonic setting
+    if tectonic_setting == 'Unknown':
+        return 'Unknown'
+    
+    # Warning for any missed cases
+    print('Warning: missed tectonic setting')
+    return 'Unknown'
+
+
+
+def load_georoc(thisvolcano, dict_georoc_sl, dict_georoc_ls, dict_volcano_file):
     """
 
     Args:
@@ -168,7 +198,6 @@ def load_georoc(thisvolcano, dict_georoc_sl, dict_volcano_file):
     for pathcsv in all_pathcsv:
         # find the latest version of the file to use
         pathcsv = fix_pathname(pathcsv)
-        # print('GEOROC file used:', pathcsv)
         
         dftmp = pd.read_csv(os.path.join(GEOROC_DATASET_DIR, pathcsv), low_memory=False, encoding='latin1')
 
@@ -195,8 +224,8 @@ def load_georoc(thisvolcano, dict_georoc_sl, dict_volcano_file):
             dftmp = dftmp[dftmp['ROCK TYPE'] == 'VOL']
             dftmp = dftmp[['LOCATION']+['LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME', 'CITATIONS'] + CHEM_COLS + COLS_ROCK + ['LOI(WT%)']]
           
-        dfloaded = dftmp.copy()
-  
+        dfloaded = pd.concat([dfloaded, dftmp])
+
     # most volcanoes are located after the 3rd backslash,
     # but sometimes we need the location after the 2nd
     # in fact, in inclusion, they can be anywhere
@@ -250,7 +279,7 @@ def load_georoc(thisvolcano, dict_georoc_sl, dict_volcano_file):
     dfloaded['ERUPTION YEAR'] = dfloaded['ERUPTION YEAR'].fillna(dfloaded['GUESSED DATE'])
     
     # add normalization 
-    dfloaded = with_FEOnorm(dfloaded)
+    dfloaded = normalize_oxides_with_feot(dfloaded)
     
     # adds names to rocks using TAS 
     dfloaded = guess_rock(dfloaded)
@@ -266,7 +295,7 @@ def load_georoc(thisvolcano, dict_georoc_sl, dict_volcano_file):
 
 
 def load_refs(dftmp):
- 
+
     if 'CITATIONS' in list(dftmp):
         dftmp['CITATIONS'] = dftmp['CITATIONS'].fillna(' ')
         # finds where the references start in the excel file
@@ -300,8 +329,7 @@ def load_refs(dftmp):
             cc = np.where(spltname[c] == '', '', '+')
             nycol += cc + spltname[n] + spltyear[y]
 
-        dftmp['CITATIONS'] = nycol + '===' + refcol
-        
+        dftmp['CITATIONS'] = nycol + '===' + refcol            
     else:
         # inclusions
         dftmp['CITATION'] = dftmp['CITATION'].str.split(']').str[1]    
@@ -317,7 +345,7 @@ def fix_pathname(thisarc):
 
     Returns:
         str: File name with the correct suffix (which contains the date of the latest download).
-    """     
+    """
     if 'ManualDataset' not in thisarc:
         
         # Extract folder and filename from the given path
@@ -400,157 +428,229 @@ def fix_inclusion(thisdf):
     return thisdf
     
 
-def with_FEOnorm(thisdf):
+def normalize_oxides_with_feot(thisdf):
     """
+    Normalizes oxide measurements in the given GEOROC dataframe for a single volcano, 
+    handling Fe2O3 and FeO conversion to FEOT, and performing normalization across all oxides.
 
     Args:
-        thisdf: GEOROC dataframe for one volcano
+        thisdf (pd.DataFrame): GEOROC dataframe for one volcano.
         
-    Returns: Among oxydes, we have 'FE2O3(WT%)', 'FEO(WT%)', 'FEOT(WT%)'.
-             If FEOT is here, discard the other two, otherwise computes FEOT based on the other two.
-             The dataframe with normalized oxides is returned. 
-
-    """    
-    # cleans up, oxides include LOI
+    Returns:
+        pd.DataFrame: Dataframe with normalized oxide values.
+                      If 'FEOT(WT%)' is present, 'FE2O3(WT%)' and 'FEO(WT%)' are discarded.
+                      Otherwise, 'FEOT(WT%)' is calculated from 'FE2O3(WT%)' and 'FEO(WT%)'.
+    """
+    
+    # Handle cases where oxide values are given as pairs of measurements, e.g., 'x\\y'
     for col in OXIDES:
-        # in case two measurements
-        nofloat = [x for x in list(thisdf[col].unique()) if (isinstance(x, str) and '\\' in x)]
-        newvalues = {}
-        for x in nofloat:
-            # choose the first value of the pair
-            newvalues[x] = x.split('\\')[0].strip() 
+        # Identify non-float entries containing '\\', which indicates two measurements
+        nofloat = [x for x in list(thisdf[col].unique()) if isinstance(x, str) and '\\' in x]
+        newvalues = {x: x.split('\\')[0].strip() for x in nofloat}  # Take the first value of the pair
         
-        # replaces the pairs by their first value
-        # thisdf[col].replace(to_replace=newvalues, inplace=True)
+        # Replace pairs with their first value
         thisdf[col] = thisdf[col].replace(newvalues)
     
-    #  replaces missing oxides and LOI data with 0
+    # Replace missing values in oxides with 0 and convert to float
     thisdf[OXIDES] = thisdf[OXIDES].fillna(0).astype(float)
-    # when FEOT(WT%) is available, disregard FE2O3(WT%) and FEO(WT%)
-    oxides_nofe = ['SIO2(WT%)', 'TIO2(WT%)', 'AL2O3(WT%)', 'FE2O3(WT%)', 'FEO(WT%)', 'FEOT(WT%)', 'CAO(WT%)', 'MGO(WT%)', 'MNO(WT%)', 'K2O(WT%)', 'NA2O(WT%)', 'P2O5(WT%)']
-    # When FEOT(WT%) is not available or empty, then FEOT(WT%) = FE2O3(WT%)/1.111 + FEO(WT%)    
-    thisdf.loc[:, 'FEOT(WT%)'] = np.where(thisdf['FEOT(WT%)'] == 0, (thisdf['FE2O3(WT%)']/1.111) + thisdf['FEO(WT%)'], thisdf['FEOT(WT%)'])
     
-    # the numerator is the sum of the oxides without FE203 and FEO
-    # LOI shouldnt be taken, and should further be removed
-    num = thisdf[oxides_nofe].sum(axis=1)-thisdf['LOI(WT%)']
+    # List of oxides without Fe-specific columns (to be normalized)
+    oxides_nofe = ['SIO2(WT%)', 'TIO2(WT%)', 'AL2O3(WT%)', 'FE2O3(WT%)', 'FEO(WT%)', 'FEOT(WT%)', 
+                   'CAO(WT%)', 'MGO(WT%)', 'MNO(WT%)', 'K2O(WT%)', 'NA2O(WT%)', 'P2O5(WT%)']
     
+    # Compute 'FEOT(WT%)' if missing, using the formula FEOT = FE2O3 / 1.111 + FEO
+    thisdf.loc[:, 'FEOT(WT%)'] = np.where(thisdf['FEOT(WT%)'] == 0, 
+                                           (thisdf['FE2O3(WT%)'] / 1.111) + thisdf['FEO(WT%)'], 
+                                           thisdf['FEOT(WT%)'])
+    
+    # Calculate the sum of oxides excluding 'FE2O3(WT%)' and 'FEO(WT%)' and subtract 'LOI(WT%)'
+    num = thisdf[oxides_nofe].sum(axis=1) - thisdf['LOI(WT%)']
+    
+    # Normalize each oxide by the total sum of oxides (excluding LOI)
     for col in oxides_nofe:
-        # normalizes    
-        thisdf.loc[:, col] = thisdf[col]*(100/num)
+        thisdf.loc[:, col] = thisdf[col] * (100 / num)
     
     return thisdf
 
 
 def guess_rock(thisdf):
     """
-
     Args:
         thisdf: GEOROC dataframe for one volcano
 
-    Returns: a new column with a ROCK name based on TAS
-
+    Returns: 
+        A new column with a rock name based on the TAS diagram, classified using SiO2 and total alkali (Na2O + K2O) content.
     """
-    # adds a new column that stores the guessed name
-    thisdf.loc[:, 'ROCK'] = ['UNNAMED']*len(thisdf.index)
+
+    # Initialize a 'ROCK' column with default value 'UNNAMED' for all rows
+    thisdf['ROCK'] = 'UNNAMED'
+
+    thisdf = thisdf.fillna(0)
+
+    # Extract SiO2 and total alkali (Na2O + K2O) as float values
+    thisdf['SIO2(WT%)'] = pd.to_numeric(thisdf['SIO2(WT%)'], errors='coerce')
+    thisdf['NA2O(WT%)'] = pd.to_numeric(thisdf['NA2O(WT%)'], errors='coerce')
+    thisdf['K2O(WT%)'] = pd.to_numeric(thisdf['K2O(WT%)'], errors='coerce')
+
+    x = thisdf['SIO2(WT%)'].astype(float)
+    y = thisdf['NA2O(WT%)'].astype(float) + thisdf['K2O(WT%)'].astype(float)
+
+    # Check for valid rows where SiO2 and alkalis are greater than 0
+    valid_data = (x > 0) & (thisdf['NA2O(WT%)'] > 0) & (thisdf['K2O(WT%)'] > 0)
+
+    # Define helper function to calculate the slope and intercept of a line between two points
+    def get_line_params(x, x1, y1, x2, y2):
+        slope, intercept = np.polyfit([x1, x2], [y1, y2], 1)
+        return slope * x + intercept
+
+    # Define line boundaries for TAS diagram
+    upper_bound_tephrite_phono_tephrite_tephrite_phonolite = get_line_params(x, 41, 7, 52.5, 14)  
+
+    upper_bound_trachy = get_line_params(x, 45, 5, 65, 15.7)  
+
+    upper_bound_trachybasalt = get_line_params(x, 49.4, 7.3, 52, 5)
+
+    lower_bound_trachy = get_line_params(x, 52, 5, 69, 8)
     
-    # x- and y-axis from the TAS diagram
-    x = thisdf['SIO2(WT%)'].astype('float')
-    y = (thisdf['NA2O(WT%)'].astype('float') + thisdf['K2O(WT%)'].astype('float'))
-    # x and y are greater than 0 (in fact both components of the sum y are greater than 0)
-    cond1 = (thisdf['SIO2(WT%)'].astype('float') > 0) & (thisdf['NA2O(WT%)'].astype('float') > 0) & (thisdf['K2O(WT%)'].astype('float') > 0)    
-    # lower anti-diagonal 1
-    # a,b in ax+b
-    ab = np.dot(inv(np.array([[52., 1.], [57., 1.]])), np.array([[5], [5.9]]))
-    cond_ab = float(ab[0])*x+float(ab[1]) >= y
-    cond_ba = float(ab[0])*x+float(ab[1]) < y
-    # anti-diagonal 2
-    # a,b in ax+b
-    ab2 = np.dot(inv(np.array([[45., 1.], [49.4, 1.]])), np.array([[5], [7.3]]))
-    cond_ab2 = float(ab2[0])*x+float(ab2[1]) < y
-    cond_ba2 = float(ab2[0])*x+float(ab2[1]) >= y
-    # upper anti-diagonal 3
-    ab3 = np.dot(inv(np.array([[41., 1.], [52.5, 1.]])), np.array([[7], [14]]))
-    cond_ab3 = float(ab3[0])*x+float(ab3[1]) < y
-    cond_ba3 = float(ab3[0])*x+float(ab3[1]) >= y
-    # lower diagonal
-    cd = np.dot(inv(np.array([[49.4, 1.], [52., 1.]])), np.array([[7.3], [5.]]))
-    cond_cd = float(cd[0])*x+float(cd[1]) < y
-    cond_dc = float(cd[0])*x+float(cd[1]) >= y
-    # diagonal
-    cd2 = np.dot(inv(np.array([[53., 1.], [57., 1.]])), np.array([[9.3], [5.9]]))
-    cond_cd2 = float(cd2[0])*x+float(cd2[1]) < y
-    cond_dc2 = float(cd2[0])*x+float(cd2[1]) >= y
-    # upper diagonal
-    cd3 = np.dot(inv(np.array([[57.6, 1.], [63., 1.]])), np.array([[11.7], [7.]]))
-    cond_cd3 = float(cd3[0])*x+float(cd3[1]) < y
-    cond_dc3 = float(cd3[0])*x+float(cd3[1]) >= y
-    # lower diagonal
-    ef = np.dot(inv(np.array([[49.4, 1.], [45., 1.]])), np.array([[7.3], [9.4]]))
-    cond_ef = float(ef[0])*x+float(ef[1]) < y
-    cond_fe = float(ef[0])*x+float(ef[1]) >= y
-    # diagonal
-    ef2 = np.dot(inv(np.array([[53., 1.], [48.4, 1.]])), np.array([[9.3], [11.5]]))
-    cond_ef2 = float(ef2[0])*x+float(ef2[1]) < y
-    cond_fe2 = float(ef2[0])*x+float(ef2[1]) >= y
-    # upper diagonal
-    ef3 = np.dot(inv(np.array([[57.6, 1.], [52.5, 1.]])), np.array([[11.7], [14.]]))
-    cond_ef3 = float(ef3[0])*x+float(ef3[1]) < y
-    cond_fe3 = float(ef3[0])*x+float(ef3[1]) >= y
+    lower_bound_trachyandesite = get_line_params(x, 53, 9.3, 57, 5.9)
 
-    # else will be FOIDITE
-    thisdf.loc[cond1, 'ROCK'] = 'FOIDITE'
+    lower_bound_trachydacite = get_line_params(x, 57.6, 11.7, 63, 7)
 
-    # basalt
-    thisdf.loc[cond1 & (x >= 45) & (x < 52) & (y < 5), 'ROCK'] = 'BASALT'
-
-    # basaltic andesite
-    thisdf.loc[cond1 & (x >= 52) & (x < 57) & cond_ab, 'ROCK'] = 'BASALTIC ANDESITE'
-
-    # andesite
-    thisdf.loc[cond1 & (x >= 57) & (x < 63) & cond_ab, 'ROCK'] = 'ANDESITE'
-
-    # dacite
-    # a,b in ax+b 
-    d = np.dot(inv(np.array([[76., 1.], [69., 1.]])), np.array([[1.], [8.]]))
-    cond_d1 = (x >= 63) & (float(d[0])*x + float(d[1]) >= y)
-    thisdf.loc[cond1 & cond_d1 & cond_ab, 'ROCK'] = 'DACITE'
-
-    # trachy-basalt
-    thisdf.loc[(y >= 5) & cond_dc & cond_ba2, 'ROCK'] = 'TRACHYBASALT'
-
-    # basaltic trachy-andesite
-    thisdf.loc[cond_ba & cond_ba2 & cond_cd & cond_dc2, 'ROCK'] = 'BASALTIC TRACHYANDESITE'
-
-    # trachy-andesite
-    thisdf.loc[cond_ba & cond_ba2 & cond_cd2 & cond_dc3, 'ROCK'] = 'TRACHYANDESITE'
+    upper_bound_trachydacite = get_line_params(x, 65, 15.7, 69, 13)
     
-    # trachy-dacite
-    thisdf.loc[cond_ba & cond_ba2 & cond_cd3 & (x < 69), 'ROCK'] = 'TRACHYTE/TRACHYDACITE'
+    upper_bound_tephrite = get_line_params(x, 49.4, 7.3, 45, 9.4)
+    
+    lower_bound_tephriphonolite = get_line_params(x, 53, 9.3, 48.4, 11.5)
+    
+    lower_bound_phonolyte = get_line_params(x, 57.6, 11.7, 50, 15.13)
 
-    # rhyolite
+    upper_bound_phonolyte = get_line_params(x, 50, 15.13, 65, 15.7)
+
+    lower_bound_rhyolite = get_line_params(x, 69, 8, 77, 1)
+
+    lower_bound_basanite = get_line_params(x, 41, 7, 45, 5)
+    
+    # Define conditions for each rock type based on SiO2 (x) and alkali (y) values
+    
+    # Foidite classification
+    thisdf.loc[valid_data, 'ROCK'] = 'FOIDITE'
+
+    # Basalt classification
+    thisdf.loc[
+        valid_data & 
+        (x >= 45) & 
+        (x < 52) & 
+        (y < 5), 'ROCK'] = 'BASALT'
+
+    # Basaltic andesite classification
+    thisdf.loc[
+        valid_data & 
+        (x >= 52) & 
+        (x < 57) & 
+        (y < lower_bound_trachy), 'ROCK'] = 'BASALTIC ANDESITE'
+
+    # Andesite classification
+    thisdf.loc[
+        valid_data & 
+        (x >= 57) & 
+        (x < 63) & 
+        (y < lower_bound_trachy), 'ROCK'] = 'ANDESITE'
+
+    # Dacite classification
+    thisdf.loc[
+        valid_data & 
+        (x >= 63) & 
+        (x < 77) & 
+        (y < lower_bound_rhyolite) & 
+        (y < lower_bound_trachy), 'ROCK'] = 'DACITE'
+
+    # Trachy-basalt classification
+    thisdf.loc[
+        valid_data & 
+        (y >= 5) & 
+        (y < upper_bound_trachybasalt) & 
+        (y < upper_bound_trachy), 'ROCK'] = 'TRACHYBASALT'
+
+    # Basaltic trachy-andesite classification
+    thisdf.loc[
+        valid_data & 
+        (y >= lower_bound_trachy) & 
+        (y < upper_bound_trachy) & 
+        (y >= upper_bound_trachybasalt) &
+        (y < lower_bound_trachyandesite), 'ROCK'] = 'BASALTIC TRACHYANDESITE'
+
+    # Trachy-andesite classification
+    thisdf.loc[
+        valid_data & 
+        (y >= lower_bound_trachy) &
+        (y < upper_bound_trachy) &
+        (y >= lower_bound_trachyandesite) &
+        (y < lower_bound_trachydacite), 'ROCK'] = 'TRACHYANDESITE'
+    
+    # Trachy-dacite classification
+    thisdf.loc[
+        valid_data & 
+        (x < 69) &
+        (y >= lower_bound_trachy) &
+        (y < upper_bound_trachy) &
+        (y < upper_bound_trachydacite) &
+        (y >= lower_bound_trachydacite), 'ROCK'] = 'TRACHYTE/TRACHYDACITE'
+
+    # Rhyolite classification
     # a,b in ax+b
-    cond_r1 = (float(d[0])*x + float(d[1]) < y)
-    thisdf.loc[cond1 & cond_r1 & (x >= 69), 'ROCK'] = 'RHYOLITE'
+    thisdf.loc[
+        valid_data &
+        (x >= 69) &
+        (x < 77) &
+        (y >= lower_bound_rhyolite), 'ROCK'] = 'RHYOLITE'
 
-    # phonolite
-    thisdf.loc[cond_ab2 & cond_ef3, 'ROCK'] = 'PHONOLITE'
+    # Phonolite classification
+    thisdf.loc[
+        (y >= upper_bound_trachy) &
+        (y < upper_bound_phonolyte) &
+        (y >= lower_bound_phonolyte), 'ROCK'] = 'PHONOLITE'
 
-    # tephri-phonolite
-    thisdf.loc[cond_ab2 & cond_fe3 & cond_ef2 & cond_ba3, 'ROCK'] = 'TEPHRI-PHONOLITE'
+    # Tephri-phonolite classification
+    thisdf.loc[
+        (y >= upper_bound_trachy) & 
+        (y >= lower_bound_phonolyte) & 
+        (y < lower_bound_tephriphonolite) & 
+        (y < upper_bound_tephrite_phono_tephrite_tephrite_phonolite), 'ROCK'] = 'TEPHRI-PHONOLITE'
 
-    # phono-tephrite
-    thisdf.loc[cond_ab2 & cond_fe2 & cond_ef & cond_ba3, 'ROCK'] = 'PHONO-TEPHRITE'
+    # Phono-tephrite classification
+    thisdf.loc[
+        (x >= 45) &
+        (x < 53) &
+        (y >= upper_bound_trachy) &  
+        (y >= lower_bound_tephriphonolite) & 
+        (y < upper_bound_tephrite) & 
+        (y < upper_bound_tephrite_phono_tephrite_tephrite_phonolite), 'ROCK'] = 'PHONO-TEPHRITE'
 
-    # tephrite
+    # Tephrite classification
     # a,b in ax+b
-    t = np.dot(inv(np.array([[41., 1.], [45., 1.]])), np.array([[7.], [5.]]))
-    cond_t1 = (float(t[0])*x + float(t[1]) <= y) & cond_ab2 & cond_ba3 & cond_fe
-    cond_t2 = (float(t[0])*x + float(t[1]) >= y) & (y >= 3) & (x >= 41) & (x < 45)
-    thisdf.loc[cond_t1 | cond_t2, 'ROCK'] = 'TEPHRITE/BASANITE'
 
-    # picro-basalt
-    thisdf.loc[cond1 & (y < 3) & (x >= 41) & (x < 45), 'ROCK'] = 'PICROBASALT'
+    cond_t1 = (y > upper_bound_trachy) & \
+        (y < upper_bound_tephrite_phono_tephrite_tephrite_phonolite) & \
+        (y < upper_bound_tephrite) & \
+        (y >= lower_bound_basanite) & \
+        (x >= 41) & \
+        (x < 49.4)
+    
+    cond_t2 = (y <= upper_bound_tephrite_phono_tephrite_tephrite_phonolite) & \
+        (y < upper_bound_tephrite) & \
+        (y >= 3) & \
+        (x >= 41) & \
+        (x < 45) & \
+        (y < lower_bound_basanite)
+    
+    thisdf.loc[valid_data & (cond_t1 | cond_t2), 'ROCK'] = 'TEPHRITE/BASANITE'
+
+    # Picro-basalt classification
+    thisdf.loc[
+        valid_data & 
+        (y < 3) & 
+        (x >= 41) & 
+        (x < 45), 'ROCK'] = 'PICROBASALT'
 
     return thisdf
     
@@ -592,16 +692,16 @@ def extract_date(entry):
     return result                              
 
 
-def plot_tas(fig):
+def plot_tas():
     """
     Plots a TAS (Total Alkali-Silica) diagram in the background of the given figure.
-
-    Args:
-        fig: The figure to be updated with TAS data.
 
     Returns:
         fig: The updated figure with TAS diagram plotted.
     """
+
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, row_width=[0.85, 0.2], vertical_spacing=0.05)
+    fig.update_layout(title='<b>Chemical Rock Composition from Georoc</b> <br>')  # Set TAS diagram title
 
     # Define the x and y coordinates for different TAS regions
     X = [
@@ -672,6 +772,8 @@ def plot_tas(fig):
             ),
             rows=2, cols=1  # Position in the figure
         )
+
+    fig = add_alkaline_line(fig)
 
     return fig
     
@@ -802,25 +904,23 @@ def plot_chem(thisfig, thisdf, chem1, theselbls):
     Returns: Plots a scatter plot of the chemical composition
 
     """
-     
-    # if dataframe contains VEI info, this plots different symbols depending on VEI       
+
+    # if dataframe contains VEI info, this plots different symbols depending on VEI  
     if 'VEI' in list(thisdf):
         thisdf['symbol'] = np.where(thisdf['VEI'].isnull(), 'circle', 
                                     (np.where(thisdf['VEI'].astype('float') <= 2, 'circle', 'triangle-up')))
+        
+        full_symbol = {'circle': 'VEI<=2', 'triangle-up': 'VEI>=3'}
+        short_symbol = ['circle', 'triangle-up'] 
     else:
         # sometimes two materials are present, this is to retrieve the first one
         thisdf['MATERIAL'] = thisdf['MATERIAL'].apply(process_material)
         # adjusts symbol based on material
-        thisdf['symbol'] = thisdf['MATERIAL'].replace(to_replace={'WR': 'circle', 'GL': 'diamond', 'INC': 'square', 'MIN': 'x', 'UNKNOWN': 'diamond-wide'})
-        
-    # plots by symbols (that is material)
-    if 'VEI' in list(thisdf):
-        full_symbol = {'circle': 'VEI<=2', 'triangle-up': 'VEI>=3'}
-        short_symbol = ['circle', 'triangle-up'] 
-    else:
+        thisdf['symbol'] = thisdf['MATERIAL'].replace(to_replace={'WR': 'circle', 'GL': 'diamond', 'INC': 'square', 'MIN': 'x', 'UNKNOWN': 'diamond-wide', 'WHOLE ROCK': 'circle', 'GLASS': 'diamond', 'INCLUSION': 'square'})
+
         full_symbol = {'circle': 'whole rock', 'diamond': 'volcanic glass', 'square': 'inclusion', 'x': 'mineral', 'diamond-wide': 'UNKNKOWN'}
         short_symbol = ['circle', 'diamond', 'square', 'x', 'diamond-wide'] 
-    
+
     for symbol in short_symbol:
         thismat = thisdf[thisdf['symbol'] == symbol]
         # custom data
@@ -828,6 +928,7 @@ def plot_chem(thisfig, thisdf, chem1, theselbls):
             thiscustomdata = thismat[chem1[1]].astype(str)+' '+chem1[1]+' '+thismat['MATERIAL']+' VEI='+thismat['VEI']  
         else:
             thiscustomdata = thismat[chem1[1]].astype(str)+' '+chem1[1]+', '+thismat['ROCK']
+
         # plots
         thisfig.add_traces(
             go.Scatter(
@@ -843,8 +944,7 @@ def plot_chem(thisfig, thisdf, chem1, theselbls):
             ),
             rows=2, cols=1,
         )
-    for symbol in short_symbol:
-        thismat = thisdf[thisdf['symbol'] == symbol]    
+
         # plots histogram on top
         thisfig.add_traces(
             go.Histogram(
@@ -881,7 +981,7 @@ def plot_chem(thisfig, thisdf, chem1, theselbls):
     return thisfig
     
         
-def match_GVPdates(volcano_name, date, gvpvname, dict_georoc_sl, dict_volcano_file, df_eruption):
+def match_GVPdates(volcano_name, date, gvpvname, dict_georoc_sl, dict_georoc_ls, dict_volcano_file, df_eruption):
     """
 
     Args:
@@ -895,7 +995,7 @@ def match_GVPdates(volcano_name, date, gvpvname, dict_georoc_sl, dict_volcano_fi
     date_gvp = []   
     
     # retrieves dates from georoc
-    dfgeoroc = load_georoc(volcano_name, dict_georoc_sl, dict_volcano_file)
+    dfgeoroc = load_georoc(volcano_name, dict_georoc_sl, dict_georoc_ls, dict_volcano_file)
     dvv = dfgeoroc[dfgeoroc['LOCATION-4'] == ' ' + volcano_name]
     dmy = dvv[['ERUPTION DAY', 'ERUPTION MONTH', 'ERUPTION YEAR']]
     dmy = dmy.dropna(how='all')
@@ -989,7 +1089,7 @@ def filter_date(thisdate, dff):
     return dff
     
 
-def update_chemchart(thisvolcano_name, thisfig, thisdate, grnames, dict_georoc_sl, dict_volcano_file):
+def update_chemchart(thisvolcano_name, thisdate, grnames, dict_georoc_sl, dict_georoc_ls, dict_volcano_file):
     """
 
     Args:
@@ -1005,7 +1105,7 @@ def update_chemchart(thisvolcano_name, thisfig, thisdate, grnames, dict_georoc_s
     
     # not sure why I need to load again but anyway
     if thisvolcano_name != "start" and thisvolcano_name is not None:
-        dfgeoroc = load_georoc(thisvolcano_name, dict_georoc_sl, dict_volcano_file)
+        dfgeoroc = load_georoc(thisvolcano_name, dict_georoc_sl, dict_georoc_ls, dict_volcano_file)
     
     # checks if data is present
     if thisvolcano_name is not None and thisvolcano_name.upper() in grnames:
@@ -1028,7 +1128,7 @@ def update_chemchart(thisvolcano_name, thisfig, thisdate, grnames, dict_georoc_s
         dff = pd.DataFrame(data=d)
 
     # adds the TAS layout
-    thisfig = plot_tas(thisfig)
+    thisfig = plot_tas()
     # draws the scatter plot
     thisfig = plot_chem(thisfig, dff, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], LBLS)
     
@@ -1052,7 +1152,7 @@ def update_chemchart(thisvolcano_name, thisfig, thisdate, grnames, dict_georoc_s
     return thisfig, dff
     
 
-def update_onedropdown(thisvolcano_name, grnames, dict_georoc_sl, dict_volcano_file):
+def update_onedropdown(thisvolcano_name, grnames, dict_georoc_sl, dict_georoc_ls, dict_volcano_file):
     """
 
     Args:
@@ -1066,7 +1166,7 @@ def update_onedropdown(thisvolcano_name, grnames, dict_georoc_sl, dict_volcano_f
     if thisvolcano_name is not None and thisvolcano_name != "start" and thisvolcano_name.upper() in grnames:
         # extracts by name
         # loads Georoc data based on volcano_name
-        dfgeoroc = load_georoc(thisvolcano_name, dict_georoc_sl, dict_volcano_file)
+        dfgeoroc = load_georoc(thisvolcano_name, dict_georoc_sl, dict_georoc_ls, dict_volcano_file)
 
         # removes the nan rows for the 3 chemicals of interest
         dff = dfgeoroc.dropna(
@@ -1103,27 +1203,25 @@ def update_onedropdown(thisvolcano_name, grnames, dict_georoc_sl, dict_volcano_f
     return opts
 
 
-def georoc_majorrocks(georoc_petdb_tect_setting, dict_georoc_sl, dict_volcano_file): 
+def georoc_majorrocks(rock_tect_setting, df_volcano, dict_georoc_sl, dict_georoc_ls, dict_volcano_file, dict_gvp_georoc): 
     """
     Generates a dataframe containing volcano names and their corresponding GEOROC major rocks (1, 2, and 3)
     for specified tectonic settings.
 
     Args:
-        georoc_petdb_tect_setting (list): List of tectonic settings from Georoc and PetDB.
+        rock_tect_setting (list): List of tectonic settings from Georoc and PetDB.
 
     Returns:
         pd.DataFrame: DataFrame with volcano names and their GEOROC major rocks.
     """
     
-    georoc_petdb_tect_setting = [x for x in georoc_petdb_tect_setting if x != None and x != 'PetDB']
-    
     # Determine the tectonic settings to use for GEOROC
-    if 'GEOROC' in georoc_petdb_tect_setting and len(georoc_petdb_tect_setting)==1:
+    if len(rock_tect_setting) == 0:
         # format tectonic setting names
         tect_georoc = [x.strip().replace(' ', '_').replace('/',',') for x in NEW_TECTONIC_SETTINGS]
     else: 
         # new tectonic settings
-        tect_georoc = [x.strip().replace(' ', '_').replace('/',',') for x in georoc_petdb_tect_setting if (x !='GEOROC') and (x!='PetDB')]
+        tect_georoc = [x.strip().replace(' ', '_').replace('/',',') for x in rock_tect_setting]
         
     alldf = pd.DataFrame()
         
@@ -1159,7 +1257,7 @@ def georoc_majorrocks(georoc_petdb_tect_setting, dict_georoc_sl, dict_volcano_fi
             for thisvolcano in volcanoesbyts:
                 # Map GVP volcano name to GEOROC name
                 thisvolcano = dict_gvp_georoc[thisvolcano]
-                thisdf = load_georoc(thisvolcano, dict_georoc_sl, dict_volcano_file)
+                thisdf = load_georoc(thisvolcano, dict_georoc_sl, dict_georoc_ls, dict_volcano_file)
                 
                 for mat in ['WR', 'GL', 'INC']:   
                     thisdftmp = thisdf[thisdf['MATERIAL'].str.contains(mat)]
@@ -1206,7 +1304,7 @@ def georoc_majorrocks(georoc_petdb_tect_setting, dict_georoc_sl, dict_volcano_fi
     return alldf
 
 
-def update_georock_chart(thisdf, database, dict_georoc_gvp): 
+def update_georock_chart(thisdf, database, dict_georoc_gvp, rock_tect_setting): 
     """
     Updates the GEOROC major rocks sunburst chart.
 
@@ -1214,6 +1312,7 @@ def update_georock_chart(thisdf, database, dict_georoc_gvp):
         thisdf: DataFrame containing rock data from GEOROC and/or PetDB.
         database: Indicates if GEOROC and/or PetDB data is being used.
         dict_georoc_gvp: Dictionary mapping Georoc names to GVP names.
+        rock_tect_setting (list): Selected tectonic settings from GEOROC and PetDB.
 
     Returns: 
         A Plotly sunburst chart representing major rock compositions.
@@ -1272,6 +1371,7 @@ def update_georock_chart(thisdf, database, dict_georoc_gvp):
         # Create a new DataFrame with the major rocks
         thisdf = pd.DataFrame({'db Major Rock 1': mr1, 'db Major Rock 2': mr2, 'db Major Rock 3': mr3})             
     else:
+
         thistitle = '<b>Rock Composition</b><br>'
 
     # Create the sunburst chart if data exists
@@ -1299,8 +1399,11 @@ def update_georock_chart(thisdf, database, dict_georoc_gvp):
             marker=dict(colorscale='Greys')
         ))
 
+    # Prepare tectonic settings to include in the title
+    tect_settings_str = ', '.join(rock_tect_setting) if rock_tect_setting else 'No specific tectonic setting'
+
     # Add a footer with the count of volcanoes
-    txt = f'{len(thisdf.index)} volcano(es)'
+    txt = f'{len(thisdf.index)} volcano(es)<br><sub>Tectonic settings: {tect_settings_str}</sub>'
     fig.update_layout(
         annotations=[dict(
             xref='paper', yref='paper',
@@ -1312,117 +1415,93 @@ def update_georock_chart(thisdf, database, dict_georoc_gvp):
     return fig
     
     
-def createGEOROCaroundGVP():
+def create_georoc_around_gvp(df_volcano, df_volcano_no_eruption):
     """
-    Recreates the file GEOROCaroundGVP.csv and returns its content as a DataFrame.
+    Recreates the GEOROCaroundGVP.csv file and returns its content as a DataFrame.
+
+    Args:
+        df_volcano (pd.DataFrame): DataFrame of volcanoes with eruptions.
+        df_volcano_no_eruption (pd.DataFrame): DataFrame of volcanoes without eruptions.
 
     Returns:
-        pd.DataFrame: DataFrame containing the GEOROC samples matching GVP volcanoes.
+        pd.DataFrame: DataFrame containing GEOROC samples matching GVP volcanoes.
     """
 
-    # Combine volcano names and coordinates from erupted and non-erupted data
-    gvp_names = df_volcano[['Volcano Name', 'Latitude', 'Longitude']]
-    gvp_names = gvp_names.append(df_volcano_no_eruption[['Volcano Name', 'Latitude', 'Longitude']])
-    gvp_names = gvp_names[gvp_names['Volcano Name'] != 'Unnamed'] # removes unnamed
-
-    gvp_names['Volcano Name'] = gvp_names['Volcano Name'].apply(lambda name: name.replace('Within ', 'Intra'))
-
-
-    # List all folders in the GEOROC-GVP mapping directory
-    path_for_arcs = os.listdir(GEOROC_GVP_DIR)
-    lst_arcs = []
+    gvp_names = pd.concat([df_volcano[['Volcano Name', 'Latitude', 'Longitude']],
+                           df_volcano_no_eruption[['Volcano Name', 'Latitude', 'Longitude']]])
     
+    # Remove unnamed volcanoes and replace 'Within' with 'Intra' in names
+    gvp_names = gvp_names[gvp_names['Volcano Name'] != 'Unnamed']
+    gvp_names['Volcano Name'] = gvp_names['Volcano Name'].str.replace('Within ', 'Intra')
+
+    # List all folder paths in the GEOROC-GVP mapping directory
+    lst_arcs = [f"{folder}/{f[:-4]}.csv" for folder in os.listdir(GEOROC_GVP_DIR)
+                for f in os.listdir(os.path.join(GEOROC_GVP_DIR, folder))]
+
     # Initialize an empty DataFrame to store GEOROC data
     df_georoc = pd.DataFrame()
 
-    for folder in path_for_arcs:
-        # List all files in each folder, only consider .csv files, takes names from the Mapping folder in case different copies of the csv exist
-        tmp = os.listdir(os.path.join(GEOROC_GVP_DIR, folder))
-        lst_arcs += [f"{folder}/{f[:-4]}.csv" for f in tmp]
-        
+    # Loop through each file and process GEOROC data
     for arc in lst_arcs:
-
-        # this finds the latest file
+        # Fix and read the file path
         newarc = fix_pathname(arc)
-
-        # reads the file
         dftmp = pd.read_csv(os.path.join(GEOROC_DATASET_DIR, newarc), low_memory=False, encoding='latin1')
-        
-        if 'Inclusions_comp' not in arc and 'ManualDataset' not in arc:
-            # adds citations
-            dftmp = load_refs(dftmp)
-            # keeps only volcanic rocks
-            dfvol = dftmp[dftmp["ROCK TYPE"] == 'VOL']
-            dfvol = dfvol.drop('ROCK TYPE', 1)
 
+        # Process based on specific conditions (e.g., Inclusions, volcanic rocks)
+        if 'Inclusions_comp' not in arc and 'ManualDataset' not in arc:
+            dfvol = load_refs(dftmp)[dftmp["ROCK TYPE"] == 'VOL'].drop('ROCK TYPE', axis=1)
+        elif 'Inclusions_comp' in arc:
+            dfvol = fix_inclusion(load_refs(dftmp))
+            dfvol['MATERIAL'] = 'INC'
         else:
-            if 'Inclusions_comp' in arc:
-                # adds citations
-                dftmp = load_refs(dftmp)
-                dfvol = dftmp
-                # different names
-                dfvol = fix_inclusion(dfvol)
-                dfvol['MATERIAL'] = 'INC'
-            else:
-                dfvol = dftmp
-                # missing isotopes
-                # for cl in ['PB206_PB204', 'PB207_PB204', 'PB208_PB204', 'SR87_SR86', 'ND143_ND144']:
-                #   dfvol[cl] = np.nan
-        
-        # gathers the GEOROC data of interest (to be displayed on the map, and before that, for computing rocks)   
-        dfvol = dfvol[['LOCATION', 'LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME', 'CITATIONS', 'MATERIAL'] + OXIDES ] #+ ['PB206_PB204', 'PB207_PB204', 'PB208_PB204', 'SR87_SR86', 'ND143_ND144']]
-        dfvol['arc'] = [arc]*len(dfvol.index)
-        # removes the complete refs and keeps the names and years
-        dfvol['CITATIONS'] = dfvol['CITATIONS'].str.split('===').str[0]
-        df_georoc = df_georoc.append(dfvol)
-        
-    # FEO normalization     
-    df_georoc = with_FEOnorm(df_georoc)
-    # add rock names
-    df_georoc = guess_rock(df_georoc)
-    # rock names excluding inclusions
+            dfvol = dftmp
+
+        # Keep specific columns of interest and add the 'arc' information
+        dfvol = dfvol[['LOCATION', 'LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX',
+                       'SAMPLE NAME', 'CITATIONS', 'MATERIAL'] + OXIDES]
+        dfvol['arc'] = arc
+        dfvol['CITATIONS'] = dfvol['CITATIONS'].str.split('===').str[0]  # Keep only first part of the citation
+
+        # Append to the GEOROC DataFrame
+        df_georoc = pd.concat([df_georoc, dfvol])
+
+    # Normalize data and assign rock types
+    df_georoc = guess_rock(normalize_oxides_with_feot(df_georoc))
+
+    # Add 'ROCK no inc' column and blank out rock names for inclusions
     df_georoc['ROCK no inc'] = df_georoc['ROCK']
     df_georoc.loc[df_georoc['MATERIAL'] == 'INC', 'ROCK no inc'] = ''
-            
-    # GVP volcanoes, latitudes and longitudes
-    gvp_nm = gvp_names['Volcano Name']
-    gvp_lat = gvp_names['Latitude']
-    gvp_long = gvp_names['Longitude']
 
-    colgr = ['LOCATION', 'LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'SAMPLE NAME', 'CITATIONS', 'ROCK', 'ROCK no inc', 'arc', 'SIO2(WT%)']
-
-    # initializes dataframe to contatin the GEOROC samples matching GVP volcanoes
+    # Initialize DataFrame to store matching volcano samples
     match = pd.DataFrame()
 
-    for nm, lt, lg in zip(gvp_nm, gvp_lat, gvp_long):
-        lt_cond = (df_georoc['LATITUDE MIN'].astype(float)-.5 <= lt) & (df_georoc['LATITUDE MAX'].astype(float)+.5 >= lt)
-        lg_cond = (df_georoc['LONGITUDE MIN'].astype(float)-.5 <= lg) & (df_georoc['LONGITUDE MAX'].astype(float)+.5 >= lg)
-        dfgeo = df_georoc[(lt_cond) & (lg_cond)][colgr]
+    # Match GEOROC samples to GVP volcanoes based on lat/long
+    for name, latitude, longitude in tqdm(zip(gvp_names['Volcano Name'], gvp_names['Latitude'], gvp_names['Longitude']),
+                           total=len(gvp_names)):
+        lat_cond = (df_georoc['LATITUDE MIN'].astype(float)-0.5 <= latitude) & (df_georoc['LATITUDE MAX'].astype(float)+0.5 >= latitude)
+        long_cond = (df_georoc['LONGITUDE MIN'].astype(float)-0.5 <= longitude) & (df_georoc['LONGITUDE MAX'].astype(float)+0.5 >= longitude)
 
+        dfgeo = df_georoc[lat_cond & long_cond][['LOCATION', 'LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN',
+                                                 'LONGITUDE MAX', 'SAMPLE NAME', 'CITATIONS', 'ROCK', 'ROCK no inc',
+                                                 'arc', 'SIO2(WT%)']]
+        
         if not dfgeo.empty:
-            dfgeo['Volcano Name'] = [nm]*len(dfgeo.index)
-            dfgeo['Latitude'] = [lt]*len(dfgeo.index)
-            dfgeo['Longitude'] = [lg]*len(dfgeo.index)
-            match = match.append(dfgeo)
+            dfgeo['Volcano Name'], dfgeo['Latitude'], dfgeo['Longitude'] = name, latitude, longitude
+            match = pd.concat([match, dfgeo])
 
     # Remove duplicate entries
     match = match.drop_duplicates()
 
-    # group sample names when same location
-    matchgroup = match.groupby(['LOCATION', 'LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'arc']).agg(lambda x: list(x))
+    # Group by location and aggregate multiple sample names and rocks
+    matchgroup = match.groupby(['LOCATION', 'LATITUDE MIN', 'LATITUDE MAX', 'LONGITUDE MIN', 'LONGITUDE MAX', 'arc']).agg(list)
     matchgroup = matchgroup.drop(columns=['Latitude', 'Longitude'])
 
-    # attaches a new tectonic setting 
-    matchgroup['Volcano Name'] = matchgroup['Volcano Name'].apply(lambda x: list(set([find_new_tect_setting(y) for y in x])))
-    
-    # sometimes the same sample is found in the intersection of several volcanoes
-    matchgroup['SAMPLE NAME'] = matchgroup['SAMPLE NAME'].apply(lambda x: list(set([y.split('/')[0].split('[')[0] for y in x])))
-    
-    # this shortens and keeps only the first 3 samples 
-    matchgroup['SAMPLE NAME'] = matchgroup['SAMPLE NAME'].apply(lambda x: x if len(x) <= 3 else list(set(x[0:3]))+['+'+str(len(x)-3)])
-    
-    # this creates a single string out of different sample names attached to one location
-    matchgroup['SAMPLE NAME'] = matchgroup['SAMPLE NAME'].apply(lambda x: " ".join(x))
+    # Assign tectonic setting and process sample names
+    matchgroup['Volcano Name'] = matchgroup['Volcano Name'].apply(lambda x: list(set([find_new_tect_setting(y, df_volcano, df_volcano_no_eruption) for y in x])))
+    matchgroup['SAMPLE NAME'] = matchgroup['SAMPLE NAME'].apply(lambda x: list(set([y.split('/')[0].split('[')[0] for y in x]))[:3] + (['+' + str(len(x)-3)] if len(x) > 3 else []))
+    matchgroup['SAMPLE NAME'] = matchgroup['SAMPLE NAME'].apply(' '.join)
+
+    # Aggregate rock types and calculate SiO2 mean
     matchgroup['ROCK'] = matchgroup['ROCK'].apply(lambda x: list(Counter(x).items()))
     matchgroup['ROCK no inc'] = matchgroup['ROCK no inc'].apply(lambda x: list(Counter(x).items()))
     matchgroup['SIO2(WT%)mean'] = matchgroup['SIO2(WT%)'].apply(lambda x: statistics.mean(x))
@@ -1444,7 +1523,7 @@ def retrievedf_fromfigure(currentfig):
     """
     # retrieves records from the figure
     recs = [d for d in currentfig['data'] if 'customdata' in d.keys() and len(d['marker']['symbol']) > 0]
-    rocks = [[x.split(',')[1].strip() for x in d['customdata']] for d in recs]
+    rocks = [[x.split(',')[1].strip().replace("[('","").replace("'","") for x in d['customdata']] for d in recs]
     mats = [d['marker']['symbol'] for d in recs]
     xs = [d['x'] for d in recs]
     ys = [d['y'] for d in recs]
@@ -1588,7 +1667,7 @@ def perc_rock():
     return vperc
 
 
-def process_georoc_data(dfgeogr, with_text, volcano_name, with_text_match, thisgeogr, dict_georoc_sl, dict_volcano_file):
+def process_georoc_data(dfgeogr, with_text, volcano_name, with_text_match, thisgeogr, dict_georoc_sl, dict_georoc_ls, dict_volcano_file):
     """Processes GEOROC data for selected points."""
     gr_idx = dfgeogr.set_index(['LATITUDE', 'LONGITUDE'])
     whichfiles = list(gr_idx.loc[with_text, 'arc'].unique())
@@ -1596,7 +1675,7 @@ def process_georoc_data(dfgeogr, with_text, volcano_name, with_text_match, thisg
 
     dfloaded = pd.DataFrame()
     if with_text_match:
-        dfloaded = load_georoc(volcano_name, dict_georoc_sl, dict_volcano_file)
+        dfloaded = load_georoc(volcano_name, dict_georoc_sl, dict_georoc_ls, dict_volcano_file)
 
     for pathcsv in set(whichfiles):
         pathcsv = fix_pathname(pathcsv)
@@ -1607,7 +1686,7 @@ def process_georoc_data(dfgeogr, with_text, volcano_name, with_text_match, thisg
             dftmp = fix_inclusion(dftmp)
         dfloc = guess_rock(dftmp[dftmp['LOCATION'].isin(whichlocation)])
         dfloaded = pd.concat([dfloaded, dfloc])
-
+    
     if not dfloaded.empty:
         dfloaded = clean_and_prepare_georoc(dfloaded)
         thisgeogr = pd.concat([thisgeogr, dfloaded])
@@ -1617,7 +1696,7 @@ def process_georoc_data(dfgeogr, with_text, volcano_name, with_text_match, thisg
 
 def clean_and_prepare_georoc(dfloaded):
     """Clean and normalize GEOROC data."""
-    dfloaded = with_FEOnorm(dfloaded)
+    dfloaded = normalize_oxides_with_feot(dfloaded)
     dfloaded = dfloaded.dropna(subset=['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], how='all')
     dfloaded = detects_chems(dfloaded, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], MORE_CHEMS, LBLS)
     dfloaded['db'] = 'GEOROC'

@@ -105,7 +105,7 @@ def register_callbacks_page3(app):
         # If 'Eruption Frequency' is selected, compute eruption frequency and update correlation matrix
         if 'Eruption Frequency' in features:
             # Compute eruption periods for short, medium, and long eruptions
-            dfd, dfr = compute_eruptionperiods(vperc.keys())
+            dfd, dfr = compute_eruptionperiods(vperc.keys(), df_eruption)
             
             # Group the data by volcano name and calculate the number of eruptions
             dfgrp = (dfd[['Volcano Name', 'Eruption Number']]

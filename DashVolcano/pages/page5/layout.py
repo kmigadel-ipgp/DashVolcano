@@ -84,20 +84,17 @@ def create_dropdown_section():
 def create_chemical_plots_section():
     """Creates the chemical plots section with two graphs."""
     return dbc.Row([
-        # First chemical plot
-        dbc.Col([
-            html.Div(
-                dcc.Graph(id="page5-chem-chart-georoc-1"),
-            ),
-        ], className="card"),
-        
-        # Second chemical plot
-        dbc.Col([
-            html.Div(
-                dcc.Graph(id="page5-chem-chart-georoc-2"),
-            ),
-        ], className="card"),
+        create_graphs_column("1"),
+        create_graphs_column("2")
     ], align='center')
+
+
+def create_graphs_column(id):
+    """Creates a column of graphs."""
+    return dbc.Col([
+        html.Div(dcc.Graph(id=f"page5-chem-chart-georoc-{id}")),
+        html.Div(id=f"page5-tas-title-{id}", style={'whiteSpace': 'pre-line'})
+    ], className="card")
 
 def create_chronogram_section():
     """Creates the chronogram section with filters on top and the VEI chart below."""

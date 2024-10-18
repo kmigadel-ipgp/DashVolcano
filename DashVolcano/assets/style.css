@@ -29,6 +29,11 @@ body {
     max-width: 800px;
 }
 
+.information {
+    font-size: 12px;
+    color: #ff0010
+}
+
 /* title for all user options */
 .menu-title {
     margin-bottom: 6px;
@@ -47,7 +52,6 @@ body {
 .check {
     display: flex;
     justify-content: left;
-    padding-top: 20px;
     margin: 0px 0px 0px 0px;
     background-color: #FFFFFF;
     display: block;
@@ -60,6 +64,7 @@ body {
 /* makes a shadow below the box */
 .card {
     margin-bottom: 24px;
+    padding: 5px;
     box-shadow: 0 4px 6px 0 rgba(0, 0, 0, 0.18);
 }
 

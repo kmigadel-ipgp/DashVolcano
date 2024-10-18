@@ -78,7 +78,6 @@ def create_graphs_column(id):
     return dbc.Col([
         html.Div(dcc.Graph(id=f"page2-chem-chart-georoc-{id}")),
         html.Div(id=f"page2-tas-title-{id}", style={'whiteSpace': 'pre-line'}),
-        dcc.Store(id=f"page2-store-{id}"),
         html.Div(dcc.Graph(id=f"page2-oxyde-chart-{id}", style={'height': '1000px'})),
         html.Div(dcc.Graph(id=f"page2-vei-chart-{id}")),
     ], className="card")

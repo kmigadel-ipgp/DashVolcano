@@ -1,3 +1,4 @@
+import os
 import plotly.graph_objs as go
 import plotly.express as px
 import pandas as pd
@@ -7,15 +8,16 @@ import plotly.graph_objs as go
 
 from plotly.subplots import make_subplots
 
-from constants.shared_data import df_volcano, df_volcano_no_eruption, dict_georoc_sl, dict_volcano_file, dict_georoc_gvp, lst_names, df_eruption, grnames
-from constants.tectonics import NEW_TECTONIC_SETTINGS
+from constants.shared_data import df_volcano, df_volcano_no_eruption, dict_georoc_sl, dict_georoc_ls, dict_volcano_file, dict_georoc_gvp, lst_names, df_eruption, grnames
 from constants.chemicals import LBLS, LBLS2
 from constants.rocks import GEOROC_ROCKS, ALL_ROCKS, ROCK_COL
-from constants.paths import GEOROC_AROUND_GVP_FILE, GEOROC_AROUND_PETDB_FILE
+from constants.paths import GEOROC_AROUND_GVP_FILE, GEOROC_AROUND_PETDB_FILE, GEOROC_DATASET_DIR
 
 # import functions to process GVP, GEOROC and PetDB data
-from functions.georoc import load_georoc, guess_rock, detects_chems, plot_chem, process_georoc_data, clean_and_prepare_georoc, update_onedropdown, update_chemchart, add_alkaline_line, add_alkaline_series, update_subtitle, plot_tas, match_GVPdates, find_new_tect_setting, rocks_to_color
+from functions.georoc import load_georoc, detects_chems, plot_chem, process_georoc_data, clean_and_prepare_georoc, update_onedropdown, update_chemchart, add_alkaline_series, update_subtitle, plot_tas, match_GVPdates, find_new_tect_setting, rocks_to_color, guess_rock
 from functions.gvp import retrieve_vinfo
+
+from helpers.helpers import expand_rows_with_lists, replace_nan_in_string_list
 
 def clean_tas_data(tas_data):
     """
@@ -47,7 +49,7 @@ def clean_tas_data(tas_data):
     return tas_data
 
 
-def update_tas(fig, volcano_name, selectedpts, georoc_petdb_tect_setting):
+def update_tas(fig, volcano_name, selectedpts, rock_tect_setting):
     """
     Updates the TAS diagram based on selected points and volcano data.
 
@@ -55,7 +57,7 @@ def update_tas(fig, volcano_name, selectedpts, georoc_petdb_tect_setting):
         fig: The TAS figure object to update.
         volcano_name: Selected volcano name (GEOROC).
         selectedpts: Selected points data (box or lasso tool).
-        georoc_petdb_tect_setting: Tectonic filter selected from the GEOROC and PetDB database.
+        rock_tect_setting: Tectonic filter selected from the GEOROC and PetDB database.
 
     Returns:
         A tuple containing the updated TAS figure and geochemical data.
@@ -80,22 +82,23 @@ def update_tas(fig, volcano_name, selectedpts, georoc_petdb_tect_setting):
 
         # Process PetDB data
         if without_text:
-            thisgeopdb = dfgeopdb.set_index(['LATITUDE', 'LONGITUDE']).loc[without_text, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)', 'CAO(WT%)', 'FEOT(WT%)', 'MGO(WT%)', 'MATERIAL']]
+            thisgeopdb = dfgeopdb.set_index(['LATITUDE', 'LONGITUDE']).loc[without_text, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)', 'CAO(WT%)', 'FEOT(WT%)', 'MGO(WT%)', 'MATERIAL', 'ROCK']]
             thisgeopdb = clean_and_convert_geopdb(thisgeopdb)
             thisgeogr = pd.concat([thisgeogr, thisgeopdb])
 
         # Process GEOROC data based on selected points
-        thisgeogr = process_georoc_data(dfgeogr, with_text, volcano_name, with_text_match, thisgeogr, dict_georoc_sl, dict_volcano_file)
+        if with_text:
+            thisgeogr = process_georoc_data(dfgeogr, with_text, volcano_name, with_text_match, thisgeogr, dict_georoc_sl, dict_georoc_ls, dict_volcano_file)
 
     # If no points are selected, process the volcano name
     elif volcano_name and volcano_name != "start":
-        dfloaded = load_georoc(volcano_name, dict_georoc_sl, dict_volcano_file)
+        dfloaded = load_georoc(volcano_name, dict_georoc_sl, dict_georoc_ls, dict_volcano_file)
         dfloaded = clean_and_prepare_georoc(dfloaded)
         thisgeogr = pd.concat([thisgeogr, dfloaded])
 
     # Plot the TAS diagram if geochemical data is available
     if not thisgeogr.empty:
-        fig = plot_chem(fig, thisgeogr, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], LBLS2 if 'PetDB' in georoc_petdb_tect_setting else LBLS)
+        fig = plot_chem(fig, thisgeogr, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], LBLS2 if 'PetDB' in rock_tect_setting else LBLS)
         add_subtitle(fig, thisgeogr)
     else:
         fig.update_layout(title='<b>TAS diagram</b><br>', height=700)
@@ -113,32 +116,13 @@ def clean_and_convert_geopdb(thisgeopdb):
     Returns:
         Cleaned and processed DataFrame with corrected formats and types.
     """
-
-    # Step 1: Replace string 'nan' with '0', apply ast.literal_eval to convert strings to lists or proper types,
-    # and flatten each column's values into a dictionary.
-    convert_df = {
-        column: [item for sublist in thisgeopdb[column].str.replace('nan', '0').apply(ast.literal_eval) for item in sublist]
-        for column in thisgeopdb.columns
-    }
-
-    # Step 2: Convert the dictionary back to a DataFrame after cleaning.
-    thisgeopdb = pd.DataFrame(convert_df)
-
-    # Step 3: Convert all columns to floats except for the 'MATERIAL' column.
-    thisgeopdb.loc[:, thisgeopdb.columns != 'MATERIAL'] = thisgeopdb.loc[:, thisgeopdb.columns != 'MATERIAL'].astype(float)
-
-    # Step 4: Infer and update the rock types in the 'MATERIAL' column.
-    thisgeopdb = guess_rock(thisgeopdb)
-
-    # Step 5: Add a new column 'db' to indicate the data source as 'PetDB'.
-    thisgeopdb['db'] = 'PetDB'
-
-    # Step 6: Drop rows where all relevant chemical values are missing (e.g., SIO2, NA2O, K2O).
-    thisgeopdb = thisgeopdb.dropna(subset=['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], how='all')
-
-    # Step 7: Detect abnormal or outlier chemical compositions and flag them for further analysis.
+    
     morechemsh = ['FEOT(WT%)', 'CAO(WT%)', 'MGO(WT%)']  # Additional chemical columns to check.
+    thisgeopdb = thisgeopdb.apply(lambda col: col.apply(lambda val: replace_nan_in_string_list(val, col.name)))
+    thisgeopdb = expand_rows_with_lists(thisgeopdb)
     thisgeopdb = detects_chems(thisgeopdb, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], morechemsh, LBLS2)
+    thisgeopdb = guess_rock(thisgeopdb)
+    thisgeopdb['db'] = 'PetDB'
 
     # Return the cleaned and processed DataFrame.
     return thisgeopdb
@@ -154,18 +138,21 @@ def add_subtitle(fig, thisgeogr):
     )
 
 
-def update_radar(georoc_petdb_tect_setting, thisvolcano, tas_data, sample_interval):
+def update_radar(rock_database, rock_tect_setting, thisvolcano, tas_data, sample_interval):
     """
     Update a radar chart showing the frequency of rock samples based on tectonic settings.
 
     Args:
-        georoc_petdb_tect_setting (list): List of selected tectonic settings from GEOROC and PetDB.
+        rock_database: List of volcanic rock databases selected.
+        rock_tect_setting (list): List of selected tectonic settings from GEOROC and PetDB.
         thisvolcano (str): Name of the selected volcano.
         tas_data (DataFrame): DataFrame containing rock sample data.
 
     Returns:
         go.Figure: A Plotly figure object containing the radar chart.
     """
+    number_petdb_samples = 0
+    number_georoc_samples = 0
     # min and max no of samples
     # this will be used per database, namely we check whether the right number is present in either db
     # we do not try to see whether the right number is present when combined, even if both dbs are chosen
@@ -175,42 +162,37 @@ def update_radar(georoc_petdb_tect_setting, thisvolcano, tas_data, sample_interv
     # Creates an empty DataFrame, in case no setting is valid
     dfgeo = pd.DataFrame({'ROCK': [], 'Volcano Name': [], 'db': []})
     # Load relevant data based on selected tectonic settings
-    if 'PetDB' in georoc_petdb_tect_setting:
+    if 'PetDBaroundGVP.csv' in os.listdir(GEOROC_DATASET_DIR) and 'PetDB' in rock_database:
         # Load PetDB data and process the Volcano Name column
         dftmp = pd.read_csv(GEOROC_AROUND_PETDB_FILE)[['ROCK', 'Volcano Name']]
         dftmp['Volcano Name'] = dftmp['Volcano Name'].apply(lambda x: set(ast.literal_eval(x)))
         dftmp['Volcano Name'] = dftmp['Volcano Name'].apply(lambda y: [x.split(';') for x in y])
         dftmp['Volcano Name'] = dftmp['Volcano Name'].apply(lambda y: list(set([item for sublist in y for item in sublist])))
         dftmp['Volcano Name'] = dftmp['Volcano Name'].apply(lambda x: [find_new_tect_setting(y, df_volcano, df_volcano_no_eruption) for y in x if y != ''])
-        dftmp['db'] = ['PetDB'] * len(dftmp.index)
+        dftmp['db'] = 'PetDB'
         # Convert string representations of lists back to actual lists
         dftmp['ROCK'] = dftmp['ROCK'].apply(lambda y: ast.literal_eval(y) if isinstance(y, str) else [])
         # Filters based on no of samples
         scount = dftmp['ROCK'].apply(lambda y: sum([x[1] for x in y]))
         dftmp = dftmp[(scount >= min_samples) & (scount <= max_samples)]
-        print("no of petdb samples")
-        print(scount[(scount >= min_samples) & (scount <= max_samples)].sum())
         # Combines
         dfgeo = pd.concat([dfgeo, dftmp])
-    if 'GEOROC' in georoc_petdb_tect_setting:
+    if 'GEOROCaroundGVP.csv' in os.listdir(GEOROC_DATASET_DIR) and 'GEOROC' in rock_database:
         # Load GEOROC data and process the Volcano Name column
         dftmp =  pd.read_csv(GEOROC_AROUND_GVP_FILE)[['ROCK', 'Volcano Name']]
-        dftmp['Volcano Name'] = dftmp['Volcano Name'].apply(lambda x: list(set(ast.literal_eval(x))))
-        dftmp['db'] = ['GEOROC'] * len(dftmp.index)
+        dftmp['Volcano Name'] = dftmp['Volcano Name'].apply(lambda x: list(set([name.replace('Within ', 'Intra') for name in ast.literal_eval(x)])))
+        dftmp['db'] = 'GEOROC'
         # Convert string representations of lists back to actual lists
         dftmp['ROCK'] = dftmp['ROCK'].apply(lambda y: ast.literal_eval(y) if isinstance(y, str) else [])
         # Filters based on no of samples
         scount = dftmp['ROCK'].apply(lambda y: sum([x[1] for x in y]))
         dftmp = dftmp[(scount >= min_samples) & (scount <= max_samples)]
-        print("no of GEOROC samples")
-        print(scount[(scount >= min_samples) & (scount <= max_samples)].sum())
         # Combines
         dfgeo = pd.concat([dfgeo, dftmp])
 
     # Filter data based on new tectonic settings
-    if set(georoc_petdb_tect_setting) & set(NEW_TECTONIC_SETTINGS):
-        georoc_petdb_tect_setting = [x for x in georoc_petdb_tect_setting if x not in ['GEOROC', 'PetDB']]
-        dfgeo = dfgeo[dfgeo['Volcano Name'].map(lambda x: len(np.intersect1d(x, georoc_petdb_tect_setting)) > 0)]
+    if rock_tect_setting:
+        dfgeo = dfgeo[dfgeo['Volcano Name'].map(lambda x: len(np.intersect1d(x, rock_tect_setting)) > 0)]
         if dfgeo.empty:
             dfgeo = pd.DataFrame({'ROCK': [], 'Volcano Name': [], 'db': []})
 
@@ -219,6 +201,10 @@ def update_radar(georoc_petdb_tect_setting, thisvolcano, tas_data, sample_interv
     for rock_type in GEOROC_ROCKS:
         rcount = dfgeo['ROCK'].apply(lambda y, rock_type=rock_type: sum([x[1] if x[0] == rock_type else 0 for x in y])).sum()
         rlist.append(rcount)
+
+    counts = dfgeo['db'].value_counts()
+    number_petdb_samples = counts.get('PetDB', 0)
+    number_georoc_samples = counts.get('GEOROC', 0)
 
     # Create a new radar chart figure
     fig = go.Figure()
@@ -231,20 +217,23 @@ def update_radar(georoc_petdb_tect_setting, thisvolcano, tas_data, sample_interv
             fill='toself',
             fillcolor='cadetblue',
             line_color='grey',
-            name=' '.join(georoc_petdb_tect_setting)
+            name=' '.join(rock_tect_setting)
         ))
 
     # Count rocks from tas_data or load from GEOROC based on volcano selection
     if not tas_data.empty:
-        rcount = tas_data['ROCK'].value_counts()
+        # Filter the dataframe by 'MATERIAL' where the value is either 'WR' or 'WHOLE ROCK'
+        wr_filtered_data = tas_data[tas_data['MATERIAL'].isin(['WR', 'WHOLE ROCK'])]
+        # Now count the values in the 'ROCK' column of the filtered data
+        rcount = wr_filtered_data['ROCK'].value_counts()
     else:
-        if thisvolcano not in ['start', None]:
-            rcount = load_georoc(thisvolcano)['ROCK'].value_counts()
-        else:
-            rcount = {}
+        rcount = {}
 
     # Prepare rock counts for the volcano
     rlist = [rcount.get(rock_type, 0) for rock_type in GEOROC_ROCKS]
+
+    # Concatenate sample counts into a display variable
+    number_rock_samples = f"PetDB samples: {number_petdb_samples}, GEOROC samples: {number_georoc_samples} <br> Volcano: {thisvolcano}, Number of samples (WHOLE ROCK): {sum(rlist)}"
 
     # Add trace for the selected volcano if there are any rocks
     if sum(rlist) > 0:
@@ -266,7 +255,12 @@ def update_radar(georoc_petdb_tect_setting, thisvolcano, tas_data, sample_interv
                 visible=True,
                 range=[0, 50]
             )),
-        showlegend=False
+        showlegend=False,
+        annotations=[dict(
+            xref='paper', yref='paper',
+            x=0.5, y=-0.25, showarrow=False,
+            text=number_rock_samples
+        )]
     )
 
     return fig  # Return the constructed figure
@@ -284,7 +278,7 @@ def update_afm(volcanoname, tas_data):
     else:
         
         # Load data from tas_data if available, otherwise from georoc
-        df = tas_data if len(tas_data.index) > 0 else load_georoc(volcanoname)
+        df = tas_data if len(tas_data.index) > 0 else load_georoc(volcanoname, dict_georoc_sl, dict_georoc_ls, dict_volcano_file)
         df = df[['FEOT(WT%)', 'NA2O(WT%)', 'K2O(WT%)', 'MGO(WT%)', 'MATERIAL']]
         
         # Add NA2O + K2O column and clean the MATERIAL column
@@ -460,14 +454,31 @@ def update_oxyde(thisdf):
 
 
 # Helper function to update the store and subtitle based on current figure data
-def update_store(volcanoname, date, currentfig, store, restyle):
-    """Processes the figure data and updates the store and subtitle for a given volcano"""
-    recs = [d for d in currentfig['data'] if 'customdata' in d.keys() and len(d['marker']['symbol']) > 0] 
-    if len(recs) > 0:
-        store, subtitle = update_subtitle(currentfig, store, restyle, volcanoname, date)
+def update_store(fig):
+    """
+    Processes the figure data and updates the subtitle for a given volcano.
+    
+    Args:
+        currentfig (dict): The current figure's data, containing information 
+                           about markers, custom data, and other plot details.
+
+    Returns:
+        str: The updated subtitle if valid data is found, otherwise an empty string.
+    """
+    # Check if fig is None
+    if fig is None:
+        return ''  # Return empty string if fig is None
+
+    # Filter for records with 'customdata' key and non-empty marker symbols on the TAS plot
+    recs = [d for d in fig['data'] if 'customdata' in d.keys() and len(d['marker']['symbol']) > 0]
+
+    # If there are valid markers in the TAS plot, update the store and subtitle
+    if recs:
+        subtitle = update_subtitle(fig)
     else:
-        subtitle = ''
-    return store, subtitle
+        subtitle = ''  # If no valid markers, clear the subtitle
+
+    return subtitle
 
 # Helper function to set the date options based on the selected volcano
 def set_date_options(volcano_name):
@@ -478,7 +489,7 @@ def set_date_options(volcano_name):
     Returns: 
         Updates eruption date options and selects the default 'all' option for the dropdown
     """
-    opts = update_onedropdown(volcano_name, grnames, dict_georoc_sl, dict_volcano_file)
+    opts = update_onedropdown(volcano_name, grnames, dict_georoc_sl, dict_georoc_ls, dict_volcano_file)
     return opts, 'all'
 
 # Helper function to update the TAS, VEI, and oxide charts
@@ -492,9 +503,7 @@ def update_charts_rock_vei(volcano_name, date):
         Updated figures for the TAS diagram, VEI chart, and oxide chart
     """
     # Initialize subplots for the TAS chart
-    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, row_width=[0.85, 0.2], vertical_spacing=0.05)
-    fig, tmp = update_chemchart(volcano_name, fig, date, grnames, dict_georoc_sl, dict_volcano_file)  # Update TAS chart
-    fig = add_alkaline_line(fig)                          # Add alkaline line to TAS chart
+    fig, tmp = update_chemchart(volcano_name, date, grnames, dict_georoc_sl, dict_georoc_ls, dict_volcano_file)  # Update TAS chart
     
     # Update the oxide chart
     figa = update_oxyde(tmp)
@@ -504,7 +513,7 @@ def update_charts_rock_vei(volcano_name, date):
     fig2 = go.Figure()
     fig2 = update_veichart(volcano_name, fig2)
 
-    return fig, fig2, figa  # Return updated figures
+    return fig, fig2, figa, tmp  # Return updated figures
 
 
 
@@ -536,9 +545,9 @@ def update_joint_chemchart(thisvolcano_name, thisdf, thisfig, thisdate):
         # Match eruption dates based on user's input
         all_dates_gvp = []
         if thisdate == 'all':
-            all_dates_gvp = match_GVPdates(thisvolcano_name, 'forall', volcano_key, dict_georoc_sl, dict_volcano_file, df_eruption)
+            all_dates_gvp = match_GVPdates(thisvolcano_name, 'forall', volcano_key, dict_georoc_sl, dict_georoc_ls, dict_volcano_file, df_eruption)
         else:
-            this_date_gvp = match_GVPdates(thisvolcano_name, thisdate, volcano_key, dict_georoc_sl, dict_volcano_file, df_eruption)
+            this_date_gvp = match_GVPdates(thisvolcano_name, thisdate, volcano_key, dict_georoc_sl, dict_georoc_ls, dict_volcano_file, df_eruption)
             if this_date_gvp[0] != 'not found':
                 all_dates_gvp = [[int(thisdate.split('-')[0]), this_date_gvp]]
 
@@ -564,14 +573,13 @@ def update_joint_chemchart(thisvolcano_name, thisdf, thisfig, thisdate):
     # Default to an empty dataframe if no match found
     if df_gvp_geo.empty:
         dff = pd.DataFrame(columns=['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)', 'NA2O(WT%)+K2O(WT%)', 
-                                    'FEO(WT%)', 'CAO(WT%)', 'MGO(WT%)', 'ERUPTION YEAR', 'MATERIAL'])
+                                    'FEO(WT%)', 'ROCK', 'CAO(WT%)', 'MGO(WT%)', 'ERUPTION YEAR', 'MATERIAL'])
     else:
         dff = df_gvp_geo
 
     # Update the plot with the TAS layout and chemical scatter plot
-    thisfig = plot_tas(thisfig)
+    thisfig = plot_tas()
     thisfig = plot_chem(thisfig, dff, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], LBLS)
-    thisfig.update_layout(title='<b>Chemical Rock Composition from Georoc (with known eruptions)</b><br>')
 
     return thisfig
 
