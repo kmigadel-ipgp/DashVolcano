@@ -15,10 +15,8 @@
 import io
 import plotly.graph_objs as go
 import pandas as pd
-import plotly.graph_objs as go
 
-from dash import dcc
-from dash import Input, Output
+from dash import dcc,  html, Input, Output
 
 from constants.shared_data import df_volcano, df_volcano_no_eruption, dict_georoc_sl, dict_georoc_ls, dict_volcano_file, dict_georoc_gvp, dict_gvp_georoc
 
@@ -174,7 +172,8 @@ def register_callbacks_page4(app):
             Output("page4-afm", "figure"),                  # Output: AFM diagram figure
             Output('page4-radar', 'figure'),                # Output: Radar chart figure
             Output('page4-download', 'data'),               # Output: Data for download as an Excel file
-            Output('page4-download-button', 'n_clicks')     # Output: Reset the download button clicks
+            Output('page4-download-button', 'n_clicks'),    # Output: Reset the download button clicks
+            Output('page4-range-slider', 'max')
         ],
         [
             Input("page4-region-filter", "value"),                  # Input: Region filter value
@@ -183,10 +182,11 @@ def register_callbacks_page4(app):
             Input("page4-rock-database", "value"),                  # Input: Selected volcanic rock database
             Input("page4-rock-tectonic-settings", "value"),         # Input: GEOROC tectonic filter value
             Input('page4-range-slider', "value"),
+            Input('page4-range-slider', 'max')
         ],
         prevent_initial_call=True  # Prevent callback from being triggered on page load
     )
-    def update_tas_download(volcano_name, selectedpts, button, rock_database, rock_tect_setting, sample_interval):
+    def update_tas_download(volcano_name, selectedpts, button, rock_database, rock_tect_setting, sample_interval, slider_max_value):
         """
         Updates the TAS diagram, AFM diagram, radar chart, and handles data download.
         
@@ -223,12 +223,19 @@ def register_callbacks_page4(app):
             # Move the buffer pointer back to the start
             output.seek(0)
 
+            radar_plot, number_sample_volcano = update_radar(rock_database, rock_tect_setting, volcano_name, tas_data, sample_interval, slider_max_value)
+
+            max_value_slider = number_sample_volcano if number_sample_volcano > 30 else 100
+
             # Send the Excel file content as bytes to trigger the download via dcc.Download
-            return fig, update_afm(volcano_name, tas_data), update_radar(rock_database, rock_tect_setting, volcano_name, tas_data, sample_interval), \
-                dcc.send_bytes(output.getvalue(), f'download_{volcano_name}.xlsx'), 0
+            return fig, update_afm(volcano_name, tas_data), radar_plot, \
+                dcc.send_bytes(output.getvalue(), f'download_{volcano_name}.xlsx'), 0, max_value_slider
+    
+        radar_plot, number_sample_volcano = update_radar(rock_database, rock_tect_setting, volcano_name, tas_data, sample_interval, slider_max_value)
+        max_value_slider = number_sample_volcano if number_sample_volcano > 30 else 100
 
         # If no download action, return the updated figures without triggering the download
-        return fig, update_afm(volcano_name, tas_data), update_radar(rock_database, rock_tect_setting, volcano_name, tas_data, sample_interval), None, 0
+        return fig, update_afm(volcano_name, tas_data), radar_plot, None, 0, max_value_slider
 
 
     # ***************************************************#
@@ -314,3 +321,31 @@ def register_callbacks_page4(app):
         
         return fig, fig2  # Return the updated figures for both charts
 
+
+    # ***************************************************#
+    # 6th Callback: Update Slider
+    # ***************************************************#
+    @app.callback(
+        Output('page4-range-slider', 'marks'),  # Output: Set the 'marks' property of the range slider
+        Input('page4-range-slider', 'max')       # Input: Get the maximum value of the range slider
+    )
+    def update_range_slider_max(max_value_slider):
+        """
+        Updates the marks on the range slider based on its maximum value.
+        
+        Args:
+            max_value_slider: The maximum value of the range slider.
+            
+        Returns:
+            A dictionary with the marks to be displayed on the slider.
+        """
+        
+        # Create marks dynamically based on the maximum value of the slider
+        # The range starts at 0 and goes up to max_value_slider, with intervals set to 25% of the max value
+        marks = {i: f'{i}' for i in range(0, max_value_slider + 1, max_value_slider // 4)}  
+        
+        # Add a '+' to the last value in the marks
+        last_value = max(marks.keys())  # Get the last key (max value) from the marks dictionary
+        marks[last_value] = f'{last_value}+'  # Update the last mark to include a '+' sign for clarity
+
+        return marks  # Return the updated marks dictionary to be used by the range slider
