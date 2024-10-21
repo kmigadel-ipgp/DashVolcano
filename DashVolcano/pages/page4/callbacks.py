@@ -340,12 +340,15 @@ def register_callbacks_page4(app):
             A dictionary with the marks to be displayed on the slider.
         """
         
-        # Create marks dynamically based on the maximum value of the slider
-        # The range starts at 0 and goes up to max_value_slider, with intervals set to 25% of the max value
-        marks = {i: f'{i}' for i in range(0, max_value_slider + 1, max_value_slider // 4)}  
-        
-        # Add a '+' to the last value in the marks
-        last_value = max(marks.keys())  # Get the last key (max value) from the marks dictionary
-        marks[last_value] = f'{last_value}+'  # Update the last mark to include a '+' sign for clarity
+        # Create marks based on the maximum value of the slider
+        # The first three marks are evenly distributed based on max_value_slider
+        # The last mark is the max_value_slider itself
+        step = max_value_slider / 4  # Step size to get four marks in total (0%, 25%, 50%, 75%, 100%)
+        marks = {
+            0: '0',                                        # First mark at 0
+            step: f'{int(step)}',                         # Second mark at 25%
+            2 * step: f'{int(2 * step)}',                # Third mark at 50%
+            max_value_slider: f'{max_value_slider}+'     # Fourth mark at 100% with a '+' sign
+        }
 
         return marks  # Return the updated marks dictionary to be used by the range slider
