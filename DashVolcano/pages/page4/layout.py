@@ -126,7 +126,7 @@ def create_rock_composition_plots():
     return dbc.Row([
         dbc.Col([html.Div(className="card", children=[
             html.Div("Number of samples obtained per volcano", className="menu-title"),
-            dcc.RangeSlider(min=0, max=100, value=[5, 15], marks={0: '0', 25: '25', 50: '50', 75: '75', 100: '100' }, id='page4-range-slider'),
+            dcc.RangeSlider(min=0, max=100, value=[5, 15], id='page4-range-slider', className="menu-title"),
             dcc.Graph(id='page4-radar')])]),
         dbc.Col([html.Div(className="card", children=[dcc.Graph(id='page4-rocks-composition-GEOROC')])]),
         dbc.Col([html.Div(className="card", children=[dcc.Graph(id='page4-rocks-composition-GVP')])]),

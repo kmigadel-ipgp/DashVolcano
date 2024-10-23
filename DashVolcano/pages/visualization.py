@@ -49,7 +49,7 @@ def clean_tas_data(tas_data):
     return tas_data
 
 
-def update_tas(fig, volcano_name, selectedpts, rock_tect_setting):
+def update_tas(fig, volcano_name, selectedpts, rock_database):
     """
     Updates the TAS diagram based on selected points and volcano data.
 
@@ -57,7 +57,7 @@ def update_tas(fig, volcano_name, selectedpts, rock_tect_setting):
         fig: The TAS figure object to update.
         volcano_name: Selected volcano name (GEOROC).
         selectedpts: Selected points data (box or lasso tool).
-        rock_tect_setting: Tectonic filter selected from the GEOROC and PetDB database.
+        rock_database: List of volcanic rock databases selected.
 
     Returns:
         A tuple containing the updated TAS figure and geochemical data.
@@ -98,7 +98,7 @@ def update_tas(fig, volcano_name, selectedpts, rock_tect_setting):
 
     # Plot the TAS diagram if geochemical data is available
     if not thisgeogr.empty:
-        fig = plot_chem(fig, thisgeogr, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], LBLS2 if 'PetDB' in rock_tect_setting else LBLS)
+        fig = plot_chem(fig, thisgeogr, ['SIO2(WT%)', 'NA2O(WT%)', 'K2O(WT%)'], LBLS2 if 'PetDB' in rock_database else LBLS)
         add_subtitle(fig, thisgeogr)
     else:
         fig.update_layout(title='<b>TAS diagram</b><br>', height=700)
@@ -138,7 +138,7 @@ def add_subtitle(fig, thisgeogr):
     )
 
 
-def update_radar(rock_database, rock_tect_setting, thisvolcano, tas_data, sample_interval):
+def update_radar(rock_database, rock_tect_setting, thisvolcano, tas_data, sample_interval, slider_max_value):
     """
     Update a radar chart showing the frequency of rock samples based on tectonic settings.
 
@@ -174,7 +174,10 @@ def update_radar(rock_database, rock_tect_setting, thisvolcano, tas_data, sample
         dftmp['ROCK'] = dftmp['ROCK'].apply(lambda y: ast.literal_eval(y) if isinstance(y, str) else [])
         # Filters based on no of samples
         scount = dftmp['ROCK'].apply(lambda y: sum([x[1] for x in y]))
-        dftmp = dftmp[(scount >= min_samples) & (scount <= max_samples)]
+        if max_samples == slider_max_value:
+            dftmp = dftmp[(scount >= min_samples)]
+        else:
+            dftmp = dftmp[(scount >= min_samples) & (scount <= max_samples)]
         # Combines
         dfgeo = pd.concat([dfgeo, dftmp])
     if 'GEOROCaroundGVP.csv' in os.listdir(GEOROC_DATASET_DIR) and 'GEOROC' in rock_database:
@@ -186,7 +189,10 @@ def update_radar(rock_database, rock_tect_setting, thisvolcano, tas_data, sample
         dftmp['ROCK'] = dftmp['ROCK'].apply(lambda y: ast.literal_eval(y) if isinstance(y, str) else [])
         # Filters based on no of samples
         scount = dftmp['ROCK'].apply(lambda y: sum([x[1] for x in y]))
-        dftmp = dftmp[(scount >= min_samples) & (scount <= max_samples)]
+        if max_samples == slider_max_value:
+            dftmp = dftmp[(scount >= min_samples)]
+        else:
+            dftmp = dftmp[(scount >= min_samples) & (scount <= max_samples)]
         # Combines
         dfgeo = pd.concat([dfgeo, dftmp])
 
@@ -223,22 +229,23 @@ def update_radar(rock_database, rock_tect_setting, thisvolcano, tas_data, sample
     # Count rocks from tas_data or load from GEOROC based on volcano selection
     if not tas_data.empty:
         # Filter the dataframe by 'MATERIAL' where the value is either 'WR' or 'WHOLE ROCK'
-        wr_filtered_data = tas_data[tas_data['MATERIAL'].isin(['WR', 'WHOLE ROCK'])]
+        wr_filtered_data = tas_data[tas_data['MATERIAL'].str.contains('WR|WHOLE ROCK')]
         # Now count the values in the 'ROCK' column of the filtered data
         rcount = wr_filtered_data['ROCK'].value_counts()
     else:
         rcount = {}
 
     # Prepare rock counts for the volcano
-    rlist = [rcount.get(rock_type, 0) for rock_type in GEOROC_ROCKS]
+    whole_rock_samples = [rcount.get(rock_type, 0) for rock_type in GEOROC_ROCKS]
+    nb_whole_rock_samples = sum(whole_rock_samples)
 
     # Concatenate sample counts into a display variable
-    number_rock_samples = f"PetDB samples: {number_petdb_samples}, GEOROC samples: {number_georoc_samples} <br> Volcano: {thisvolcano}, Number of samples (WHOLE ROCK): {sum(rlist)}"
+    number_rock_samples = f"PetDB samples: {number_petdb_samples}, GEOROC samples: {number_georoc_samples} <br> Volcano: {thisvolcano}, Nb samples (WHOLE ROCK): {nb_whole_rock_samples}"
 
     # Add trace for the selected volcano if there are any rocks
-    if sum(rlist) > 0:
+    if nb_whole_rock_samples > 0:
         fig.add_trace(go.Scatterpolar(
-            r=[r * (100 / sum(rlist)) for r in rlist],
+            r=[r * (100 / nb_whole_rock_samples) for r in whole_rock_samples],
             theta=GEOROC_ROCKS,
             fillcolor='indianred',
             line_color='firebrick',
@@ -263,7 +270,7 @@ def update_radar(rock_database, rock_tect_setting, thisvolcano, tas_data, sample
         )]
     )
 
-    return fig  # Return the constructed figure
+    return fig, nb_whole_rock_samples
 
 
 def update_afm(volcanoname, tas_data):
