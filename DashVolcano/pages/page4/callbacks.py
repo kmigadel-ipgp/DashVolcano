@@ -172,8 +172,7 @@ def register_callbacks_page4(app):
             Output("page4-afm", "figure"),                  # Output: AFM diagram figure
             Output('page4-radar', 'figure'),                # Output: Radar chart figure
             Output('page4-download', 'data'),               # Output: Data for download as an Excel file
-            Output('page4-download-button', 'n_clicks'),    # Output: Reset the download button clicks
-            Output('page4-range-slider', 'max')
+            Output('page4-download-button', 'n_clicks')     # Output: Reset the download button clicks
         ],
         [
             Input("page4-region-filter", "value"),                  # Input: Region filter value
@@ -181,12 +180,13 @@ def register_callbacks_page4(app):
             Input('page4-download-button', 'n_clicks'),             # Input: Button for triggering the download action
             Input("page4-rock-database", "value"),                  # Input: Selected volcanic rock database
             Input("page4-rock-tectonic-settings", "value"),         # Input: GEOROC tectonic filter value
-            Input('page4-range-slider', "value"),
-            Input('page4-range-slider', 'max')
+            Input('page4-min-input', 'value'),                      # Input: Minimum value from the input
+            Input('page4-max-input', 'value'),                      # Input: Maximum value from the input
+            Input('page4-select-all-checkbox', 'value')             # Input: Checkbox for selecting all samples
         ],
         prevent_initial_call=True  # Prevent callback from being triggered on page load
     )
-    def update_tas_download(volcano_name, selectedpts, button, rock_database, rock_tect_setting, sample_interval, slider_max_value):
+    def update_tas_download(volcano_name, selectedpts, button, rock_database, rock_tect_setting, min_value, max_value, select_all):
         """
         Updates the TAS diagram, AFM diagram, radar chart, and handles data download.
         
@@ -196,6 +196,8 @@ def register_callbacks_page4(app):
             button: Number of clicks on the download button.
             rock_database: List of volcanic rock databases selected.
             rock_tect_setting: Tectonic filter selected from the GEOROC and PetDB database.
+            min_value: Minimum value for sample filtering.
+            max_value: Maximum value for sample filtering.
         
         Returns:
             Updated TAS, AFM, and radar chart figures.
@@ -223,19 +225,12 @@ def register_callbacks_page4(app):
             # Move the buffer pointer back to the start
             output.seek(0)
 
-            radar_plot, number_sample_volcano = update_radar(rock_database, rock_tect_setting, volcano_name, tas_data, sample_interval, slider_max_value)
-
-            max_value_slider = number_sample_volcano if number_sample_volcano > 30 else 100
-
             # Send the Excel file content as bytes to trigger the download via dcc.Download
-            return fig, update_afm(volcano_name, tas_data), radar_plot, \
-                dcc.send_bytes(output.getvalue(), f'download_{volcano_name}.xlsx'), 0, max_value_slider
+            return fig, update_afm(volcano_name, tas_data), update_radar(rock_database, rock_tect_setting, volcano_name, tas_data, [min_value, max_value], select_all), \
+                dcc.send_bytes(output.getvalue(), f'download_{volcano_name}.xlsx'), 0
     
-        radar_plot, number_sample_volcano = update_radar(rock_database, rock_tect_setting, volcano_name, tas_data, sample_interval, slider_max_value)
-        max_value_slider = number_sample_volcano if number_sample_volcano > 30 else 100
-
         # If no download action, return the updated figures without triggering the download
-        return fig, update_afm(volcano_name, tas_data), radar_plot, None, 0, max_value_slider
+        return fig, update_afm(volcano_name, tas_data), update_radar(rock_database, rock_tect_setting, volcano_name, tas_data, [min_value, max_value], select_all), None, 0
 
 
     # ***************************************************#
@@ -320,35 +315,3 @@ def register_callbacks_page4(app):
         fig2 = update_georock_chart(thisdf, database, dict_georoc_gvp, rock_tect_setting)
         
         return fig, fig2  # Return the updated figures for both charts
-
-
-    # ***************************************************#
-    # 6th Callback: Update Slider
-    # ***************************************************#
-    @app.callback(
-        Output('page4-range-slider', 'marks'),  # Output: Set the 'marks' property of the range slider
-        Input('page4-range-slider', 'max')       # Input: Get the maximum value of the range slider
-    )
-    def update_range_slider_max(max_value_slider):
-        """
-        Updates the marks on the range slider based on its maximum value.
-        
-        Args:
-            max_value_slider: The maximum value of the range slider.
-            
-        Returns:
-            A dictionary with the marks to be displayed on the slider.
-        """
-        
-        # Create marks based on the maximum value of the slider
-        # The first three marks are evenly distributed based on max_value_slider
-        # The last mark is the max_value_slider itself
-        step = max_value_slider / 4  # Step size to get four marks in total (0%, 25%, 50%, 75%, 100%)
-        marks = {
-            0: '0',                                        # First mark at 0
-            step: f'{int(step)}',                         # Second mark at 25%
-            2 * step: f'{int(2 * step)}',                # Third mark at 50%
-            max_value_slider: f'{max_value_slider}+'     # Fourth mark at 100% with a '+' sign
-        }
-
-        return marks  # Return the updated marks dictionary to be used by the range slider
