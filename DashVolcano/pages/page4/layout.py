@@ -126,7 +126,27 @@ def create_rock_composition_plots():
     return dbc.Row([
         dbc.Col([html.Div(className="card", children=[
             html.Div("Number of samples obtained per volcano", className="menu-title"),
-            dcc.RangeSlider(min=0, max=100, value=[5, 15], id='page4-range-slider', className="menu-title"),
+            dbc.Checklist(
+                options=[{'label': 'Select All Samples', 'value': 'select_all'}],
+                id='page4-select-all-checkbox',
+                value=[],  # Default to no selection
+                switch=True,  # Adds a switch-styled toggle
+                style={'margin-bottom': '15px'}
+            ),
+            dbc.Row([
+                dbc.Col([
+                    html.Div([
+                        html.Label("Min:", style={'margin-right': '10px'}),
+                        dbc.Input(id='page4-min-input', type='number', placeholder='Min value', value=0, min=0, step=1, className="menu-input", style={'display': 'inline-block', 'width': 'auto'})
+                    ], style={'display': 'flex', 'align-items': 'center'})  # Flexbox to align label and input on the same line
+                ], width=6),
+                dbc.Col([
+                    html.Div([
+                        html.Label("Max:", style={'margin-right': '10px'}),
+                        dbc.Input(id='page4-max-input', type='number', placeholder='Max value', value=100, min=0, step=1, className="menu-input", style={'display': 'inline-block', 'width': 'auto'})
+                    ], style={'display': 'flex', 'align-items': 'center'})  # Flexbox to align label and input on the same line
+                ], width=6),
+            ]),
             dcc.Graph(id='page4-radar')])]),
         dbc.Col([html.Div(className="card", children=[dcc.Graph(id='page4-rocks-composition-GEOROC')])]),
         dbc.Col([html.Div(className="card", children=[dcc.Graph(id='page4-rocks-composition-GVP')])]),
