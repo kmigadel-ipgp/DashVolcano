@@ -138,7 +138,7 @@ def add_subtitle(fig, thisgeogr):
     )
 
 
-def update_radar(rock_database, rock_tect_setting, thisvolcano, tas_data, sample_interval, slider_max_value):
+def update_radar(rock_database, rock_tect_setting, thisvolcano, tas_data, sample_interval, select_all):
     """
     Update a radar chart showing the frequency of rock samples based on tectonic settings.
 
@@ -174,8 +174,8 @@ def update_radar(rock_database, rock_tect_setting, thisvolcano, tas_data, sample
         dftmp['ROCK'] = dftmp['ROCK'].apply(lambda y: ast.literal_eval(y) if isinstance(y, str) else [])
         # Filters based on no of samples
         scount = dftmp['ROCK'].apply(lambda y: sum([x[1] for x in y]))
-        if max_samples == slider_max_value:
-            dftmp = dftmp[(scount >= min_samples)]
+        if select_all:
+            dftmp = dftmp[(scount >= 0)]
         else:
             dftmp = dftmp[(scount >= min_samples) & (scount <= max_samples)]
         # Combines
@@ -189,8 +189,8 @@ def update_radar(rock_database, rock_tect_setting, thisvolcano, tas_data, sample
         dftmp['ROCK'] = dftmp['ROCK'].apply(lambda y: ast.literal_eval(y) if isinstance(y, str) else [])
         # Filters based on no of samples
         scount = dftmp['ROCK'].apply(lambda y: sum([x[1] for x in y]))
-        if max_samples == slider_max_value:
-            dftmp = dftmp[(scount >= min_samples)]
+        if select_all:
+            dftmp = dftmp[(scount >= 0)]
         else:
             dftmp = dftmp[(scount >= min_samples) & (scount <= max_samples)]
         # Combines
@@ -270,7 +270,7 @@ def update_radar(rock_database, rock_tect_setting, thisvolcano, tas_data, sample
         )]
     )
 
-    return fig, nb_whole_rock_samples
+    return fig
 
 
 def update_afm(volcanoname, tas_data):

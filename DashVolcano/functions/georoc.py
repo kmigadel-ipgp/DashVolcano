@@ -502,31 +502,44 @@ def guess_rock(thisdf):
         return slope * x + intercept
 
     # Define line boundaries for TAS diagram
-    upper_bound_tephrite_phono_tephrite_tephrite_phonolite = get_line_params(x, 41, 7, 52.5, 14)  
+    lower_bound_trachy = get_line_params(x, 52, 5, 57, 5.9)
+    cond_lower_bound_trachy = y <= lower_bound_trachy
 
-    upper_bound_trachy = get_line_params(x, 45, 5, 65, 15.7)  
+    upper_bound_trachy = get_line_params(x, 45, 5, 49.4, 7.3)
+    cond_upper_bound_trachy = y > upper_bound_trachy
+
+    upper_bound_tephrite_phono_tephrite_tephrite_phonolite = get_line_params(x, 41, 7, 52.5, 14)  
+    cond_upper_bound_tephrite_phono_tephrite_tephrite_phonolite = y <= upper_bound_tephrite_phono_tephrite_tephrite_phonolite
 
     upper_bound_trachybasalt = get_line_params(x, 49.4, 7.3, 52, 5)
+    cond_upper_bound_trachybasalt = y > upper_bound_trachybasalt
 
-    lower_bound_trachy = get_line_params(x, 52, 5, 69, 8)
-    
     lower_bound_trachyandesite = get_line_params(x, 53, 9.3, 57, 5.9)
+    cond_lower_bound_trachyandesite = y > lower_bound_trachyandesite
 
     lower_bound_trachydacite = get_line_params(x, 57.6, 11.7, 63, 7)
+    cond_lower_bound_trachydacite = y > lower_bound_trachydacite
 
     upper_bound_trachydacite = get_line_params(x, 65, 15.7, 69, 13)
-    
+    cond_upper_bound_trachydacite = y < upper_bound_trachydacite
+
     upper_bound_tephrite = get_line_params(x, 49.4, 7.3, 45, 9.4)
-    
+    cond_upper_bound_tephrite = y > upper_bound_tephrite
+
     lower_bound_tephriphonolite = get_line_params(x, 53, 9.3, 48.4, 11.5)
-    
+    cond_lower_bound_tephriphonolite = y > lower_bound_tephriphonolite
+
     lower_bound_phonolyte = get_line_params(x, 57.6, 11.7, 50, 15.13)
+    cond_lower_bound_phonolyte = y > lower_bound_phonolyte
 
     upper_bound_phonolyte = get_line_params(x, 50, 15.13, 65, 15.7)
+    cond_upper_bound_phonolyte = y < upper_bound_phonolyte
 
-    lower_bound_rhyolite = get_line_params(x, 69, 8, 77, 1)
+    lower_bound_rhyolite = get_line_params(x, 77, 1, 69, 8)
+    cond_lower_bound_rhyolite = y > lower_bound_rhyolite
 
     lower_bound_basanite = get_line_params(x, 41, 7, 45, 5)
+    cond_lower_bound_basanite = y > lower_bound_basanite
     
     # Define conditions for each rock type based on SiO2 (x) and alkali (y) values
     
@@ -545,54 +558,54 @@ def guess_rock(thisdf):
         valid_data & 
         (x >= 52) & 
         (x < 57) & 
-        (y < lower_bound_trachy), 'ROCK'] = 'BASALTIC ANDESITE'
+        cond_lower_bound_trachy, 'ROCK'] = 'BASALTIC ANDESITE'
 
     # Andesite classification
     thisdf.loc[
         valid_data & 
         (x >= 57) & 
         (x < 63) & 
-        (y < lower_bound_trachy), 'ROCK'] = 'ANDESITE'
+        cond_lower_bound_trachy, 'ROCK'] = 'ANDESITE'
 
     # Dacite classification
     thisdf.loc[
         valid_data & 
         (x >= 63) & 
         (x < 77) & 
-        (y < lower_bound_rhyolite) & 
-        (y < lower_bound_trachy), 'ROCK'] = 'DACITE'
+        (~cond_lower_bound_rhyolite) & 
+        cond_lower_bound_trachy, 'ROCK'] = 'DACITE'
 
     # Trachy-basalt classification
     thisdf.loc[
         valid_data & 
         (y >= 5) & 
-        (y < upper_bound_trachybasalt) & 
-        (y < upper_bound_trachy), 'ROCK'] = 'TRACHYBASALT'
+        (~cond_upper_bound_trachy) &
+        (~cond_upper_bound_trachybasalt), 'ROCK'] = 'TRACHYBASALT'
 
     # Basaltic trachy-andesite classification
     thisdf.loc[
         valid_data & 
-        (y >= lower_bound_trachy) & 
-        (y < upper_bound_trachy) & 
-        (y >= upper_bound_trachybasalt) &
-        (y < lower_bound_trachyandesite), 'ROCK'] = 'BASALTIC TRACHYANDESITE'
+        (~cond_lower_bound_trachy) & 
+        (~cond_upper_bound_trachy) & 
+        (cond_upper_bound_trachybasalt) &
+        (~cond_lower_bound_trachyandesite), 'ROCK'] = 'BASALTIC TRACHYANDESITE'
 
     # Trachy-andesite classification
     thisdf.loc[
         valid_data & 
-        (y >= lower_bound_trachy) &
-        (y < upper_bound_trachy) &
-        (y >= lower_bound_trachyandesite) &
-        (y < lower_bound_trachydacite), 'ROCK'] = 'TRACHYANDESITE'
+        (~cond_lower_bound_trachy) &
+        (~cond_upper_bound_trachy) &
+        (cond_lower_bound_trachyandesite) &
+        (~cond_lower_bound_trachydacite), 'ROCK'] = 'TRACHYANDESITE'
     
     # Trachy-dacite classification
     thisdf.loc[
         valid_data & 
         (x < 69) &
-        (y >= lower_bound_trachy) &
-        (y < upper_bound_trachy) &
-        (y < upper_bound_trachydacite) &
-        (y >= lower_bound_trachydacite), 'ROCK'] = 'TRACHYTE/TRACHYDACITE'
+        (~cond_lower_bound_trachy) &
+        (~cond_upper_bound_trachy) &
+        (cond_upper_bound_trachydacite) &
+        (cond_lower_bound_trachydacite), 'ROCK'] = 'TRACHYTE/TRACHYDACITE'
 
     # Rhyolite classification
     # a,b in ax+b
@@ -600,46 +613,43 @@ def guess_rock(thisdf):
         valid_data &
         (x >= 69) &
         (x < 77) &
-        (y >= lower_bound_rhyolite), 'ROCK'] = 'RHYOLITE'
+        (y < 13) &
+        (cond_lower_bound_rhyolite), 'ROCK'] = 'RHYOLITE'
 
     # Phonolite classification
     thisdf.loc[
-        (y >= upper_bound_trachy) &
-        (y < upper_bound_phonolyte) &
-        (y >= lower_bound_phonolyte), 'ROCK'] = 'PHONOLITE'
+        (cond_upper_bound_trachy) &
+        (cond_lower_bound_phonolyte) &
+        (cond_upper_bound_phonolyte), 'ROCK'] = 'PHONOLITE'
 
     # Tephri-phonolite classification
     thisdf.loc[
-        (y >= upper_bound_trachy) & 
-        (y >= lower_bound_phonolyte) & 
-        (y < lower_bound_tephriphonolite) & 
-        (y < upper_bound_tephrite_phono_tephrite_tephrite_phonolite), 'ROCK'] = 'TEPHRI-PHONOLITE'
+        (cond_upper_bound_trachy) & 
+        (~cond_lower_bound_phonolyte) & 
+        (cond_lower_bound_tephriphonolite) & # cond_ef2
+        (cond_upper_bound_tephrite_phono_tephrite_tephrite_phonolite), 'ROCK'] = 'TEPHRI-PHONOLITE'
 
     # Phono-tephrite classification
     thisdf.loc[
-        (x >= 45) &
-        (x < 53) &
-        (y >= upper_bound_trachy) &  
-        (y >= lower_bound_tephriphonolite) & 
-        (y < upper_bound_tephrite) & 
-        (y < upper_bound_tephrite_phono_tephrite_tephrite_phonolite), 'ROCK'] = 'PHONO-TEPHRITE'
+        (cond_upper_bound_trachy) &  
+        (~cond_lower_bound_tephriphonolite) & # cond_fe2
+        (cond_upper_bound_tephrite) & # cond_ef
+        (cond_upper_bound_tephrite_phono_tephrite_tephrite_phonolite), 'ROCK'] = 'PHONO-TEPHRITE'
 
     # Tephrite classification
     # a,b in ax+b
 
-    cond_t1 = (y > upper_bound_trachy) & \
-        (y < upper_bound_tephrite_phono_tephrite_tephrite_phonolite) & \
-        (y < upper_bound_tephrite) & \
-        (y >= lower_bound_basanite) & \
+    cond_t1 = (cond_lower_bound_basanite) & \
+        (cond_upper_bound_trachy) & \
+        (cond_upper_bound_tephrite_phono_tephrite_tephrite_phonolite) & \
+        (~cond_upper_bound_tephrite) & \
         (x >= 41) & \
         (x < 49.4)
     
-    cond_t2 = (y <= upper_bound_tephrite_phono_tephrite_tephrite_phonolite) & \
-        (y < upper_bound_tephrite) & \
+    cond_t2 = (~cond_lower_bound_basanite) & \
         (y >= 3) & \
         (x >= 41) & \
-        (x < 45) & \
-        (y < lower_bound_basanite)
+        (x < 45)
     
     thisdf.loc[valid_data & (cond_t1 | cond_t2), 'ROCK'] = 'TEPHRITE/BASANITE'
 
@@ -861,7 +871,8 @@ def detects_chems(thisdf, chem1, chem2, theselbls):
     # replaces nan with 0
     thisdf = thisdf.fillna(0)
     # removes if 80 >= SIO2 is > 0
-    thisdf = thisdf[(thisdf[chem1[0]] <= 80) &  (thisdf[chem1[0]] > 0)  & (thisdf['FEOT(WT%)'] > 0)]
+    thisdf = thisdf[(thisdf['SIO2(WT%)'] <= 80) &  (thisdf['SIO2(WT%)'] > 0)  & (thisdf['FEOT(WT%)'] > 0)]
+    
     thisdf[chem1[1]+'+'+chem1[2]] = thisdf[chem1[1]].astype('float') + thisdf[chem1[2]].astype('float')
 
     for mc in chem2:
@@ -879,16 +890,22 @@ def detects_chems(thisdf, chem1, chem2, theselbls):
     return thisdf
 
 def process_material(material):
-    # If the material is a string and contains any of the keywords
-    if isinstance(material, str) and any(keyword in material for keyword in ['WR', 'GL', 'INC', 'MIN']):
-        # Split the value by space and return only the first part
-        return material.split(' ')[0]
-    elif isinstance(material, str):
-        # If it's a string but doesn't contain the keywords, keep the original value
-        return material
-    else:
-        # If it's not a valid string, return 'UNKNOWN'
-        return 'UNKNOWN'
+
+    result = 'UNKNOWN'
+
+    if isinstance(material, str):
+        # Split the string by '/' to handle cases with multiple materials
+        parts = material.split('/')
+
+        if any('WR' in part for part in parts):
+            result = 'WR'
+        elif any(keyword in material for keyword in ['GL', 'INC', 'MIN']):
+            result = material.split(' ')[0]
+        else:
+            # If it's a string but doesn't contain the keywords, keep the original value
+            result = material
+
+    return result
 
 def plot_chem(thisfig, thisdf, chem1, theselbls):
     """
@@ -912,9 +929,10 @@ def plot_chem(thisfig, thisdf, chem1, theselbls):
         short_symbol = ['circle', 'triangle-up'] 
     else:
         # sometimes two materials are present, this is to retrieve the first one
-        thisdf['MATERIAL'] = thisdf['MATERIAL'].apply(process_material)
+        thisdf['MATERIAL_PROCESSED'] = thisdf['MATERIAL'].apply(process_material)
+
         # adjusts symbol based on material
-        thisdf['symbol'] = thisdf['MATERIAL'].replace(to_replace={'WR': 'circle', 'GL': 'diamond', 'INC': 'square', 'MIN': 'x', 'UNKNOWN': 'diamond-wide', 'WHOLE ROCK': 'circle', 'GLASS': 'diamond', 'INCLUSION': 'square'})
+        thisdf['symbol'] = thisdf['MATERIAL_PROCESSED'].replace(to_replace={'WR': 'circle', 'GL': 'diamond', 'INC': 'square', 'MIN': 'x', 'UNKNOWN': 'diamond-wide', 'WHOLE ROCK': 'circle', 'GLASS': 'diamond', 'INCLUSION': 'square'})
 
         full_symbol = {'circle': 'whole rock', 'diamond': 'volcanic glass', 'square': 'inclusion', 'x': 'mineral', 'diamond-wide': 'UNKNKOWN'}
         short_symbol = ['circle', 'diamond', 'square', 'x', 'diamond-wide'] 
@@ -923,7 +941,7 @@ def plot_chem(thisfig, thisdf, chem1, theselbls):
         thismat = thisdf[thisdf['symbol'] == symbol]
         # custom data
         if 'VEI' in list(thisdf):
-            thiscustomdata = thismat[chem1[1]].astype(str)+' '+chem1[1]+' '+thismat['MATERIAL']+' VEI='+thismat['VEI']  
+            thiscustomdata = thismat[chem1[1]].astype(str)+' '+chem1[1]+' '+thismat['MATERIAL_PROCESSED']+' VEI='+thismat['VEI']  
         else:
             thiscustomdata = thismat[chem1[1]].astype(str)+' '+chem1[1]+', '+thismat['ROCK']
 
