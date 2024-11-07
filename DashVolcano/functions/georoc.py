@@ -929,9 +929,10 @@ def plot_chem(thisfig, thisdf, chem1, theselbls):
         short_symbol = ['circle', 'triangle-up'] 
     else:
         # sometimes two materials are present, this is to retrieve the first one
-        thisdf['MATERIAL'] = thisdf['MATERIAL'].apply(process_material)
+        thisdf['MATERIAL_PROCESSED'] = thisdf['MATERIAL'].apply(process_material)
+
         # adjusts symbol based on material
-        thisdf['symbol'] = thisdf['MATERIAL'].replace(to_replace={'WR': 'circle', 'GL': 'diamond', 'INC': 'square', 'MIN': 'x', 'UNKNOWN': 'diamond-wide', 'WHOLE ROCK': 'circle', 'GLASS': 'diamond', 'INCLUSION': 'square'})
+        thisdf['symbol'] = thisdf['MATERIAL_PROCESSED'].replace(to_replace={'WR': 'circle', 'GL': 'diamond', 'INC': 'square', 'MIN': 'x', 'UNKNOWN': 'diamond-wide', 'WHOLE ROCK': 'circle', 'GLASS': 'diamond', 'INCLUSION': 'square'})
 
         full_symbol = {'circle': 'whole rock', 'diamond': 'volcanic glass', 'square': 'inclusion', 'x': 'mineral', 'diamond-wide': 'UNKNKOWN'}
         short_symbol = ['circle', 'diamond', 'square', 'x', 'diamond-wide'] 
@@ -940,7 +941,7 @@ def plot_chem(thisfig, thisdf, chem1, theselbls):
         thismat = thisdf[thisdf['symbol'] == symbol]
         # custom data
         if 'VEI' in list(thisdf):
-            thiscustomdata = thismat[chem1[1]].astype(str)+' '+chem1[1]+' '+thismat['MATERIAL']+' VEI='+thismat['VEI']  
+            thiscustomdata = thismat[chem1[1]].astype(str)+' '+chem1[1]+' '+thismat['MATERIAL_PROCESSED']+' VEI='+thismat['VEI']  
         else:
             thiscustomdata = thismat[chem1[1]].astype(str)+' '+chem1[1]+', '+thismat['ROCK']
 
