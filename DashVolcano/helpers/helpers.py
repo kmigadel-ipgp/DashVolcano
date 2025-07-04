@@ -206,6 +206,12 @@ def process_lat_lon(df):
     Returns:
         df: Updated DataFrame with averaged 'Latitude' and 'Longitude'.
     """
+            
+    df['LATITUDE MIN'] = pd.to_numeric(df['LATITUDE MIN'], errors='coerce')
+    df['LATITUDE MAX'] = pd.to_numeric(df['LATITUDE MAX'], errors='coerce')
+    df['LONGITUDE MIN'] = pd.to_numeric(df['LONGITUDE MIN'], errors='coerce')
+    df['LONGITUDE MAX'] = pd.to_numeric(df['LONGITUDE MAX'], errors='coerce')
+    
     # Filter out rows where 'LATITUDE MAX' is greater than 90 or less than -90
     df = df[abs(df['LATITUDE MAX']) <= 90]
     

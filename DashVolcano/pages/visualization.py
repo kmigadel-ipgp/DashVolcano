@@ -561,6 +561,8 @@ def update_joint_chemchart(thisvolcano_name, thisdf, thisfig, thisdate):
         # Match GVP and GEOROC data
         for gy, se in all_dates_gvp:
             dfmatch = dfmatchv[(dfmatchv['Start Year'].astype(str) == se[0]) & (dfmatchv['End Year'].astype(str) == se[1])]
+            thisdf['ERUPTION YEAR'] = pd.to_numeric(thisdf['ERUPTION YEAR'], errors='coerce')
+            thisdf['ERUPTION MONTH'] = pd.to_numeric(thisdf['ERUPTION MONTH'], errors='coerce')
             gm_clean = thisdf[thisdf['ERUPTION YEAR'] == gy]['ERUPTION MONTH'].dropna().unique()
             
             if se[0] == se[1] and len(gm_clean) > 0:
@@ -603,6 +605,7 @@ def add_chems(thisdf, thisfig, thisperiod):
     Returns:
         thisfig: Updated chronogram figure with chemical data.
     """
+    thisdf['ERUPTION YEAR'] = pd.to_numeric(thisdf['ERUPTION YEAR'], errors='coerce')
 
     # Filter dataframe based on the eruption period
     if thisperiod == '1679 and after':
@@ -610,6 +613,9 @@ def add_chems(thisdf, thisfig, thisperiod):
         thisdf = thisdf[thisdf['ERUPTION YEAR'] >= 1679].rename(
             columns={'ERUPTION YEAR': 'year', 'ERUPTION MONTH': 'month', 'ERUPTION DAY': 'day'}
         )
+        thisdf['year'] = pd.to_numeric(thisdf['year'], errors='coerce')
+        thisdf['month'] = pd.to_numeric(thisdf['month'], errors='coerce')
+        thisdf['day'] = pd.to_numeric(thisdf['day'], errors='coerce')
         # Correct any invalid month/day values
         thisdf['month'] = np.where((thisdf['month'] > 12) | (thisdf['month'] < 1), 1, thisdf['month'])
         thisdf['day'] = np.where((thisdf['day'] > 31) | (thisdf['day'] <= 0), 1, thisdf['day'])
