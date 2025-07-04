@@ -50,3 +50,9 @@ Finally to launch the application, run this line:
 ``` bash
 panel serve app.py --dev
 ```
+
+# Access to MongoDB
+
+To allow the application to run properly an access to MongoDB database is mandatory. 
+
+To avoid security breach, you need credential which can be created if you ask access for it.
