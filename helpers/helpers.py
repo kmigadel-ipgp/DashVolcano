@@ -5,9 +5,8 @@ import pandas as pd
 import geopandas as gpd
 import warnings
 
-from cftime import CFWarning
-from cftime import datetime as cftimedt
-from datetime import datetime, timedelta
+from cftime import datetime, CFWarning
+from datetime import timedelta
 from shapely.geometry import MultiLineString, LineString
 
 from constants.paths import TECTONICS_PLATES_DIR
@@ -15,12 +14,12 @@ from constants.rocks import GEOROC_TO_GVP, MAIN_ROCK_COLORS, ROCK_GVP
 
 warnings.filterwarnings("ignore", category=CFWarning)
 
-def timedelta_to_human_readable(delta):
+def timedelta_to_human_readable(uncertainty_days):
     """Convert timedelta to a human-readable ±X [years, months, days] string."""
-    days = delta.days
-    if days == 0:
+
+    if uncertainty_days == 0:
         return "(uncertainty 0 days)"
-    years, rem = divmod(days, 365)
+    years, rem = divmod(uncertainty_days, 365)
     months, days = divmod(rem, 30)
 
     parts = [
@@ -30,48 +29,44 @@ def timedelta_to_human_readable(delta):
     ]
     return "(uncertainty ±" + " ".join(p for p in parts if p) + ")"
 
-def compute_date_info(y, m, d):
+def compute_date_info(y, m, d, uncertainty_days):
     try:
         y = int(y)
-        m = int(m) if pd.notnull(m) and m != 0 else None
-        d = int(d) if pd.notnull(d) and d != 0 else None
-
-        if m is None:
-            m, d, delta = 6, 15, timedelta(days=181)
-        elif d is None:
-            d, delta = 15, timedelta(days=15)
-        else:
-            delta = timedelta(days=0)
-        date = cftimedt(y, m, d)
-        return date, delta, date - delta, date + delta
+        m = int(m) if pd.notnull(m) else 6
+        d = int(d) if pd.notnull(d) else 15
+        uncertainty_days = timedelta(days=uncertainty_days) if pd.notnull(uncertainty_days) else None
+        
+        date = datetime(y, m, d)
+        return date, date - uncertainty_days, date + uncertainty_days
     except Exception:
         return None, None, None, None
 
 # --- Compute end datetime + uncertainty interval ---
 def compute_end(row):
     if pd.notnull(row['end_year']) and int(row['end_year']) != 0:
-        return pd.Series(compute_date_info(row['end_year'], row.get('end_month', None), row.get('end_day', None)))
+        return pd.Series(compute_date_info(row['end_year'], row['end_month'], row['end_day'], row['end_uncertainty_days']))
         
     else:
         # fallback: use start_max (start + delta)
-        return pd.Series((row['start_datetime'], row['delta'], row['start_min'], row['start_max']))
+        return pd.Series((row['start_datetime'], row['start_min'], row['start_max']))
 
-def format_date_uncertainty(date, delta):
-    if pd.isnull(date) or pd.isnull(delta):
+def format_date_uncertainty(date, uncertainty_days):
+    if pd.isnull(date) or pd.isna(uncertainty_days):
         return "Unknown"
 
-    days = delta.days
-    if days > 180:
+    delta_days = timedelta(days=uncertainty_days).days
+
+    if delta_days > 180:
         # Only year known
         date_str = f"{date.year}"
-    elif days > 30:
+    elif delta_days > 30:
         # Only year and month known
         date_str = f"{date.year}-{date.month:02d}"
     else:
         # Full date known
         date_str = f"{date.year}-{date.month:02d}-{date.day:02d}"
 
-    return f"{date_str} {timedelta_to_human_readable(delta)}"
+    return f"{date_str} {timedelta_to_human_readable(delta_days)}"
 
 
 def safe_parse_events(x):

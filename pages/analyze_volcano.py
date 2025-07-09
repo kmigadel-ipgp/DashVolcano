@@ -1,4 +1,5 @@
 import os
+import io
 import panel as pn
 import holoviews as hv
 import hvplot.pandas
@@ -58,6 +59,13 @@ plot_container = pn.Column(
     sizing_mode='stretch_width'
 )
 
+# Create a FileDownload widget for downloading the selected data
+download_button = pn.widgets.FileDownload(
+    filename='selected_data.csv',
+    button_type='primary',
+    disabled=True
+)
+
 # ----------------------------- #
 #         Query & Filters       #
 # ----------------------------- #
@@ -76,6 +84,29 @@ volcano_name_filter.param.watch(lambda e: setattr(eruption_date_filter, 'options
 def generate_plots(df_samples):
     """Generate chemical composition plot using the selected samples."""
 
+    # Enable the download button if any data is available
+    nb_samples_to_download = len(df_samples)
+
+    if nb_samples_to_download > 0:
+        download_button.disabled = False
+
+        # Prepare downloadable CSV from df_samples_1 (or merge both if needed)
+        csv_buffer = io.StringIO()
+        df_selected_data_download = df_samples.drop(columns=['location_id', 'eruption_numbers', 'date', 'oxides'], errors='ignore')
+        df_selected_data_download.to_csv(csv_buffer, index=False)
+        csv_buffer.seek(0)
+        download_button.file = csv_buffer
+        download_button.filename = 'selected_data.csv'
+
+        note = pn.pane.Markdown(f"ℹ️ **{nb_samples_to_download} samples** included in the CSV.")
+        download_row = pn.Column(
+            pn.Row(download_button, styles={'align-self': 'center'}), 
+            note,
+            align='center'
+        )
+    else:
+        download_row = pn.Row(download_button, align='center')
+
     def pane_or_plot(df):
         return (plot_chemicals(df), plot_chemicals_vei(df)) if not df.empty else (
             pn.pane.Markdown("⚠️ Select a volcano to view chemicals plot."),
@@ -84,10 +115,13 @@ def generate_plots(df_samples):
     
     chemicals_plot, chemicals_plot_vei = pane_or_plot(df_samples)
 
-    return pn.Row(
-        chemicals_plot, 
-        chemicals_plot_vei, 
-        align='center'
+    return pn.Column(
+        download_row,
+        pn.Row(
+            chemicals_plot, 
+            chemicals_plot_vei, 
+            align='center'
+        )
     )
 
 
@@ -135,7 +169,7 @@ def view():
     title = pn.pane.Markdown("""
     ## Analyze volcano
     
-    This page allow to analyze in more details the chemicals composition of **[GVP](https://volcano.si.edu/)** volcano from only **[GEOROC](https://georoc.eu/)** samples since **[PetDB](https://search.earthchem.org/)** samples can't be linked to a GVP volcano.
+    This page allow to analyze in more details the chemicals composition of **[GVP](https://volcano.si.edu/)** volcano from **[GEOROC](https://georoc.eu/)** and **[PetDB](https://search.earthchem.org/)** samples.
     
     To analyze a volcano we provide two TAS Diagram as well as some statistic on the rock percentage around all material type present in the GEOROC samples for the selected volcano.
 
@@ -151,6 +185,8 @@ def view():
 
     **Note:** 
     > GVP tends to assign a **default VEI of 2** for eruptions with **limited available information**.
+    
+    > Since PetDB samples don't have sampling date we cannot associate them to a given GVP eruption.
     """)
 
     header = pn.Row(title)

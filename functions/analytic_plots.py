@@ -11,6 +11,8 @@ from bokeh.palettes import Category10
 from helpers.helpers import get_discrete_color_map_samples, get_discrete_color_map_volcanoes, safe_parse_events, compute_date_info, compute_end, format_date_uncertainty
 from constants.rocks import ROCK_SORTED, ROCK_GVP
 
+pd.set_option('future.no_silent_downcasting', True)
+
 
 def get_plots(df_selected, df_selected_wr_agg, df_wr_agg, df_wr_composition_samples, df_wr_composition_volcanoes, samples_tectonic_setting, volcanoes_tectonic_setting):
     """
@@ -208,8 +210,6 @@ def plot_tas_polygons():
         hover_tooltips=[
             ('name', '@{v1}'),
         ],
-        # height=400,
-        # width=800,
         alpha=0.2, 
         line_color='grey', 
         show_legend=False
@@ -243,22 +243,27 @@ def plot_afm(df):
         a="FEOT(WT%)", 
         b='NA2O+K2O', 
         c='MGO(WT%)', 
-        color='material', 
+        color='material',
     )
 
     # Customdata to control hover order
     fig.update_traces(
-        customdata=df[['db', 'name', 'latitude', 'longitude', 'rock', 'FEOT(WT%)', 'NA2O+K2O', 'MGO(WT%)', 'short_reference']],
+        customdata=df[['db', 'name', 'latitude', 'longitude', 'material', 'rock', 'FEOT(WT%)', 'NA2O+K2O', 'MGO(WT%)', 'short_reference']],
         hovertemplate=(
             "<b>Database:</b> %{customdata[0]}<br>" +
             "<b>Name:</b> %{customdata[1]}<br>" +
             "<b>Latitude:</b> %{customdata[2]:.2f}<br>" +
             "<b>Longitude:</b> %{customdata[3]:.2f}<br>" +
-            "<b>Rock:</b> %{customdata[4]}<br>" +
-            "<b>FEOT(WT%):</b> %{customdata[5]:.2f}<br>" +
-            "<b>NA2O+K2O(WT%):</b> %{customdata[6]:.2f}<br>" +
-            "<b>MGO(WT%):</b> %{customdata[7]:.2f}<br>" +
-            "<b>Reference:</b> %{customdata[8]}<br>"
+            "<b>Material:</b> %{customdata[4]}<br>" +
+            "<b>Rock:</b> %{customdata[5]}<br>" +
+            "<b>FEOT(WT%):</b> %{customdata[6]:.2f}<br>" +
+            "<b>NA2O+K2O(WT%):</b> %{customdata[7]:.2f}<br>" +
+            "<b>MGO(WT%):</b> %{customdata[8]:.2f}<br>" +
+            "<b>Reference:</b> %{customdata[9]}<br>"
+        ),
+        marker=dict(
+            opacity=0.6,
+            line=dict(color='black', width=1)
         )
     )
 
@@ -281,8 +286,15 @@ def plot_afm(df):
             'x': 0.5,  # Center the title
             'xanchor': 'center'  # Ensure the anchor point is the center
         },
-        width=400,
-        height=400,
+        width=600,
+        height=600,
+        hovermode='closest',  # Keep tooltip offset from cursor
+        hoverlabel=dict(
+            align='left',
+            bgcolor='rgba(255,255,255,0.9)',  # Optional: lighter background
+            bordercolor='gray',
+            font=dict(color='black', size=12)
+        )
     )
     
     return fig
@@ -767,12 +779,12 @@ def plot_chemicals_vei(df):
 def plot_samples_timeline(df_samples):
 
     # --- Samples ---
-    df_samples[['date', 'delta', 'date_start', 'date_end']] = df_samples.apply(
-        lambda r: pd.Series(compute_date_info(r['year'], r['month'], r['day'])), axis=1
+    df_samples[['date', 'date_start', 'date_end']] = df_samples.apply(
+        lambda r: pd.Series(compute_date_info(r['year'], r['month'], r['day'], r['uncertainty_days'])), axis=1
     )
 
     df_samples['date_uncertainty'] = df_samples.apply(
-        lambda r: format_date_uncertainty(r['date'], r['delta']), axis=1
+        lambda r: format_date_uncertainty(r['date'], r['uncertainty_days']), axis=1
     )
 
     grouped_samples = df_samples.groupby(['date_uncertainty', 'volcano_name']).agg({
@@ -836,11 +848,11 @@ def plot_samples_timeline(df_samples):
 def plot_eruptions_timeline(df_eruptions):
 
     # --- Compute datetimes ---
-    df_eruptions[['start_datetime', 'delta', 'start_min', 'start_max']] = df_eruptions.apply(
-        lambda r: pd.Series(compute_date_info(r['start_year'], r['start_month'], r['start_day'])), axis=1
+    df_eruptions[['start_datetime', 'start_min', 'start_max']] = df_eruptions.apply(
+        lambda r: pd.Series(compute_date_info(r['start_year'], r['start_month'], r['start_day'], r['start_uncertainty_days'])), axis=1
     )
         
-    df_eruptions[['end_datetime', 'end_delta', 'end_min', 'end_max']] = df_eruptions.apply(compute_end, axis=1)
+    df_eruptions[['end_datetime', 'end_min', 'end_max']] = df_eruptions.apply(compute_end, axis=1)
 
     df_eruptions['vei'] = df_eruptions['vei'].fillna(-1)
     df_eruptions['vei_label'] = df_eruptions['vei'].apply(lambda x: 'Unknown' if x == -1 else str(int(x)))
@@ -849,11 +861,11 @@ def plot_eruptions_timeline(df_eruptions):
 
     # --- Format date uncertainty ---
     df_eruptions['start_uncertainty'] = df_eruptions.apply(
-        lambda r: format_date_uncertainty(r['start_datetime'], r['delta']), axis=1
+        lambda r: format_date_uncertainty(r['start_datetime'], r['start_uncertainty_days']), axis=1
     )
 
     df_eruptions['end_uncertainty'] = df_eruptions.apply(
-        lambda r: format_date_uncertainty(r['end_datetime'], r['end_delta']), axis=1
+        lambda r: format_date_uncertainty(r['end_datetime'], r['end_uncertainty_days']), axis=1
     )
 
     # --- Color mapping ---
@@ -867,7 +879,7 @@ def plot_eruptions_timeline(df_eruptions):
         seg = hv.Segments(
             group,
             kdims=['start_min', 'volcano_name', 'end_max', 'volcano_name'],
-            vdims=['start_uncertainty', 'end_uncertainty', 'vei_label', 'event_count', 'events'],
+            vdims=['start_uncertainty', 'end_uncertainty', 'vei_label', 'event_count', 'events', 'evidence_method_dating'],
             label=vei_label
         ).opts(
             color=vei_color_map[vei_label],
@@ -878,6 +890,7 @@ def plot_eruptions_timeline(df_eruptions):
                 ('Volcano', '@volcano_name'),
                 ('Start date', '@start_uncertainty'),
                 ('End date', '@end_uncertainty'),
+                ('Dating Method', '@evidence_method_dating'),
                 ('VEI', '@vei_label'),
                 ('Event Count', '@event_count'),
                 ('Events', '@events'),
@@ -888,7 +901,7 @@ def plot_eruptions_timeline(df_eruptions):
         point = hv.Points(
             group,
             kdims=['start_datetime', 'volcano_name'],
-            vdims=['start_uncertainty', 'end_uncertainty', 'vei_label', 'event_count', 'events'],
+            vdims=['start_uncertainty', 'end_uncertainty', 'vei_label', 'event_count', 'events', 'evidence_method_dating'],
         ).opts(
             color='red',
             size=8,
@@ -898,6 +911,7 @@ def plot_eruptions_timeline(df_eruptions):
                 ('Volcano', '@volcano_name'),
                 ('Start date', '@start_uncertainty'),
                 ('End date', '@end_uncertainty'),
+                ('Dating Method', '@evidence_method_dating'),
                 ('VEI', '@vei_label'),
                 ('Event Count', '@event_count'),
                 ('Events', '@events'),
@@ -921,11 +935,11 @@ def plot_eruptions_timeline(df_eruptions):
 def plot_vei_eruptions_timeline(df_eruptions):
 
     # --- Compute datetimes ---
-    df_eruptions[['start_datetime', 'delta', 'start_min', 'start_max']] = df_eruptions.apply(
-        lambda r: pd.Series(compute_date_info(r['start_year'], r['start_month'], r['start_day'])), axis=1
+    df_eruptions[['start_datetime', 'start_min', 'start_max']] = df_eruptions.apply(
+        lambda r: pd.Series(compute_date_info(r['start_year'], r['start_month'], r['start_day'], r['start_uncertainty_days'])), axis=1
     )
         
-    df_eruptions[['end_datetime', 'end_delta', 'end_min', 'end_max']] = df_eruptions.apply(compute_end, axis=1)
+    df_eruptions[['end_datetime', 'end_min', 'end_max']] = df_eruptions.apply(compute_end, axis=1)
 
     df_eruptions['vei'] = df_eruptions['vei'].fillna(-1)
     df_eruptions['vei_label'] = df_eruptions['vei'].apply(lambda x: 'Unknown' if x == -1 else str(int(x)))
@@ -934,11 +948,11 @@ def plot_vei_eruptions_timeline(df_eruptions):
 
     # --- Format date uncertainty ---
     df_eruptions['start_uncertainty'] = df_eruptions.apply(
-        lambda r: format_date_uncertainty(r['start_datetime'], r['delta']), axis=1
+        lambda r: format_date_uncertainty(r['start_datetime'], r['start_uncertainty_days']), axis=1
     )
 
     df_eruptions['end_uncertainty'] = df_eruptions.apply(
-        lambda r: format_date_uncertainty(r['end_datetime'], r['end_delta']), axis=1
+        lambda r: format_date_uncertainty(r['end_datetime'], r['end_uncertainty_days']), axis=1
     )
 
     # --- One VEI Curve per volcano ---
@@ -951,7 +965,7 @@ def plot_vei_eruptions_timeline(df_eruptions):
             kdims=['start_datetime'],
             vdims=[
                 'vei', 'volcano_name', 'start_uncertainty', 'end_uncertainty',
-                'vei_label', 'event_count', 'events'
+                'vei_label', 'event_count', 'events', 'evidence_method_dating'
             ]
         )
         curve = hv.Curve(
@@ -964,7 +978,8 @@ def plot_vei_eruptions_timeline(df_eruptions):
                 'end_uncertainty',
                 'vei_label', 
                 'event_count', 
-                'events'
+                'events',
+                'evidence_method_dating'
             ],
             label=volcano_name
         ).opts(
@@ -974,6 +989,7 @@ def plot_vei_eruptions_timeline(df_eruptions):
                 ('Volcano', '@volcano_name'),
                 ('Start date', '@start_uncertainty'),
                 ('End date', '@end_uncertainty'),
+                ('Dating Method', '@evidence_method_dating'),
                 ('VEI', '@{vei_label}'),
                 ('Event Count', '@event_count'),
                 ('Events', '@events'),

@@ -73,47 +73,62 @@ download_button = pn.widgets.FileDownload(
 def generate_plots(df_selected_samples, df_selected_eruptions):
     """Generate time-serie of eruptions for the selected volcano."""
 
+    # --- SAMPLES ---
     if df_selected_samples.empty:
         samples_timeline_plot = pn.pane.Markdown("⚠️ No samples available for the selected volcano.")
+        download_row = pn.Row(download_button, align='center')  # Just the button
     else:
-        # Enable the download button and set the file to the selected data
         download_button.disabled = False
 
-        # Use StringIO to create a file-like object for the CSV data
+        # Prepare downloadable CSV (clean up)
         csv_buffer = io.StringIO()
         df_selected_data_download = df_selected_samples.drop(columns=['location_id', 'eruption_numbers', 'date', 'oxides'])
         df_selected_data_download.to_csv(csv_buffer, index=False)
-        csv_buffer.seek(0)  # Rewind the buffer to the beginning
-
+        csv_buffer.seek(0)
         download_button.file = csv_buffer
-        download_button.filename = 'samples_data.csv'
+        download_button.filename = 'selected_data.csv'
 
-        df_selected_samples = df_selected_samples[df_selected_samples['year'] != 0].copy()
-        if df_selected_samples.empty:
-            samples_timeline_plot = pn.pane.Markdown("⚠️ No samples available for the selected volcano.")
+        # Count samples without year
+        missing_year_count = df_selected_samples['year'].isna().sum()
+
+        # Filter valid-year samples for plotting
+        df_samples_with_year = df_selected_samples[df_selected_samples['year'].notna()].copy()
+
+        if df_samples_with_year.empty:
+            samples_timeline_plot = pn.pane.Markdown("⚠️ No dated samples to display on the timeline.")
         else:
-            samples_timeline_plot = plot_samples_timeline(df_selected_samples)
-    
+            samples_timeline_plot = plot_samples_timeline(df_samples_with_year)
+
+        # Create note if needed
+        if missing_year_count > 0:
+            note = pn.pane.Markdown(
+                f"ℹ️ **{missing_year_count} samples** do not have a year and are not shown in the timeline but are included in the CSV.",
+                width=500,
+            )
+            download_row = pn.Column(
+                pn.Row(
+                    download_button,
+                    styles={'align-self': 'center'}
+                ), 
+                note, 
+                align='center'
+            )
+        else:
+            download_row = pn.Row(download_button, align='center')
+
+    # --- ERUPTIONS ---
     if df_selected_eruptions.empty:
         eruptions_timeline_plot = pn.pane.Markdown("⚠️ No eruptions available for the selected volcano.")
+        vei_eruptions_timeline_plot = pn.pane.Markdown("⚠️ No eruptions available for the selected volcano.")
     else:
         eruptions_timeline_plot = plot_eruptions_timeline(df_selected_eruptions)
         vei_eruptions_timeline_plot = plot_vei_eruptions_timeline(df_selected_eruptions)
-    
+
     return pn.Column(
-        pn.Row(
-            download_button,
-            align='center',
-        ),
-        pn.Row(
-            eruptions_timeline_plot
-        ),
-        pn.Row(
-            vei_eruptions_timeline_plot
-        ),
-        pn.Row(
-            samples_timeline_plot
-        ),
+        download_row,
+        pn.Row(eruptions_timeline_plot),
+        pn.Row(vei_eruptions_timeline_plot),
+        pn.Row(samples_timeline_plot),
         align='center'
     )
 
@@ -161,9 +176,9 @@ def view():
     title = pn.pane.Markdown("""
     ## Analyze volcano timeline
     
-    This page allow to analyze in more details the eruption timeline of **[GVP](https://volcano.si.edu/)** volcano from only **[GEOROC](https://georoc.eu/)** samples since **[PetDB](https://search.earthchem.org/)** samples can't be linked to a GVP volcano.
+    This page allow to analyze in more details the eruption timeline of **[GVP](https://volcano.si.edu/)** volcano from **[GEOROC](https://georoc.eu/)** and **[PetDB](https://search.earthchem.org/)** samples.
     
-    You can filter per volcano to visualize only the GEOROC samples and GVP eruptions in the timeline.
+    You can filter per volcano to visualize rock samples and GVP eruptions in the timeline.
 
     **Note:**
     > GVP tends to assign a **default VEI of 2** for eruptions with **limited available information**.

@@ -239,7 +239,7 @@ class Database:
         return location_selected
 
 
-    def get_selected_data(self, location_selected):
+    def get_selected_data(self, location_selected, volcano_names, selected_db):
         """Query the documents that match the selected locations and enrich with location data."""
 
         # Step 1: Match locations
@@ -254,26 +254,79 @@ class Database:
         location_ids = [loc["_id"] for loc in matching_locations]
 
         # Step 3: Build pipeline for samples collection
-        match_samples_stage = {"$match": {"location_id": {"$in": location_ids}}}
+        pipeline = []
+
+        pipeline.append({"$match": {"location_id": {"$in": location_ids}}})
+
+        if selected_db:
+            match_db_stage = {"$match": {"db": {"$in": selected_db}}}
+            pipeline.append(match_db_stage)
+
+        if volcano_names:
+            volcano_display_map = {
+                f"{row['volcano_name']} ({row['volcano_number']})": row['volcano_number']
+                for _, row in self.get_volcanoes().iterrows()
+            }
+            volcano_ids = [volcano_display_map[name] for name in volcano_names if name in volcano_display_map]
+            match_volcano_number_stage = {"$match": {"volcano_number": {"$in": volcano_ids}}}
+            pipeline.append(match_volcano_number_stage)
+        
 
         # Step 4: Lookup latitude/longitude from locations
-        lookup_location_stage = {
+        pipeline.append({
             "$lookup": {
                 "from": "locations",
                 "localField": "location_id",
                 "foreignField": "_id",
                 "as": "location_info"
             }
-        }
+        })
 
-        unwind_location_stage = {"$unwind": "$location_info"}
+        pipeline.append({"$unwind": "$location_info"})
+
+        # Join with volcanoes to get volcano_name, etc.
+        pipeline.append({
+            "$lookup": {
+                "from": "volcanoes",
+                "localField": "volcano_number",
+                "foreignField": "volcano_number",
+                "as": "volcano_info"
+            }
+        })
+        pipeline.append({"$unwind": "$volcano_info"})
+
+        # --- NEW: Join with eruptions ---
+        pipeline.append({
+            "$lookup":  {
+                "from": "eruptions",
+                "let": {
+                    "eruption_nums": { "$ifNull": ["$eruption_numbers.eruption_number", []] }
+                },
+                "pipeline": [
+                    {
+                        "$match": {
+                            "$expr": {
+                                "$and": [
+                                    { "$in": ["$eruption_number", "$$eruption_nums"] },
+                                ]
+                            }
+                        }
+                    }
+                ],
+                "as": "vei_eruptions"
+            }
+        })
 
         # Step 5: Add oxides, date fields and location fields
-        add_fields_stage = {
+        pipeline.append({
             "$addFields": {
                 "year": "$date.year",
                 "month": "$date.month",
                 "day": "$date.day",
+                "uncertainty_days": "$date.uncertainty_days",
+                "vei": "$vei_eruptions.vei",
+                "volcano_name": "$volcano_info.volcano_name",
+                "eruptions": "$eruption_numbers.eruption_number",
                 "latitude": "$location_info.latitude",
                 "longitude": "$location_info.longitude",
                 "SIO2(WT%)": "$oxides.SIO2(WT%)",
@@ -290,19 +343,13 @@ class Database:
                 "P2O5(WT%)": "$oxides.P2O5(WT%)",
                 "LOI(WT%)": "$oxides.LOI(WT%)"
             }
-        }
+        })
 
-        # Step 6: Remove the embedded location_info field
-        unset_location_info_stage = {"$unset": "location_info"}
+        # Step 6: Remove the embedded location_info, volcano_info, vei_eruptions fields
+        pipeline.append({"$unset": "location_info"})
+        pipeline.append({"$unset": "volcano_info"})
+        pipeline.append({"$unset": "vei_eruptions"})
 
-        # Final pipeline
-        pipeline = [
-            match_samples_stage,
-            lookup_location_stage,
-            unwind_location_stage,
-            add_fields_stage,
-            unset_location_info_stage
-        ]
 
         selected_data = list(self.db.samples.aggregate(pipeline))
 
@@ -579,6 +626,7 @@ class Database:
                 "year": "$date.year",
                 "month": "$date.month",
                 "day": "$date.day",
+                "uncertainty_days": "$date.uncertainty_days",
                 "vei": "$vei_eruptions.vei",
                 "volcano_name": "$volcano_info.volcano_name",
                 "eruptions": "$eruption_numbers.eruption_number",
@@ -657,6 +705,31 @@ class Database:
         match_volcano_stage = {"$match": {"volcano_number": {"$in": selected_volcano}}}
         pipeline.append(match_volcano_stage)
 
+        # --- Join with locations collection ---
+        pipeline.append({
+            "$lookup": {
+                "from": "locations",
+                "localField": "location_id",
+                "foreignField": "_id",
+                "as": "location_info"
+            }
+        })
+
+        pipeline.append({"$unwind": "$location_info"})
+
+        # --- Extract lat/lon to top level (for convenience) ---
+        pipeline.append({
+            "$addFields": {
+                "latitude": "$location_info.latitude",
+                "longitude": "$location_info.longitude"
+            }
+        })
+
+        # --- Remove the now-unnecessary location_info ---
+        pipeline.append({
+            "$unset": "location_info"
+        })
+
         # Aggregate the data for eruptions
         eruptions = list(self.db.eruptions.aggregate(pipeline))
         df_eruptions = pd.DataFrame(eruptions)
@@ -703,9 +776,11 @@ class Database:
                 "start_year": "$start_date.year",
                 "start_month": "$start_date.month",
                 "start_day": "$start_date.day",
-                "end_year": "$end_date.year",
-                "end_month": "$end_date.month",
-                "end_day": "$end_date.day"
+                "start_uncertainty_days": "$start_date.uncertainty_days",
+                "end_year": {"$ifNull": ["$end_date.year", None]},
+                "end_month": {"$ifNull": ["$end_date.month", None]},
+                "end_day": {"$ifNull": ["$end_date.day", None]},
+                "end_uncertainty_days": {"$ifNull": ["$end_date.uncertainty_days", None]},
             }
         })
 

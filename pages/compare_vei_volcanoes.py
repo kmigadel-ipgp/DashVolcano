@@ -1,5 +1,7 @@
 
 import os
+import io
+import pandas as pd
 import panel as pn
 import holoviews as hv
 import hvplot.pandas
@@ -59,6 +61,13 @@ plot_container = pn.Column(
     sizing_mode='stretch_width'
 )
 
+# Create a FileDownload widget for downloading the selected data
+download_button = pn.widgets.FileDownload(
+    filename='selected_data.csv',
+    button_type='primary',
+    disabled=True
+)
+
 # ----------------------------- #
 #         Query & Filters       #
 # ----------------------------- #
@@ -73,12 +82,48 @@ def get_major_rocks_markdown(df):
     return pn.pane.Markdown(text, height=100, width=600)
 
 def generate_plots(df_vei_1, df_vei_2, df_volcano_info_1, df_volcano_info_2):
-    vei_plot_1 = plot_vei(df_vei_1) if not df_vei_1.empty else pn.pane.Markdown("⚠️ Select a volcano to view vei plot.")
-    vei_plot_2 = plot_vei(df_vei_2) if not df_vei_2.empty else pn.pane.Markdown("⚠️ Select a volcano to view vei plot.")
-    return pn.Row(
-        pn.Column(vei_plot_1, pn.Row(get_major_rocks_markdown(df_volcano_info_1))),
-        pn.Column(vei_plot_2, pn.Row(get_major_rocks_markdown(df_volcano_info_2))),
-        styles={"align-self": "center"}
+
+    # Enable the download button if any data is available
+    nb_data_to_download = len(df_vei_1) + len(df_vei_2)
+
+    if nb_data_to_download > 0:
+        download_button.disabled = False
+
+        # Prepare downloadable CSV from df_samples_1 (or merge both if needed)
+        csv_buffer = io.StringIO()
+        df_selected_data_download = pd.concat([df_vei_1, df_vei_2], ignore_index=True)
+        df_selected_data_download = df_selected_data_download.drop(columns=['location_id'], errors='ignore')
+        df_selected_data_download.to_csv(csv_buffer, index=False)
+        csv_buffer.seek(0)
+        download_button.file = csv_buffer
+        download_button.filename = 'selected_data.csv'
+
+        note = pn.pane.Markdown(f"ℹ️ **{nb_data_to_download} rows** included in the CSV.")
+        download_row = pn.Column(
+            pn.Row(download_button, styles={'align-self': 'center'}), 
+            note,
+            align='center'
+        )
+    else:
+        download_row = pn.Row(download_button, align='center')
+    
+    # Plotting helper
+    def pane_or_plot(df):
+        if not df.empty:
+            return plot_vei(df)
+        else:
+            return pn.pane.Markdown("⚠️ Select a volcano to view vei plot.")
+        
+    vei_plot_1 = pane_or_plot(df_vei_1)
+    vei_plot_2 = pane_or_plot(df_vei_2)
+
+    return pn.Column(
+        download_row,
+        pn.Row(
+            pn.Column(vei_plot_1, pn.Row(get_major_rocks_markdown(df_volcano_info_1))),
+            pn.Column(vei_plot_2, pn.Row(get_major_rocks_markdown(df_volcano_info_2))),
+            styles={"align-self": "center"}
+        )
     )
 
 
@@ -130,12 +175,14 @@ def view():
     title = pn.pane.Markdown("""
     ## Compare VEI volcanoes
 
-    This page allow to compare volcano from **[GVP](https://volcano.si.edu/)** using VEI (Volcanic Explosivity Index) from only **[GEOROC](https://georoc.eu/)** samples since **[PetDB](https://search.earthchem.org/)** samples can't be linked to a GVP volcano.
+    This page allow to compare volcano from **[GVP](https://volcano.si.edu/)** using VEI (Volcanic Explosivity Index) from only **[GEOROC](https://georoc.eu/)** samples. 
     
     To compare volcanoes on their VEI we group eruptions by VEI and provide the rock composition of the volcano according to GVP.
     
     **Note:** 
     > GVP tends to assign a **default VEI of 2** for eruptions with **limited available information**.
+
+    > As **[PetDB](https://search.earthchem.org/)** has no sampling date, we cannot associate its samples with the GVP eruption.
     """)
 
     header = pn.Row(title)

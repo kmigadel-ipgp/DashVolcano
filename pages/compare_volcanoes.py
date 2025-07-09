@@ -1,5 +1,7 @@
 
 import os
+import io
+import pandas as pd
 import panel as pn
 import holoviews as hv
 import hvplot.pandas
@@ -62,6 +64,13 @@ plot_container = pn.Column(
     sizing_mode='stretch_width'
 )
 
+# Create a FileDownload widget for downloading the selected data
+download_button = pn.widgets.FileDownload(
+    filename='selected_data.csv',
+    button_type='primary',
+    disabled=True
+)
+
 # ----------------------------- #
 #         Query & Filters       #
 # ----------------------------- #
@@ -79,19 +88,52 @@ volcano_name_filter_2.param.watch(lambda e: setattr(eruption_date_filter_2, 'opt
 
 # --- Generate plots --- #
 def generate_plots(df_samples_1, df_samples_2):
-    def pane_or_plot(df):
-        return plot_chemical_oxide_vei(df) if not df.empty else (
-            pn.pane.Markdown("⚠️ Select a volcano to view chemicals plot."),
-            pn.pane.Markdown("⚠️ Select a volcano to view oxides plots.")
+    """Generate chemical and oxide plots for two sets of samples, with download option."""
+    
+    # Enable the download button if any data is available
+    nb_samples_to_download = len(df_samples_1) + len(df_samples_2)
+
+    if nb_samples_to_download > 0:
+        download_button.disabled = False
+
+        # Prepare downloadable CSV from df_samples_1 (or merge both if needed)
+        csv_buffer = io.StringIO()
+        df_selected_data_download = pd.concat([df_samples_1, df_samples_2], ignore_index=True)
+        df_selected_data_download = df_selected_data_download.drop(columns=['location_id', 'eruption_numbers', 'date', 'oxides'], errors='ignore')
+        df_selected_data_download.to_csv(csv_buffer, index=False)
+        csv_buffer.seek(0)
+        download_button.file = csv_buffer
+        download_button.filename = 'selected_data.csv'
+
+        note = pn.pane.Markdown(f"ℹ️ **{nb_samples_to_download} samples** included in the CSV.")
+        download_row = pn.Column(
+            pn.Row(download_button, styles={'align-self': 'center'}), 
+            note,
+            align='center'
         )
+    else:
+        download_row = pn.Row(download_button, align='center')
+
+    # Plotting helper
+    def pane_or_plot(df):
+        if not df.empty:
+            return plot_chemical_oxide_vei(df)
+        else:
+            return (
+                pn.pane.Markdown("⚠️ Select a volcano to view chemicals plot."),
+                pn.pane.Markdown("⚠️ Select a volcano to view oxides plots.")
+            )
 
     chem1, ox1 = pane_or_plot(df_samples_1)
     chem2, ox2 = pane_or_plot(df_samples_2)
 
-    return pn.Row(
-        pn.Column(chem1, pn.Row(ox1, styles={"align-self": "center"})),
-        pn.Column(chem2, pn.Row(ox2, styles={"align-self": "center"})),
-        styles={"align-self": "center"}
+    return pn.Column(
+        download_row,
+        pn.Row(
+            pn.Column(chem1, pn.Row(ox1, styles={"align-self": "center"})),
+            pn.Column(chem2, pn.Row(ox2, styles={"align-self": "center"})),
+            styles={"align-self": "center"}
+        )
     )
 
 
@@ -146,7 +188,7 @@ def view():
     # Example content for the second page
     title = pn.pane.Markdown("""
     ## Compare volcanoes
-    This page allow to compare volcano from **[GVP](https://volcano.si.edu/)** using chemical composition from only **[GEOROC](https://georoc.eu/)** samples since **[PetDB](https://search.earthchem.org/)** samples can't be linked to a GVP volcano.
+    This page allow to compare volcano from **[GVP](https://volcano.si.edu/)** using chemical composition from **[GEOROC](https://georoc.eu/)** and **[PetDB](https://search.earthchem.org/)** samples.
     
     The eruption dates can be filtered, if available, to observe chemical composition of a specific eruption; however only a few eruptions are linked to GEOROC samples.
     
@@ -157,6 +199,9 @@ def view():
     - **MIN**: Mineral
             
     To compare volcanoes we provide a TAS Diagram and a Harker Diagram as well as some statistic on the rock percentage around all material type present in the GEOROC samples for the selected volcano. 
+    
+    **Note:** 
+    > As **[PetDB](https://search.earthchem.org/)** has no sampling date, we cannot associate its samples with the GVP eruption.                       
     """)
 
     header = pn.Row(title)

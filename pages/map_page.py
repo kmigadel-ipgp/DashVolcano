@@ -276,18 +276,34 @@ def generate_plots(df_selected_data, df_selected_wr_agg, df_wr_agg, df_wr_compos
         samples_tectonic_setting, 
         volcanoes_tectonic_setting
     )
+
+    # Count samples available to download
+    nb_samples_to_download = len(df_selected_data)
+
+    # Create note if needed
+    if nb_samples_to_download > 0:
+        note = pn.pane.Markdown(
+            f"ℹ️ **{nb_samples_to_download} samples** included in the CSV.",
+        )
+        download_row = pn.Column(
+            pn.Row(
+                download_button,
+                styles={'align-self': 'center'}
+            ), 
+            note, 
+            align='center'
+        )
+    else:
+        download_row = pn.Row(download_button, align='center')
     
     plot_layout = pn.Column(
         pn.Row(
-            download_button,
+            download_row,
             align='center'
         ),
         pn.Row(
             tas_plot, 
-            pn.Column(
-                pn.pane.Markdown(" ", height=100),
-                afm_plot
-            ),
+            afm_plot,
             align='center'
         ),
         pn.Spacer(height=80),
@@ -349,7 +365,7 @@ def generate_detail_plots(selected, volcano_names, select_value, min_value, max_
         return
     
     # Step 2: Get selected data
-    df_selected_data = db_client.get_selected_data(location_selected)
+    df_selected_data = db_client.get_selected_data(location_selected, volcano_names, selected_db)
     if df_selected_data is None:
         download_button.disabled = True
         insight_container.clear()
@@ -363,7 +379,7 @@ def generate_detail_plots(selected, volcano_names, select_value, min_value, max_
 
     # Use StringIO to create a file-like object for the CSV data
     csv_buffer = io.StringIO()
-    df_selected_data_download = df_selected_data.drop(columns=['date', 'oxides'])
+    df_selected_data_download = df_selected_data.drop(columns=['date', 'oxides', 'location_id', 'eruption_numbers'])
     df_selected_data_download.to_csv(csv_buffer, index=False)
     csv_buffer.seek(0)  # Rewind the buffer to the beginning
 
