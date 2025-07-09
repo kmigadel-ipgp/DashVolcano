@@ -173,7 +173,7 @@ def generate_map_overlay():
                 'major_rock_1',
                 'major_rock_2',
                 'major_rock_3',
-                'refs'
+                'reference'
             ],
             hover_tooltips=[
                 ('Volcano Name', '@volcano_name'), 
@@ -187,7 +187,7 @@ def generate_map_overlay():
                 ('Major rock 1', '@major_rock_1'),
                 ('Major rock 2', '@major_rock_2'),
                 ('Major rock 3', '@major_rock_3'),
-                ('Reference', '@refs')
+                ('Reference', '@reference')
             ],
             tools=['pan', 'wheel_zoom', 'reset', 'hover', 'box_select', 'lasso_select'],
             xlim=xlim,

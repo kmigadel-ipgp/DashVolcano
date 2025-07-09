@@ -1,12 +1,12 @@
 from pymongo import MongoClient
 import pandas as pd
-
+from functools import cached_property
 from helpers.helpers import first_three_unique
 
 
 class Database:
-    def __init__(self, config):
-        """Initialize the MongoDB client."""
+    def __init__(self, config: dict):
+        """Initialize MongoDB client with the provided config."""
         uri = f"mongodb+srv://{config['user']}:{config['password']}@{config['cluster']}/?retryWrites=true&w=majority"
         client = MongoClient(uri)
         self.db = client[config["db_name"]]
@@ -16,11 +16,8 @@ class Database:
         self.group_rock_location_stage = {
             "$group": {
                 "_id": {
-                    "rock": "$rock",
-                    "db": "$db",
-                    "material": "$material",
-                    "latitude": "$latitude",
-                    "longitude": "$longitude"
+                    "rock": "$rock", "db": "$db", "material": "$material",
+                    "latitude": "$latitude", "longitude": "$longitude"
                 },
                 "db": {"$first": "$db"},
                 "count": {"$sum": 1}
@@ -29,297 +26,226 @@ class Database:
 
         self.sort_stage = {"$sort": {"count": -1}}
 
-
-    def get_samples(self):
-        return pd.DataFrame(list(self.db.samples.find()))
-
-
-    def get_volcanoes(self):
-        return pd.DataFrame(list(self.db.volcanoes.find()))
-
-
-    def get_eruptions(self):
-        return pd.DataFrame(list(self.db.eruptions.find()))
-
-
-    def get_countries(self):
-        return self.db.volcanoes.distinct("country")
-
-
-    def get_tectonic_settings(self):
-        return self.db.volcanoes.distinct("tectonic_setting")
-
-
-    def get_volcano_names(self):
-        return self.db.volcanoes.distinct("volcano_name")
-
-
-    def filter_samples_by_selection(self, volcano_names, selected_db, tectonic_setting, rock_density):
-        """Filter samples based on selection criteria."""
-        pipeline = []
-        
-        # --- Matching stages ---
-        if selected_db:
-            match_db_stage = {"$match": {"db": {"$in": selected_db}}}
-            pipeline.append(match_db_stage)
-
-        if tectonic_setting:
-            match_tectonic_stage = {"$match": {"tectonic_setting": {"$in": tectonic_setting}}}
-            pipeline.append(match_tectonic_stage)
-
-        if volcano_names:
-            volcano_display_map = {
-                f"{row['volcano_name']} ({row['volcano_number']})": row['volcano_number']
-                for _, row in self.get_volcanoes().iterrows()
-            }
-            volcano_ids = [volcano_display_map[name] for name in volcano_names if name in volcano_display_map]
-            match_volcano_number_stage = {"$match": {"volcano_number": {"$in": volcano_ids}}}
-            pipeline.append(match_volcano_number_stage)
-
-        if rock_density:
-            match_material_stage = {"$match": {"material": {"$ne": "INC"}}}
-            pipeline.append(match_material_stage)
-
-            filtered_rock_density = [rock for rock in rock_density if rock != 'SIO2(WT%)']
-
-            if filtered_rock_density:
-                match_rock_density_stage = {"$match": {"rock": {"$in": filtered_rock_density}}}
-                pipeline.append(match_rock_density_stage)
-
-        # --- Add SIO2(WT%) field ---
-        add_fields_stage = {
-            "$addFields": {
-                "SIO2(WT%)": "$oxides.SIO2(WT%)"
-            }
-        }
-        pipeline.append(add_fields_stage)
-
-        # --- Filter valid percentage range ---
-        filter_percent_stage = {
-            "$match": {"SIO2(WT%)": {"$gte": 0, "$lte": 100}}
-        }
-
-        pipeline.append(filter_percent_stage)
-
-        # --- Join with locations collection ---
-        pipeline.append({
-            "$lookup": {
+        self.add_coordinates = [
+            {"$lookup": {
                 "from": "locations",
                 "localField": "location_id",
                 "foreignField": "_id",
                 "as": "location_info"
-            }
-        })
-
-        pipeline.append({"$unwind": "$location_info"})
-
-        # --- Extract lat/lon to top level (for convenience) ---
-        pipeline.append({
-            "$addFields": {
+            }},
+            {"$unwind": "$location_info"},
+            {"$addFields": {
                 "latitude": "$location_info.latitude",
                 "longitude": "$location_info.longitude"
+            }},
+            {"$unset": "location_info"}
+        ]
+
+    # ---------- Cached Volcano Map ---------- #
+
+    @cached_property
+    def volcano_id_map(self) -> dict:
+        """Map volcano name (w/ ID) → volcano_number."""
+        df = self.get_volcanoes()
+        return {
+            f"{row['volcano_name']} ({row['volcano_number']})": row['volcano_number']
+            for _, row in df.iterrows()
+        }
+
+    def _match_volcano_ids(self, volcano_names: list[str]) -> list:
+        return [
+            self.volcano_id_map[name]
+            for name in volcano_names or []
+            if name in self.volcano_id_map
+        ]
+
+    def _get_location_ids(self, location_selected: list[dict]) -> list:
+        locations = list(self.db.locations.aggregate([
+            {"$match": {"$or": location_selected}}
+        ]))
+        return [loc["_id"] for loc in locations]
+
+    def _get_oxide_fields(self) -> dict:
+        oxides = [
+            "SIO2", "TIO2", "AL2O3", "FEOT", "FE2O3", "MNO", "FEO",
+            "CAO", "MGO", "K2O", "NA2O", "P2O5", "LOI"
+        ]
+        return {f"{ox}(WT%)": f"$oxides.{ox}(WT%)" for ox in oxides}
+    
+    # --- Shared helper pipelines (add to the Database class) --- #
+
+    def _join_volcano_and_vei(self) -> list:
+        """Returns the lookup/unwind/join pipeline to enrich with volcano and VEI eruption info."""
+        return [
+            {"$lookup": {
+                "from": "volcanoes",
+                "localField": "volcano_number",
+                "foreignField": "volcano_number",
+                "as": "volcano_info"
+            }},
+            {"$unwind": "$volcano_info"},
+            {"$lookup": {
+                "from": "eruptions",
+                "let": {"eruption_nums": {"$ifNull": ["$eruption_numbers.eruption_number", []]}},
+                "pipeline": [
+                    {"$match": {"$expr": {"$in": ["$eruption_number", "$$eruption_nums"]}}}
+                ],
+                "as": "vei_eruptions"
+            }},
+        ]
+
+    def _enrich_sample_fields(self) -> dict:
+        """Returns $addFields stage to enrich samples with metadata and oxides."""
+        return {
+            "$addFields": {
+                "year": "$date.year",
+                "month": "$date.month",
+                "day": "$date.day",
+                "uncertainty_days": "$date.uncertainty_days",
+                "vei": "$vei_eruptions.vei",
+                "volcano_name": "$volcano_info.volcano_name",
+                "eruptions": "$eruption_numbers.eruption_number",
+                **self._get_oxide_fields()
             }
-        })
+        }
 
-        # --- Remove the now-unnecessary location_info ---
-        pipeline.append({
-            "$unset": "location_info"
-        })
 
-        selected_samples = list(self.db.samples.aggregate(pipeline))
+    # ---------- Basic Collection Loaders ---------- #
 
-        if not selected_samples:
-            return pd.DataFrame()
+    def get_samples(self) -> pd.DataFrame:
+        return pd.DataFrame(self.db.samples.find())
 
-        df = pd.DataFrame(selected_samples)
+    def get_volcanoes(self) -> pd.DataFrame:
+        return pd.DataFrame(self.db.volcanoes.find())
+
+    def get_eruptions(self) -> pd.DataFrame:
+        return pd.DataFrame(self.db.eruptions.find())
+
+    def get_countries(self) -> list:
+        return self.db.volcanoes.distinct("country")
+
+    def get_tectonic_settings(self) -> list:
+        return self.db.volcanoes.distinct("tectonic_setting")
+
+    def get_volcano_names(self) -> list:
+        return self.db.volcanoes.distinct("volcano_name")
+
+    # ---------- Volcano Filtering ---------- #
+
+    def _build_volcano_id_map(self) -> dict:
+        df = self.get_volcanoes()
+        return {
+            f"{row['volcano_name']} ({row['volcano_number']})": row['volcano_number']
+            for _, row in df.iterrows()
+        }
+
+    def filter_volcanoes_by_selection(self, volcano_names=None, countries=None, tectonic_setting=None) -> pd.DataFrame:
+        """Return volcanoes matching selection filters."""
+        pipeline = []
+
+        if tectonic_setting:
+            pipeline.append({"$match": {"tectonic_setting": {"$in": tectonic_setting}}})
+        if countries:
+            pipeline.append({"$match": {"country": {"$in": countries}}})
+        if volcano_names:
+            pipeline.append({"$match": {"volcano_number": {"$in": self._match_volcano_ids(volcano_names)}}})
+            
+        pipeline += self.add_coordinates
+        pipeline += [
+            {"$addFields": {
+                "reference": "Global Volcanism Program, Smithsonian Institution (https://volcano.si.edu/)"
+            }},
+            {"$match": {"latitude": {"$gte": -85, "$lte": 85}}}
+        ]
+
+        return pd.DataFrame(self.db.volcanoes.aggregate(pipeline))
+
+    # ---------- Sample Filtering ---------- #
+
+    def filter_samples_by_selection(self, volcano_names=None, selected_db=None, tectonic_setting=None, rock_density=None) -> pd.DataFrame:
+        """Return samples matching filter criteria."""
+        pipeline = []
+
+        if selected_db:
+            pipeline.append({"$match": {"db": {"$in": selected_db}}})
+        if tectonic_setting:
+            pipeline.append({"$match": {"tectonic_setting": {"$in": tectonic_setting}}})
+        if volcano_names:
+            pipeline.append({"$match": {"volcano_number": {"$in": self._match_volcano_ids(volcano_names)}}})
+        if rock_density:
+            pipeline.append({"$match": {"material": {"$ne": "INC"}}})
+            filtered = [r for r in rock_density if r != 'SIO2(WT%)']
+            if filtered:
+                pipeline.append({"$match": {"rock": {"$in": filtered}}})
+
+        # Add SIO2 and filter oxides in valid range
+        pipeline += [
+            {"$addFields": {"SIO2(WT%)": "$oxides.SIO2(WT%)"}},
+            {"$match": {"SIO2(WT%)": {"$gte": 0, "$lte": 100}}},
+            *self.add_coordinates
+        ]
+
+        df = pd.DataFrame(self.db.samples.aggregate(pipeline))
+        if df.empty:
+            return df
+
         df['material'] = df.get('material', pd.Series(dtype=str)).fillna("UNKNOWN")
-        
         if 'name' in df:
             df['name'] = df['name'].apply(first_three_unique)
         if 'reference' in df:
             df['reference'] = df['reference'].apply(first_three_unique)
 
         return df
-    
 
-    def filter_volcanoes_by_selection(self, volcano_names, country, tectonic_setting):
-        """Filter volcanoes based on selection criteria."""
-        pipeline = []
-        
-        if tectonic_setting:
-            match_tectonic_stage = {"$match": {"tectonic_setting": {"$in": tectonic_setting}}}
-            pipeline.append(match_tectonic_stage)
+    # ---------- Location-Based Utilities ---------- #
 
-        if country:
-            match_country_stage = {"$match": {"country": {"$in": country}}}
-            pipeline.append(match_country_stage)
-
-        if volcano_names:
-            volcano_display_map = {
-                f"{row['volcano_name']} ({row['volcano_number']})": row['volcano_number']
-                for _, row in self.get_volcanoes().iterrows()
-            }
-            volcano_ids = [volcano_display_map[name] for name in volcano_names if name in volcano_display_map]
-            match_volcano_number_stage = {"$match": {"volcano_number": {"$in": volcano_ids}}}
-            pipeline.append(match_volcano_number_stage)
-
-        # --- Join with locations collection ---
-        pipeline.append({
-            "$lookup": {
-                "from": "locations",
-                "localField": "location_id",
-                "foreignField": "_id",
-                "as": "location_info"
-            }
-        })
-
-        pipeline.append({"$unwind": "$location_info"})
-
-        # --- Extract lat/lon to top level (for convenience) ---
-        pipeline.append({
-            "$addFields": {
-                "latitude": "$location_info.latitude",
-                "longitude": "$location_info.longitude"
-            }
-        })
-
-        # --- Remove the now-unnecessary location_info ---
-        pipeline.append({
-            "$unset": "location_info"
-        })
-        
-        filter_latitude_stage = {
-            "$match": {"latitude": {"$gte": -85, "$lte": 85}}
-        }
-
-        pipeline.append(filter_latitude_stage)
-
-        # Add a stage to extract 'SIO2(WT%)' from the oxides field
-        add_fields_stage = {
-            "$addFields": {
-                "refs": "Global Volcanism Program, Smithsonian Institution"
-            }
-        }
-        pipeline.append(add_fields_stage)
-
-        selected_volcanoes = list(self.db.volcanoes.aggregate(pipeline))
-
-        if not selected_volcanoes:
-            return pd.DataFrame()
-
-        df = pd.DataFrame(selected_volcanoes)
-
-        return df
-    
-
-    def get_location_selected(self, selected, volcano_names, selected_db, tectonic_setting, rock_density):
-        """Retrieve and process the selected data from the database."""
-
-        data = self.filter_samples_by_selection(volcano_names, selected_db, tectonic_setting, rock_density)
-    
-        grouped = (
-            data.groupby(['latitude', 'longitude', 'db'])
-            .agg({'_id': 'count'})
-            .reset_index()
-            .rename(columns={'_id': 'count'})
-        ).reset_index(drop=True)
-
+    def get_location_selected(self, selected_idx, *args, **kwargs) -> list:
+        """Return lat/lon dicts of selected sample locations."""
+        df = self.filter_samples_by_selection(*args, **kwargs)
+        grouped = df.groupby(['latitude', 'longitude', 'db']).size().reset_index(name='count')
 
         try:
-            selected_data = grouped.iloc[selected]
-            
-            location_selected = [
+            selected_rows = grouped.iloc[selected_idx]
+            return [
                 {"latitude": row["latitude"], "longitude": row["longitude"]}
-                for _, row in selected_data.iterrows()
+                for _, row in selected_rows.iterrows()
             ]
-
         except IndexError:
-            location_selected = []
-        
-        return location_selected
+            return []
 
 
-    def get_selected_data(self, location_selected, volcano_names, selected_db):
-        """Query the documents that match the selected locations and enrich with location data."""
-
-        # Step 1: Match locations
-        filter_location_stage = {"$match": {"$or": location_selected}}
-
-        matching_locations = list(self.db.locations.aggregate([filter_location_stage]))
-
-        if not matching_locations:
+    def get_selected_data(self, location_selected: list, volcano_names=None, selected_db=None) -> pd.DataFrame:
+        """Return full sample docs matching selected lat/lon with volcano/eruptions joined."""
+        if not location_selected:
             return None
 
-        # Step 2: Extract location IDs
-        location_ids = [loc["_id"] for loc in matching_locations]
+        # Match location
+        location_ids = self._get_location_ids(location_selected)
+        if not location_ids:
+            return None
 
-        # Step 3: Build pipeline for samples collection
-        pipeline = []
+        volcano_ids = self._match_volcano_ids(volcano_names)
 
-        pipeline.append({"$match": {"location_id": {"$in": location_ids}}})
-
-        if selected_db:
-            match_db_stage = {"$match": {"db": {"$in": selected_db}}}
-            pipeline.append(match_db_stage)
-
-        if volcano_names:
-            volcano_display_map = {
-                f"{row['volcano_name']} ({row['volcano_number']})": row['volcano_number']
-                for _, row in self.get_volcanoes().iterrows()
-            }
-            volcano_ids = [volcano_display_map[name] for name in volcano_names if name in volcano_display_map]
-            match_volcano_number_stage = {"$match": {"volcano_number": {"$in": volcano_ids}}}
-            pipeline.append(match_volcano_number_stage)
-        
-
-        # Step 4: Lookup latitude/longitude from locations
-        pipeline.append({
-            "$lookup": {
-                "from": "locations",
-                "localField": "location_id",
-                "foreignField": "_id",
-                "as": "location_info"
-            }
-        })
-
-        pipeline.append({"$unwind": "$location_info"})
-
-        # Join with volcanoes to get volcano_name, etc.
-        pipeline.append({
-            "$lookup": {
+        # Start pipeline with required matches
+        pipeline = [
+            {"$match": {"location_id": {"$in": location_ids}}},
+            *([{"$match": {"db": {"$in": selected_db}}}] if selected_db else []),
+            *([{"$match": {"volcano_number": {"$in": volcano_ids}}}] if volcano_ids else []),
+            *self.add_coordinates,
+            {"$lookup": {
                 "from": "volcanoes",
                 "localField": "volcano_number",
                 "foreignField": "volcano_number",
                 "as": "volcano_info"
-            }
-        })
-        pipeline.append({"$unwind": "$volcano_info"})
-
-        # --- NEW: Join with eruptions ---
-        pipeline.append({
-            "$lookup":  {
+            }},
+            {"$unwind": "$volcano_info"},
+            {"$lookup": {
                 "from": "eruptions",
-                "let": {
-                    "eruption_nums": { "$ifNull": ["$eruption_numbers.eruption_number", []] }
-                },
-                "pipeline": [
-                    {
-                        "$match": {
-                            "$expr": {
-                                "$and": [
-                                    { "$in": ["$eruption_number", "$$eruption_nums"] },
-                                ]
-                            }
-                        }
-                    }
-                ],
+                "let": {"eruption_nums": {"$ifNull": ["$eruption_numbers.eruption_number", []]}},
+                "pipeline": [{"$match": {"$expr": {"$in": ["$eruption_number", "$$eruption_nums"]}}}],
                 "as": "vei_eruptions"
-            }
-        })
-
-        # Step 5: Add oxides, date fields and location fields
-        pipeline.append({
-            "$addFields": {
+            }},
+            {"$addFields": {
                 "year": "$date.year",
                 "month": "$date.month",
                 "day": "$date.day",
@@ -327,452 +253,157 @@ class Database:
                 "vei": "$vei_eruptions.vei",
                 "volcano_name": "$volcano_info.volcano_name",
                 "eruptions": "$eruption_numbers.eruption_number",
-                "latitude": "$location_info.latitude",
-                "longitude": "$location_info.longitude",
-                "SIO2(WT%)": "$oxides.SIO2(WT%)",
-                "TIO2(WT%)": "$oxides.TIO2(WT%)",
-                "AL2O3(WT%)": "$oxides.AL2O3(WT%)",
-                "FEOT(WT%)": "$oxides.FEOT(WT%)",
-                "FE2O3(WT%)": "$oxides.FE2O3(WT%)",
-                "MNO(WT%)": "$oxides.MNO(WT%)",
-                "FEO(WT%)": "$oxides.FEO(WT%)",
-                "CAO(WT%)": "$oxides.CAO(WT%)",
-                "MGO(WT%)": "$oxides.MGO(WT%)",
-                "K2O(WT%)": "$oxides.K2O(WT%)",
-                "NA2O(WT%)": "$oxides.NA2O(WT%)",
-                "P2O5(WT%)": "$oxides.P2O5(WT%)",
-                "LOI(WT%)": "$oxides.LOI(WT%)"
-            }
-        })
+                **self._get_oxide_fields()
+            }},
+            {"$unset": ["volcano_info", "vei_eruptions"]}
+        ]
 
-        # Step 6: Remove the embedded location_info, volcano_info, vei_eruptions fields
-        pipeline.append({"$unset": "location_info"})
-        pipeline.append({"$unset": "volcano_info"})
-        pipeline.append({"$unset": "vei_eruptions"})
+        return pd.DataFrame(self.db.samples.aggregate(pipeline))
 
 
-        selected_data = list(self.db.samples.aggregate(pipeline))
-
-        if not selected_data:
-            return None
-
-        df_selected_data = pd.DataFrame(selected_data)
-        df_selected_data['_id'] = df_selected_data['_id'].astype(str)
-
-        return df_selected_data
-
-
-    def aggregate_wr_data(self, min_value, max_value, select_value, tectonic_setting):
-        """Aggregate data based on location queries and filter conditions."""
-        
+    def aggregate_wr_data(self, min_value, max_value, select_value, tectonic_setting) -> pd.DataFrame:
+        """Aggregate WR sample counts per location with optional filters."""
         pipeline = [self.match_wr_stage]
 
         if tectonic_setting:
-            match_tectonic_setting_stage = {"$match": {"tectonic_setting": {"$in": tectonic_setting}}}
-            pipeline.append(match_tectonic_setting_stage)
+            pipeline.append({"$match": {"tectonic_setting": {"$in": tectonic_setting}}})
 
-        # Add location info from the locations collection
-        lookup_location_stage = {
-            "$lookup": {
-                "from": "locations",
-                "localField": "location_id",
-                "foreignField": "_id",
-                "as": "location_info"
-            }
-        }
-
-        pipeline.append(lookup_location_stage)
-
-        # Flatten array of joined location info
-        unwind_location_stage = {"$unwind": "$location_info"}
-        pipeline.append(unwind_location_stage)
-
-        # Promote lat/lon to top-level
-        add_fields_location_stage = {
-            "$addFields": {
-                "latitude": "$location_info.latitude",
-                "longitude": "$location_info.longitude"
-            }
-        }
-        pipeline.append(add_fields_location_stage)
-
-        # Remove embedded location_info
-        unset_location_info_stage = {"$unset": "location_info"}
-        pipeline.append(unset_location_info_stage)
-
-        pipeline.append(self.group_rock_location_stage)
-        pipeline.append(self.sort_stage)
-
-        if select_value == 'No':
-            pipeline.append({"$match": {"count": {"$gte": min_value, "$lte": max_value}}})
-
-        wr_aggregation = list(self.db.samples.aggregate(pipeline))
-        df_wr_agg = pd.DataFrame(wr_aggregation)
-
-        return df_wr_agg
-
-
-    def aggregate_selected_wr_data(self, location_selected):
-        """Aggregate whole-rock data based on selected locations and enrich with lat/lon."""
-
-        # Match stage based on selected locations
-        filter_location_stage = {"$match": {"$or": location_selected}}
-        
-        matching_locations = list(self.db.locations.aggregate([filter_location_stage]))
-
-        if not matching_locations:
-            return None
-
-        # Step 2: Extract location IDs
-        location_ids = [loc["_id"] for loc in matching_locations]
-
-        # Step 3: Build pipeline for samples collection
-        match_samples_stage = {"$match": {"location_id": {"$in": location_ids}}}
-
-        # Lookup to enrich with location info
-        lookup_location_stage = {
-            "$lookup": {
-                "from": "locations",
-                "localField": "location_id",
-                "foreignField": "_id",
-                "as": "location_info"
-            }
-        }
-
-        # Flatten the joined location array
-        unwind_location_stage = {"$unwind": "$location_info"}
-
-        # Add latitude and longitude from location_info to top-level fields
-        add_fields_location_stage = {
-            "$addFields": {
-                "latitude": "$location_info.latitude",
-                "longitude": "$location_info.longitude"
-            }
-        }
-
-        # Remove embedded location_info field
-        unset_location_info_stage = {"$unset": "location_info"}
-
-        # Construct final pipeline
-        pipeline = [
-            match_samples_stage,
-            self.match_wr_stage,
-            lookup_location_stage,
-            unwind_location_stage,
-            add_fields_location_stage,
-            unset_location_info_stage,
+        pipeline += [
+            *self.add_coordinates,
             self.group_rock_location_stage,
             self.sort_stage
         ]
 
-        # Execute aggregation
-        selected_wr_aggregation = list(self.db.samples.aggregate(pipeline))
-        df_selected_wr_agg = pd.DataFrame(selected_wr_aggregation)
+        # Apply range filtering if requested
+        if select_value == 'No':
+            pipeline.append({"$match": {"count": {"$gte": min_value, "$lte": max_value}}})
 
-        return df_selected_wr_agg
+        return pd.DataFrame(self.db.samples.aggregate(pipeline))
 
 
-    def aggregate_wr_composition_samples(self, tectonic_setting):
-        """Get WR composition of volcanoes from samples."""
-        group_volcano_rock_stage = {
-            "$group": {
-                "_id": {
-                    "db": "$db",
-                    "volcano_number": "$volcano_number",
-                    "rock": "$rock"
-                },
-                "count": {"$sum": 1}
-            }
-        }
+    def aggregate_selected_wr_data(self, location_selected) -> pd.DataFrame:
+        """Aggregate WR samples for selected locations."""
+        if not location_selected:
+            return pd.DataFrame()
 
-        # Group again to get top 3 rocks for each db and volcano number
-        group_top_rocks_stage = {
-            "$group": {
-                "_id": {
-                    "db": "$_id.db",
-                    "volcano_number": "$_id.volcano_number"
-                },
-                "top_rocks": {
-                    "$push": {
-                        "rock": "$_id.rock",
-                        "count": "$count"
-                    }
-                }
-            }
-        }
+        location_ids = self._get_location_ids(location_selected)
+        if not location_ids:
+            return pd.DataFrame()
 
-        # Project stage to slice the top 3 rocks
-        project_top_rocks_stage = {
-            "$project": {
-                "db": "$_id.db",
-                "volcano_number": "$_id.volcano_number",
-                "top_rocks": {"$slice": ["$top_rocks", 0, 3]}
-            }
-        }
+        pipeline = [
+            {"$match": {"location_id": {"$in": location_ids}}},
+            self.match_wr_stage,
+            *self.add_coordinates,
+            self.group_rock_location_stage,
+            self.sort_stage
+        ]
 
-        # Project stage to transform top_rocks into separate fields
-        transform_top_rocks_stage = {
-            "$project": {
-                "db": 1,
-                "volcano_number": 1,
-                "major_rock_1": {"$arrayElemAt": ["$top_rocks.rock", 0]},
-                "major_rock_2": {
-                    "$ifNull": [
-                        {"$arrayElemAt": ["$top_rocks.rock", 1]},
-                        None
-                    ]
-                },
-                "major_rock_3": {
-                    "$ifNull": [
-                        {"$arrayElemAt": ["$top_rocks.rock", 2]},
-                        None
-                    ]
-                },
-            }
-        }
+        return pd.DataFrame(self.db.samples.aggregate(pipeline))
+
+
+    def aggregate_wr_composition_samples(self, tectonic_setting) -> pd.DataFrame:
+        """Get top 3 WR rock types per volcano from sample data."""
 
         pipeline = [self.match_wr_stage]
 
         if tectonic_setting:
-            match_tectonic_setting_stage = {"$match": {"tectonic_setting": {"$in": tectonic_setting}}}
-            pipeline.append(match_tectonic_setting_stage)
+            pipeline.append({"$match": {"tectonic_setting": {"$in": tectonic_setting}}})
 
-        pipeline.extend([
-            group_volcano_rock_stage, 
-            self.sort_stage, 
-            group_top_rocks_stage, 
-            project_top_rocks_stage, 
-            transform_top_rocks_stage
-        ])
+        pipeline += [
+            {"$group": {
+                "_id": {"db": "$db", "volcano_number": "$volcano_number", "rock": "$rock"},
+                "count": {"$sum": 1}
+            }},
+            self.sort_stage,
+            {"$group": {
+                "_id": {"db": "$_id.db", "volcano_number": "$_id.volcano_number"},
+                "top_rocks": {"$push": {"rock": "$_id.rock", "count": "$count"}}
+            }},
+            {"$project": {
+                "db": "$_id.db",
+                "volcano_number": "$_id.volcano_number",
+                "top_rocks": {"$slice": ["$top_rocks", 3]}
+            }},
+            {"$project": {
+                "db": 1,
+                "volcano_number": 1,
+                "major_rock_1": {"$arrayElemAt": ["$top_rocks.rock", 0]},
+                "major_rock_2": {"$ifNull": [{"$arrayElemAt": ["$top_rocks.rock", 1]}, None]},
+                "major_rock_3": {"$ifNull": [{"$arrayElemAt": ["$top_rocks.rock", 2]}, None]}
+            }}
+        ]
 
-        wr_composition_samples = list(self.db.samples.aggregate(pipeline))
-        df_wr_composition_samples = pd.DataFrame(wr_composition_samples)
-        
-        return df_wr_composition_samples
+        return pd.DataFrame(self.db.samples.aggregate(pipeline))
+
     
-
-    def aggregate_wr_composition_volcanoes(self, tectonic_setting, country):
-        """Get WR composition of volcanoes from GVP database."""
-
+    def aggregate_wr_composition_volcanoes(self, tectonic_setting, country) -> pd.DataFrame:
+        """Return GVP WR composition for volcanoes with optional filters."""
         pipeline = []
-        
+
         if tectonic_setting:
-            match_tectonic_stage = {"$match": {"tectonic_setting": {"$in": tectonic_setting}}}
-            pipeline.append(match_tectonic_stage)
-
+            pipeline.append({"$match": {"tectonic_setting": {"$in": tectonic_setting}}})
         if country:
-            match_country_stage = {"$match": {"country": {"$in": country}}}
-            pipeline.append(match_country_stage)
+            pipeline.append({"$match": {"country": {"$in": country}}})
 
-        wr_composition_volcanoes = list(self.db.volcanoes.aggregate(pipeline))
-        df_wr_composition_volcanoes = pd.DataFrame(wr_composition_volcanoes)
-        
-        return df_wr_composition_volcanoes
+        return pd.DataFrame(self.db.volcanoes.aggregate(pipeline))
+
     
+    def get_samples_from_volcano_eruptions(self, selected_volcano, selected_eruptions=None) -> pd.DataFrame:
+        """Return samples from selected volcano and eruptions, enriched with metadata."""
+        pipeline = [{"$match": {"volcano_number": {"$in": selected_volcano}}}]
 
-    def get_samples_from_volcano_eruptions(self, selected_volcano, selected_eruptions=None):
-        
-        pipeline = []
-
-        # Match volcano
-        pipeline.append({
-            "$match": {"volcano_number": {"$in": selected_volcano}}
-        })
-
-        # Optional: Filter by specific eruption numbers
         if selected_eruptions:
-            pipeline.append({
-                "$match": {
-                    "eruption_numbers.eruption_number": {"$in": selected_eruptions}
-                }
-            })
+            pipeline.append({"$match": {"eruption_numbers.eruption_number": {"$in": selected_eruptions}}})
 
-        # Join with volcanoes to get volcano_name, etc.
-        pipeline.append({
-            "$lookup": {
-                "from": "volcanoes",
-                "localField": "volcano_number",
-                "foreignField": "volcano_number",
-                "as": "volcano_info"
-            }
-        })
-        pipeline.append({"$unwind": "$volcano_info"})
+        pipeline += (
+            self._join_volcano_and_vei() +
+            [self._enrich_sample_fields()] +
+            [{"$unset": ["volcano_info", "vei_eruptions"]},
+            {"$match": {"SIO2(WT%)": {"$gte": 0, "$lte": 100}}}] +
+            self.add_coordinates
+        )
 
-        # --- NEW: Join with eruptions ---
-        pipeline.append({
-            "$lookup":  {
-                "from": "eruptions",
-                "let": {
-                    "eruption_nums": { "$ifNull": ["$eruption_numbers.eruption_number", []] }
-                },
-                "pipeline": [
-                    {
-                        "$match": {
-                            "$expr": {
-                                "$and": [
-                                    { "$in": ["$eruption_number", "$$eruption_nums"] },
-                                ]
-                            }
-                        }
-                    }
-                ],
-                "as": "vei_eruptions"
-            }
-        })
-
-        # Add fields for ease of analysis
-        pipeline.append({
-            "$addFields": {
-                "year": "$date.year",
-                "month": "$date.month",
-                "day": "$date.day",
-                "uncertainty_days": "$date.uncertainty_days",
-                "vei": "$vei_eruptions.vei",
-                "volcano_name": "$volcano_info.volcano_name",
-                "eruptions": "$eruption_numbers.eruption_number",
-                "SIO2(WT%)": "$oxides.SIO2(WT%)",
-                "TIO2(WT%)": "$oxides.TIO2(WT%)",
-                "AL2O3(WT%)": "$oxides.AL2O3(WT%)",
-                "FEOT(WT%)": "$oxides.FEOT(WT%)",
-                "FE2O3(WT%)": "$oxides.FE2O3(WT%)",
-                "MNO(WT%)": "$oxides.MNO(WT%)",
-                "FEO(WT%)": "$oxides.FEO(WT%)",
-                "CAO(WT%)": "$oxides.CAO(WT%)",
-                "MGO(WT%)": "$oxides.MGO(WT%)",
-                "K2O(WT%)": "$oxides.K2O(WT%)",
-                "NA2O(WT%)": "$oxides.NA2O(WT%)",
-                "P2O5(WT%)": "$oxides.P2O5(WT%)",
-                "LOI(WT%)": "$oxides.LOI(WT%)"
-            }
-        })
-
-        pipeline.append({"$unset": "volcano_info"})
-        pipeline.append({"$unset": "vei_eruptions"})
-
-        # Filter invalid SiO2 values
-        pipeline.append({
-            "$match": {"SIO2(WT%)": {"$gte": 0, "$lte": 100}}
-        })
-
-        # Lookup to enrich with location info
-        pipeline.append({
-            "$lookup": {
-                "from": "locations",
-                "localField": "location_id",
-                "foreignField": "_id",
-                "as": "location_info"
-            }
-        })
-
-        # Flatten the joined location array
-        pipeline.append({"$unwind": "$location_info"})
-
-        # Add latitude and longitude from location_info to top-level fields
-        pipeline.append({
-            "$addFields": {
-                "latitude": "$location_info.latitude",
-                "longitude": "$location_info.longitude"
-            }
-        })
-
-        # Remove embedded location_info field
-        pipeline.append({"$unset": "location_info"})
-
-        # Execute pipeline
-        selected_samples = list(self.db.samples.aggregate(pipeline))
-        df_selected_samples = pd.DataFrame(selected_samples)
-
-        return df_selected_samples
-    
-    def get_volcano_info(self, selected_volcano):
-        pipeline = []
-
-        # Match stage to filter eruptions by selected volcano numbers
-        match_volcano_stage = {"$match": {"volcano_number": {"$in": selected_volcano}}}
-        pipeline.append(match_volcano_stage)
-
-        # Execute pipeline
-        volcano_info = list(self.db.volcanoes.aggregate(pipeline))
-        df_volcano_info = pd.DataFrame(volcano_info)
-
-        return df_volcano_info
+        return pd.DataFrame(self.db.samples.aggregate(pipeline))
 
     
-    def get_vei_from_volcano(self, selected_volcano):
-        pipeline = []
+    def get_volcano_info(self, selected_volcano) -> pd.DataFrame:
+        """Return basic volcano information for selected volcano numbers."""
+        pipeline = [
+            {"$match": {"volcano_number": {"$in": selected_volcano}}}
+        ]
+        return pd.DataFrame(self.db.volcanoes.aggregate(pipeline))
 
-        # Match stage to filter eruptions by selected volcano numbers
-        match_volcano_stage = {"$match": {"volcano_number": {"$in": selected_volcano}}}
-        pipeline.append(match_volcano_stage)
 
-        # --- Join with locations collection ---
-        pipeline.append({
-            "$lookup": {
-                "from": "locations",
-                "localField": "location_id",
-                "foreignField": "_id",
-                "as": "location_info"
-            }
-        })
+    
+    def get_vei_from_volcano(self, selected_volcano) -> pd.DataFrame:
+        """Return eruption records enriched with VEI, lat/lon, and sample count."""
+        
+        pipeline = [
+            {"$match": {"volcano_number": {"$in": selected_volcano}}},
+            *self.add_coordinates
+        ]
+        df_eruptions = pd.DataFrame(self.db.eruptions.aggregate(pipeline))
+        if df_eruptions.empty:
+            return df_eruptions
 
-        pipeline.append({"$unwind": "$location_info"})
+        df_samples = pd.DataFrame(self.db.samples.find({}))
 
-        # --- Extract lat/lon to top level (for convenience) ---
-        pipeline.append({
-            "$addFields": {
-                "latitude": "$location_info.latitude",
-                "longitude": "$location_info.longitude"
-            }
-        })
+        def count_samples_for_eruption(eruption_number):
+            return df_samples['eruption_numbers'].apply(
+                lambda eruptions: any(e.get('eruption_number') == eruption_number for e in eruptions)
+                if isinstance(eruptions, list) else False
+            ).sum()
 
-        # --- Remove the now-unnecessary location_info ---
-        pipeline.append({
-            "$unset": "location_info"
-        })
+        df_eruptions['nb_samples'] = df_eruptions['eruption_number'].apply(count_samples_for_eruption)
+        return df_eruptions
 
-        # Aggregate the data for eruptions
-        eruptions = list(self.db.eruptions.aggregate(pipeline))
-        df_eruptions = pd.DataFrame(eruptions)
 
-        # Retrieve all samples
-        samples = list(self.db.samples.find({}))  # Retrieve all samples without filtering
-        df_samples = pd.DataFrame(samples)
-
-        # Perform the join in memory and count the number of samples for each eruption
-        selected_eruptions = []
-        for _, eruption in df_eruptions.iterrows():
-            eruption_number = eruption['eruption_number']
-
-            # Filter samples that have the current eruption number in their eruption_numbers list
-            matched_samples = df_samples[df_samples['eruption_numbers'].apply(
-                lambda x: any(e['eruption_number'] == eruption_number for e in x)
-                if isinstance(x, list) else False
-            )]
-
-            # Count the number of matched samples
-            nb_samples = len(matched_samples)
-
-            # Add the count to the eruption data
-            eruption_data = eruption.to_dict()
-            eruption_data['nb_samples'] = nb_samples
-            selected_eruptions.append(eruption_data)
-
-        # Create a DataFrame from the list of dictionaries
-        df_selected_eruptions = pd.DataFrame(selected_eruptions)
-
-        return df_selected_eruptions
-
-    def get_selected_eruptions_and_events(self, selected_volcano):
-        pipeline = []
-
-        # Match volcano
-        pipeline.append({
-            "$match": {"volcano_number": {"$in": selected_volcano}}
-        })
-
-        # Add date parts with fallback values
-        pipeline.append({
-            "$addFields": {
+    def get_selected_eruptions_and_events(self, selected_volcano) -> pd.DataFrame:
+        """Return eruptions with date parts and a list of associated event types."""
+        
+        pipeline = [
+            {"$match": {"volcano_number": {"$in": selected_volcano}}},
+            {"$addFields": {
                 "start_year": "$start_date.year",
                 "start_month": "$start_date.month",
                 "start_day": "$start_date.day",
@@ -781,23 +412,14 @@ class Database:
                 "end_month": {"$ifNull": ["$end_date.month", None]},
                 "end_day": {"$ifNull": ["$end_date.day", None]},
                 "end_uncertainty_days": {"$ifNull": ["$end_date.uncertainty_days", None]},
-            }
-        })
-
-
-        # Lookup corresponding events from the 'events' collection
-        pipeline.append({
-            "$lookup": {
+            }},
+            {"$lookup": {
                 "from": "events",
                 "localField": "eruption_number",
                 "foreignField": "eruption_number",
                 "as": "event_info"
-            }
-        })
-
-        # Flatten to list of event_type strings
-        pipeline.append({
-            "$addFields": {
+            }},
+            {"$addFields": {
                 "events": {
                     "$map": {
                         "input": "$event_info",
@@ -805,20 +427,8 @@ class Database:
                         "in": "$$ev.event_type"
                     }
                 }
-            }
-        })
+            }},
+            {"$project": {"event_info": 0}}
+        ]
 
-        # Optional: drop intermediate 'event_info'
-        pipeline.append({
-            "$project": {
-                "event_info": 0
-            }
-        })
-
-        
-
-        # Execute pipeline
-        selected_eruptions = list(self.db.eruptions.aggregate(pipeline))
-        df_selected_eruptions = pd.DataFrame(selected_eruptions)
-
-        return df_selected_eruptions
+        return pd.DataFrame(self.db.eruptions.aggregate(pipeline))
