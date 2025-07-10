@@ -67,7 +67,7 @@ This platform integrates data from three major databases: **GEOROC**, **PetDB**,
 
 The **GEOROC** (Geochemistry of Rocks of the Oceans and Continents) database compiles peer-reviewed geochemical data from the literature. Data use is licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). 
                          
-Data were downloaded from the GEOROC database (https://georoc.eu/) on June 2021, using the following parameters. We used precompiled files from the GEOROC repository, corresponding to the following tectonic/geologic settings:
+Data were downloaded from the GEOROC database (https://georoc.eu/) on June 2023, using the following parameters. We used precompiled files from the GEOROC repository, corresponding to the following tectonic/geologic settings:
 - Archaean Cratons: [DOI](https://doi.org/10.25625/1KRR1P)
 - Continental Flood Basalts: [DOI](https://doi.org/10.25625/WSTPOX)
 - Convergent Margins: [DOI](https://doi.org/10.25625/PVFZCE)
