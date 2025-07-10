@@ -80,7 +80,7 @@ Data were downloaded from the GEOROC database (https://georoc.eu/) on June 2021,
 - Seamounts: [DOI](https://doi.org/10.25625/JUQK7N)
 
 **Citing GEOROC:**
-> Data were downloaded from the GEOROC database (https://georoc.eu/) in June 2021. See individual DOIs for detailed provenance.  
+> Data were downloaded from the GEOROC database (https://georoc.eu/) in June 2023. See individual DOIs for detailed provenance.  
 > Lehnert, K., Su, Y., Langmuir, C. H., Sarbas, B., & Nohl, U. (2000). A global geochemical database structure for rocks. *Geochemistry, Geophysics, Geosystems*, 1(5), 1012. https://doi.org/10.1029/1999GC000026
 > Original references are included in the data downloads and displayed in plots when applicable.
                          
@@ -117,7 +117,7 @@ The **GVP** (Global Volcanism Program, Smithsonian Institution) is maintained by
 All GVP content is governed by the [Smithsonian Terms of Use](https://www.si.edu/termsofuse), and is available for personal, educational, and non-commercial use.
 
 **Citing GVP:**
-> Global Volcanism Program, 2024. *Volcanoes of the World* (v. 5.2.8; 6 May 2025). Smithsonian Institution. https://doi.org/10.5479/si.GVP.VOTW5-2024.5.2
+> Global Volcanism Program, 2024. *Volcanoes of the World* (v. 5.1.0; 9 June 2023). Smithsonian Institution. https://doi.org/10.5479/si.GVP.VOTW5-2023.5.1
 
 """)
 
