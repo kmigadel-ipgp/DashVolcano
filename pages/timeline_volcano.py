@@ -1,38 +1,19 @@
-import os
-import io
 import panel as pn
 import holoviews as hv
 import hvplot.pandas
 
-from dotenv import load_dotenv
-from helpers.helpers import format_date, extract_volcano_number, parse_formatted_date
+from helpers.helpers import prepare_csv_download
 from functions.analytic_plots import plot_eruptions_timeline, plot_samples_timeline, plot_vei_eruptions_timeline
 from backend.database import Database
 
 hv.extension('bokeh')
-
-# ----------------------------- #
-#   Configuration & Database    #
-# ----------------------------- #
-
-def load_config():
-    load_dotenv()
-    config = {
-        "user": os.getenv("MONGO_USER"),
-        "password": os.getenv("MONGO_PASSWORD"),
-        "cluster": os.getenv("MONGO_CLUSTER"),
-        "db_name": os.getenv("MONGO_DB"),
-    }
-    return config
-
 
 
 # ----------------------------- #
 #         Initialization        #
 # ----------------------------- #
 
-config = load_config()
-db_client = Database(config)
+db_client = Database()
 
 samples = pn.state.as_cached('samples', db_client.get_samples)
 volcanoes = pn.state.as_cached('volcanoes', db_client.get_volcanoes)
@@ -80,13 +61,9 @@ def generate_plots(df_selected_samples, df_selected_eruptions):
     else:
         download_button.disabled = False
 
-        # Prepare downloadable CSV (clean up)
-        csv_buffer = io.StringIO()
-        df_selected_data_download = df_selected_samples.drop(columns=['location_id', 'eruption_numbers', 'date', 'oxides'])
-        df_selected_data_download.to_csv(csv_buffer, index=False)
-        csv_buffer.seek(0)
+        csv_buffer, filename = prepare_csv_download(df_selected_samples)
         download_button.file = csv_buffer
-        download_button.filename = 'selected_data.csv'
+        download_button.filename = filename
 
         # Count samples without year
         missing_year_count = df_selected_samples['year'].isna().sum()
@@ -125,11 +102,14 @@ def generate_plots(df_selected_samples, df_selected_eruptions):
         vei_eruptions_timeline_plot = plot_vei_eruptions_timeline(df_selected_eruptions)
 
     return pn.Column(
-        download_row,
+        pn.Row(
+            download_row,
+            align='center'
+        ),
         pn.Row(eruptions_timeline_plot),
         pn.Row(vei_eruptions_timeline_plot),
         pn.Row(samples_timeline_plot),
-        align='center'
+        styles={"align-self": "center"}
     )
 
 
@@ -141,11 +121,9 @@ def generate_plots(df_selected_samples, df_selected_eruptions):
 def generate_detail_plots(selected_volcano):
     """Generate time-serie plot based on selected volcano and sampling date."""
 
-    volcano_numbers = [extract_volcano_number(volcano) for volcano in selected_volcano]
+    df_selected_samples = db_client.get_samples_from_volcano_eruptions(selected_volcano)
 
-    df_selected_samples = db_client.get_samples_from_volcano_eruptions(volcano_numbers)
-
-    df_selected_eruptions = db_client.get_selected_eruptions_and_events(volcano_numbers)
+    df_selected_eruptions = db_client.get_selected_eruptions_and_events(selected_volcano)
 
     plot_container[:] = [generate_plots(df_selected_samples, df_selected_eruptions)]
 

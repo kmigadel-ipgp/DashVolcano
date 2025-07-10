@@ -1,4 +1,3 @@
-# paths.py
 """
 This file contains all the paths constants used across the project.
 """

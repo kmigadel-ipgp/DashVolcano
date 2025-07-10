@@ -1,38 +1,18 @@
-import os
-import io
 import panel as pn
 import holoviews as hv
 import hvplot.pandas
 
-from dotenv import load_dotenv
-from helpers.helpers import format_date, extract_volcano_number, extract_eruption_number
+from helpers.helpers import format_date, prepare_csv_download
 from functions.analytic_plots import plot_chemicals, plot_chemicals_vei
 from backend.database import Database
 
 hv.extension('bokeh')
 
 # ----------------------------- #
-#   Configuration & Database    #
-# ----------------------------- #
-
-def load_config():
-    load_dotenv()
-    config = {
-        "user": os.getenv("MONGO_USER"),
-        "password": os.getenv("MONGO_PASSWORD"),
-        "cluster": os.getenv("MONGO_CLUSTER"),
-        "db_name": os.getenv("MONGO_DB"),
-    }
-    return config
-
-
-
-# ----------------------------- #
 #         Initialization        #
 # ----------------------------- #
 
-config = load_config()
-db_client = Database(config)
+db_client = Database()
 
 samples = pn.state.as_cached('samples', db_client.get_samples)
 volcanoes = pn.state.as_cached('volcanoes', db_client.get_volcanoes)
@@ -90,13 +70,9 @@ def generate_plots(df_samples):
     if nb_samples_to_download > 0:
         download_button.disabled = False
 
-        # Prepare downloadable CSV from df_samples_1 (or merge both if needed)
-        csv_buffer = io.StringIO()
-        df_selected_data_download = df_samples.drop(columns=['location_id', 'eruption_numbers', 'date', 'oxides'], errors='ignore')
-        df_selected_data_download.to_csv(csv_buffer, index=False)
-        csv_buffer.seek(0)
+        csv_buffer, filename = prepare_csv_download(df_samples)
         download_button.file = csv_buffer
-        download_button.filename = 'selected_data.csv'
+        download_button.filename = filename
 
         note = pn.pane.Markdown(f"ℹ️ **{nb_samples_to_download} samples** included in the CSV.")
         download_row = pn.Column(
@@ -116,12 +92,16 @@ def generate_plots(df_samples):
     chemicals_plot, chemicals_plot_vei = pane_or_plot(df_samples)
 
     return pn.Column(
-        download_row,
+        pn.Row(
+            download_row,
+            align='center'
+        ),
         pn.Row(
             chemicals_plot, 
             chemicals_plot_vei, 
             align='center'
-        )
+        ),
+        styles={"align-self": "center"}
     )
 
 
@@ -135,8 +115,8 @@ def generate_detail_plots(selected_volcano, selected_eruption):
     """Generate chemical composition plots based on selected volcano and eruption."""
 
     df_samples = db_client.get_samples_from_volcano_eruptions(
-        [extract_volcano_number(volcano) for volcano in selected_volcano],
-        [extract_eruption_number(eruption) for eruption in selected_eruption]
+        selected_volcano,
+        selected_eruption
     )
 
     plot_container[:] = [generate_plots(df_samples)]

@@ -53,6 +53,6 @@ panel serve app.py --dev
 
 # Access to MongoDB
 
-To allow the application to run properly an access to MongoDB database is mandatory. 
+Access to the MongoDB database is required for the application to function properly.
 
-To avoid security breach, you need credential which can be created if you ask access for it.
+To ensure security, you must use authorized credentials. If you need access, please request the necessary credentials.

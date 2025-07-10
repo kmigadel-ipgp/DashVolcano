@@ -17,7 +17,7 @@ pd.set_option('future.no_silent_downcasting', True)
 def get_plots(df_selected, df_selected_wr_agg, df_wr_agg, df_wr_composition_samples, df_wr_composition_volcanoes, samples_tectonic_setting, volcanoes_tectonic_setting):
     """
     Generates TAS and AFM plots based on the provided DataFrame.
-    Args:
+    Parameters:
         df_selected (pd.DataFrame): DataFrame containing selected data for plotting.
         df_selected_wr_agg (pd.DataFrame): DataFrame containing aggregated WR of the selected data.
         df_wr_agg (pd.DataFrame): DataFrame containing aggregated WR data from the database.
@@ -230,7 +230,7 @@ def plot_afm(df):
     """
     Updates the AFM diagram based on the volcano name and TAS data.
     
-    Args:
+    Parameters:
         df: TAS geochemical data for plotting the AFM diagram.
     
     Returns:
@@ -304,7 +304,7 @@ def plot_afm(df):
 def plot_rock(df):
     """
     Plots the rock type frequency diagram based on the provided DataFrame.
-    Args:
+    Parameters:
         df (pd.DataFrame): DataFrame containing rock type data with '_id' and 'count' columns.
     Returns:
         hvplot object: A bar plot showing the frequency of rock types.
@@ -361,7 +361,7 @@ def plot_rock(df):
 def plot_rock_composition_samples(df, tectonic_setting): 
     """
     Plots a sunburst chart of rock composition based on the provided DataFrame.
-    Args:
+    Parameters:
         df (pd.DataFrame): DataFrame containing rock composition data with columns 'major_rock_1', 'major_rock_2', 'major_rock_3', and 'db'.
         tectonic_setting (list): List of tectonic settings to be included in the chart title.
     Returns:
@@ -416,7 +416,7 @@ def plot_rock_composition_samples(df, tectonic_setting):
 def plot_rock_composition_volcanoes(df, tectonic_setting): 
     """
     Plots a sunburst chart of rock composition based on the provided DataFrame.
-    Args:
+    Parameters:
         df (pd.DataFrame): DataFrame containing rock composition data with columns 'major_rock_1', 'major_rock_2', 'major_rock_3', and 'db'.
         tectonic_setting (list): List of tectonic settings to be included in the chart title.
     Returns:
@@ -473,7 +473,7 @@ def plot_rock_composition_volcanoes(df, tectonic_setting):
 
 def plot_chemical_oxide_vei(df_selected_data):
     """
-    Args:
+    Parameters:
         volcano_name: name of the selected volcano
         date: selected eruption dates (or 'all')
     

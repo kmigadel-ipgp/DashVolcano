@@ -1,4 +1,3 @@
-# chemicals.py
 """
 This file contains all the chemicals constants used across the project.
 """

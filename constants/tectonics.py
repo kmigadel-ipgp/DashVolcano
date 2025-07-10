@@ -1,4 +1,3 @@
-# tectonics.py
 """
 This file contains all the tectonics constants used across the project.
 """

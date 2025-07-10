@@ -1,10 +1,13 @@
-import re
+import os
+import io
 import ast
 import json
 import pandas as pd
 import geopandas as gpd
 import warnings
 
+from dotenv import load_dotenv
+from typing import Union, List
 from cftime import datetime, CFWarning
 from datetime import timedelta
 from shapely.geometry import MultiLineString, LineString
@@ -13,6 +16,55 @@ from constants.paths import TECTONICS_PLATES_DIR
 from constants.rocks import GEOROC_TO_GVP, MAIN_ROCK_COLORS, ROCK_GVP
 
 warnings.filterwarnings("ignore", category=CFWarning)
+
+def load_config():
+    load_dotenv()
+    config = {
+        "user": os.getenv("MONGO_USER"),
+        "password": os.getenv("MONGO_PASSWORD"),
+        "cluster": os.getenv("MONGO_CLUSTER"),
+        "db_name": os.getenv("MONGO_DB"),
+    }
+    return config
+
+def prepare_csv_download(
+    dataframes: Union[pd.DataFrame, List[pd.DataFrame]],
+    drop_columns: List[str] = None,
+    filename: str = "selected_data.csv"
+) -> tuple[io.StringIO, str]:
+    """
+    Prepare a CSV file in-memory buffer from one or multiple DataFrames,
+    dropping specified columns and returning the buffer and filename.
+
+    Parameters:
+        dataframes (pd.DataFrame or list of pd.DataFrame): DataFrame(s) to export.
+        drop_columns (list of str, optional): Columns to drop before export.
+            Defaults to ['location_id', 'eruption_numbers', 'date', 'oxides'].
+        filename (str, optional): Filename to assign for download.
+            Defaults to 'selected_data.csv'.
+
+    Returns:
+        tuple(io.StringIO, str): A tuple with the CSV buffer (seeked to start)
+            and the filename.
+    """
+    if drop_columns is None:
+        drop_columns = ['location_id', 'eruption_numbers', 'date', 'oxides']
+
+    # Concatenate if list of DataFrames provided
+    if isinstance(dataframes, list):
+        df = pd.concat(dataframes, ignore_index=True)
+    else:
+        df = dataframes.copy()
+
+    # Drop columns, ignoring errors if columns do not exist
+    df = df.drop(columns=drop_columns, errors='ignore')
+
+    # Write to in-memory CSV buffer
+    csv_buffer = io.StringIO()
+    df.to_csv(csv_buffer, index=False)
+    csv_buffer.seek(0)  # rewind buffer to the beginning
+
+    return csv_buffer, filename
 
 def timedelta_to_human_readable(uncertainty_days):
     """Convert timedelta to a human-readable ±X [years, months, days] string."""
@@ -85,20 +137,6 @@ def safe_parse_events(x):
     else:
         return ''
 
-def extract_volcano_number(volcano_str):
-    """Extract the volcano number from a string in the format 'Volcano Name (volcano_number)'."""
-    if not volcano_str:
-        return None
-    # Split the string to extract the part inside the parentheses
-    return int(volcano_str.split('(')[1].split(')')[0])
-
-def extract_eruption_number(eruption_str):
-    """Extract the eruption number from a string in the format 'YYYY-MM-DD (eruption_number)'."""
-    if not eruption_str:
-        return None
-    # Split the string to extract the part inside the parentheses
-    return int(eruption_str.split('(')[1].split(')')[0])
-
 # Function to format the date dictionary into a string
 def format_date(date_dict, eruption_number=None):
     if not date_dict:
@@ -119,43 +157,6 @@ def format_date(date_dict, eruption_number=None):
         return f"{date_str} ({eruption_number})"
     else:
         return date_str
-
-
-def parse_formatted_date(date_str):
-    """
-    Inverse of format_date: parses a formatted date string back into a dictionary.
-    Handles both 'YYYY-MM-DD', 'YYYY CE/BCE', and optional '(eruption_number)'.
-    """
-    result = {}
-    eruption_number = None
-
-    # Extract eruption number if present
-    match = re.match(r"(.+?)\s*\((\d+)\)$", date_str)
-    if match:
-        date_str, eruption_number = match.group(1).strip(), int(match.group(2))
-
-    # Handle BCE/CE
-    if "BCE" in date_str or "CE" in date_str:
-        parts = date_str.split()
-        try:
-            year = int(parts[0])
-        except Exception:
-            year = 'Unknown Year'
-        result = {'year': year, 'month': 0, 'day': 0}
-    # Handle YYYY-MM-DD
-    elif "-" in date_str:
-        try:
-            year, month, day = date_str.split("-")
-            result = {'year': int(year), 'month': int(month), 'day': int(day)}
-        except Exception:
-            result = {'year': 0, 'month': 0, 'day': 0}
-    else:
-        result = {'year': 0, 'month': 0, 'day': 0}
-
-    if eruption_number is not None:
-        return result, eruption_number
-    else:
-        return result
     
 
 def get_discrete_color_map_samples():
@@ -194,30 +195,6 @@ def rocks_to_color(rock_name):
     if short_name:
         return MAIN_ROCK_COLORS.get(short_name, (0, 0, 0))  # Default to black if not in main rocks
     return (0, 0, 0)  # Default to black if rock name is invalid
-
-
-def create_menu_options(items, disabled_state=None):
-    """
-    Creates a list of dictionary-based menu options for a dropdown or menu component.
-    
-    Args:
-        items (list): A list of items for which menu options need to be created.
-        disabled_state (dict, optional): A dictionary specifying the disabled state for each item.
-                                         If None, all items will be enabled by default.
-
-    Returns:
-        list: A list of dictionaries, each containing 'label', 'disabled', and 'value' keys for the menu option.
-    """
-
-    # If no disabled_state is provided, initialize all items as enabled (False).
-    if disabled_state is None:
-        disabled_state = {item: False for item in items}
-
-    # Create a list of menu options where each option is a dictionary containing:
-    # 'label': the item name to display
-    # 'disabled': whether the item is disabled (based on the disabled_state)
-    # 'value': the item itself
-    return [{'label': item, 'disabled': disabled_state[item], 'value': item} for item in items]
 
 
 def first_three_unique(series):

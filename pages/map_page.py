@@ -1,14 +1,11 @@
+import param
 import panel as pn
 import holoviews as hv
 import hvplot.pandas
 
 from holoviews.streams import Selection1D
 
-import os
-import io
-import param
-
-from helpers.helpers import load_tectonic_lines, get_tectonic_plate_overlay
+from helpers.helpers import load_tectonic_lines, get_tectonic_plate_overlay, prepare_csv_download
 
 from functions.analytic_plots import get_plots
 
@@ -19,25 +16,7 @@ from constants.rocks import GEOROC_TO_GVP
 
 from backend.database import Database
 
-from dotenv import load_dotenv
-
 hv.extension('bokeh')
-
-
-
-# ----------------------------- #
-#   Configuration & Database    #
-# ----------------------------- #
-
-def load_config():
-    load_dotenv()
-    config = {
-        "user": os.getenv("MONGO_USER"),
-        "password": os.getenv("MONGO_PASSWORD"),
-        "cluster": os.getenv("MONGO_CLUSTER"),
-        "db_name": os.getenv("MONGO_DB"),
-    }
-    return config
 
 class SelectionManager(param.Parameterized):
     selected_indexes = param.List(default=[])
@@ -51,8 +30,7 @@ selection_manager = SelectionManager()
 #         Initialization        #
 # ----------------------------- #
 
-config = load_config()
-db_client = Database(config)
+db_client = Database()
 
 samples = pn.state.as_cached('samples', db_client.get_samples)
 volcanoes = pn.state.as_cached('volcanoes', db_client.get_volcanoes)
@@ -377,14 +355,9 @@ def generate_detail_plots(selected, volcano_names, select_value, min_value, max_
     # Enable the download button and set the file to the selected data
     download_button.disabled = False
 
-    # Use StringIO to create a file-like object for the CSV data
-    csv_buffer = io.StringIO()
-    df_selected_data_download = df_selected_data.drop(columns=['date', 'oxides', 'location_id', 'eruption_numbers'])
-    df_selected_data_download.to_csv(csv_buffer, index=False)
-    csv_buffer.seek(0)  # Rewind the buffer to the beginning
-
+    csv_buffer, filename = prepare_csv_download(df_selected_data)
     download_button.file = csv_buffer
-    download_button.filename = 'selected_data.csv'
+    download_button.filename = filename
 
     # Step 3: Get WR selected data
     df_selected_wr_agg = db_client.aggregate_selected_wr_data(location_selected)

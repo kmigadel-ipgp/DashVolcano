@@ -1,4 +1,3 @@
-# rocks.py
 """
 This file contains all the rocks constants used across the project.
 """
