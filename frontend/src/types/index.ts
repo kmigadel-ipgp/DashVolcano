@@ -1,0 +1,245 @@
+// Geometry types
+export interface Point {
+  type: 'Point';
+  coordinates: [number, number]; // [longitude, latitude]
+}
+
+export interface Polygon {
+  type: 'Polygon';
+  coordinates: number[][][];
+}
+
+export type Geometry = Point | Polygon;
+
+// Date and age types
+export interface DateInfo {
+  year?: number;
+  month?: number;
+  day?: number;
+  uncertainty?: string;
+}
+
+export interface GeologicalAge {
+  min_age?: number;
+  max_age?: number;
+  age_unit?: string;
+}
+
+// Chemical composition types
+export interface Oxides {
+  SiO2?: number;
+  TiO2?: number;
+  Al2O3?: number;
+  FeOT?: number;
+  Fe2O3?: number;
+  FeO?: number;
+  MnO?: number;
+  MgO?: number;
+  CaO?: number;
+  Na2O?: number;
+  K2O?: number;
+  P2O5?: number;
+  [key: string]: number | undefined;
+}
+
+// Matching metadata for samples
+export interface MatchingMetadata {
+  volcano_name?: string;
+  volcano_number?: number;
+  eruption_number?: number;
+  vei?: number;
+  start_date?: DateInfo;
+  distance_km?: number;
+}
+
+// Main entity types
+export interface Sample {
+  _id: string;
+  sample_id: string;
+  sample_code?: string; // Display-friendly sample identifier
+  db: string;
+  geographic_location: string;
+  material: string;
+  rock_type?: string;
+  tectonic_setting?: string;
+  geometry: Point;
+  oxides?: Oxides;
+  matching_metadata?: MatchingMetadata;
+  geological_age?: GeologicalAge;
+  references?: string;
+}
+
+export interface Volcano {
+  _id: string;
+  volcano_number: number;
+  volcano_name: string;
+  primary_volcano_type?: string;
+  last_known_eruption?: string;
+  country?: string;
+  region?: string;
+  subregion?: string;
+  tectonic_setting?: string;
+  geometry: Point;
+  rocks?: string[];
+  elevation_m?: number;
+}
+
+export interface Eruption {
+  _id: string;
+  eruption_number: number;
+  volcano_number: number;
+  volcano_name: string;
+  vei?: number;
+  start_date?: DateInfo;
+  end_date?: DateInfo;
+  eruption_category?: string;
+  area_of_activity?: string;
+  geometry?: Point;
+}
+
+// GeoJSON types
+export interface Feature<T = Record<string, unknown>> {
+  type: 'Feature';
+  geometry: Geometry;
+  properties: T;
+}
+
+export interface FeatureCollection<T = Record<string, unknown>> {
+  type: 'FeatureCollection';
+  features: Feature<T>[];
+}
+
+// Response types
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface MetadataResponse {
+  [key: string]: string | number | boolean | string[] | number[];
+}
+
+// Analytics types
+export interface TASPolygon {
+  name: string;
+  alkali_coords: number[];
+  silica_coords: number[];
+}
+
+export interface TASPolygonsResponse {
+  polygons: TASPolygon[];
+}
+
+export interface AFMBoundary {
+  type: 'LineString';
+  coordinates: Array<{ A: number; F: number; M: number }>;
+}
+
+export interface AFMBoundaryResponse {
+  boundary: AFMBoundary;
+  description: string;
+}
+
+export interface VEIDistribution {
+  volcano_number: number;
+  volcano_name: string;
+  total_eruptions: number;
+  vei_counts: Record<string, number>;
+  date_range?: {
+    start?: string;  // ISO 8601 format: "YYYY-MM-DDTHH:mm:ssZ" or "-YYYY-MM-DDTHH:mm:ssZ" for BCE
+    end?: string;    // ISO 8601 format: "YYYY-MM-DDTHH:mm:ssZ"
+  };
+}
+
+export interface ChemicalSample {
+  sample_id: string;
+  database: string;
+  rock_type?: string;
+  oxides: Oxides;
+  tas_classification?: string;
+  afm_values?: { A: number; F: number; M: number };
+  vei?: number;
+  eruption_date?: DateInfo;
+}
+
+export interface ChemicalAnalysisResponse {
+  volcano_number: number;
+  volcano_name: string;
+  total_samples: number;
+  samples: ChemicalSample[];
+  rock_type_distribution?: Record<string, number>;
+}
+
+// Filter types
+export interface SampleFilters {
+  database?: string;
+  rock_type?: string | string[]; // Support multi-select with OR logic
+  tectonic_setting?: string | string[]; // Support multi-select with OR logic
+  volcano_number?: number;
+  min_sio2?: number; // Updated to match backend naming
+  max_sio2?: number; // Updated to match backend naming
+  limit?: number;
+  offset?: number;
+}
+
+export interface VolcanoFilters {
+  country?: string;
+  region?: string;
+  tectonic_setting?: string | string[]; // Support multi-select with OR logic
+  volcano_name?: string; // For autocomplete search
+  limit?: number;
+  offset?: number;
+}
+
+export interface SpatialBoundsParams {
+  min_lon: number;
+  max_lon: number;
+  min_lat: number;
+  max_lat: number;
+  limit?: number;
+}
+
+export interface SpatialNearbyParams {
+  lon: number;
+  lat: number;
+  radius: number; // in meters
+  limit?: number;
+}
+
+// Tectonic types
+export interface TectonicPlate {
+  type: 'Feature';
+  properties: {
+    PlateName: string;
+    Code: string;
+  };
+  geometry: Polygon;
+}
+
+export interface TectonicBoundary {
+  type: 'Feature';
+  properties: {
+    boundary_type: 'ridge' | 'trench' | 'transform';
+  };
+  geometry: {
+    type: 'LineString';
+    coordinates: number[][];
+  };
+}
+
+export interface TectonicPlatesResponse {
+  type: 'FeatureCollection';
+  features: TectonicPlate[];
+  count: number;
+}
+
+export interface TectonicBoundariesResponse {
+  type: 'FeatureCollection';
+  features: TectonicBoundary[];
+  count: number;
+  ridge_count: number;
+  trench_count: number;
+  transform_count: number;
+}
