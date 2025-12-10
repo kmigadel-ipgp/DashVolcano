@@ -3,6 +3,7 @@
 **Date:** December 4, 2025  
 **Last Updated:** December 10, 2025  
 **Status:** ✅ COMPLETE - Production Ready  
+**Version:** 3.0.0 (3.1.0 features planned - see [FEATURE_ENHANCEMENTS_PLAN.md](./FEATURE_ENHANCEMENTS_PLAN.md))  
 **Tech Stack:** FastAPI + Deck.gl + MongoDB  
 **Deployment:** nginx + pm2  
 **Database:** MongoDB Atlas (100,000 samples ready)
@@ -2304,6 +2305,46 @@ This implementation plan provides a comprehensive roadmap for migrating DashVolc
 - Complete production documentation (75KB)
 
 **Ready to Deploy!** See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) for production setup instructions.
+
+---
+
+## 🔮 Future Enhancements (v3.1)
+
+**Status**: Planning phase - see [FEATURE_ENHANCEMENTS_PLAN.md](./FEATURE_ENHANCEMENTS_PLAN.md) for detailed specifications
+
+**Planned Features** (17-23 hours estimated):
+
+### Map Page (CRITICAL - Performance)
+- **Bounding Box Search Widget**: Interactive area selection to load only relevant samples
+  - 85-90% reduction in data transfer and rendering time
+  - Draw rectangle tool + preset regions
+  - Geospatial MongoDB queries with 2dsphere index
+
+### About Page (HIGH - Attribution)
+- **Latest Publications**: Featured publication (Oggier et al., 2023)
+- **Contributors**: Team members with ORCID links (Costa, Oggier, Migadel)
+- **Enhanced Citations**: Comprehensive GEOROC (10 DOIs), PetDB, and GVP attribution
+
+### Compare Volcanoes Page
+- **Rock Type Distribution**: Percentage visualization with bar charts and tables
+- **Harker Diagrams**: 8 major oxide variation diagrams (TiO2, Al2O3, FeOT, MgO, CaO, Na2O, K2O, P2O5 vs SiO2)
+
+### Timeline Page
+- **Sample Collection Timeline**: Chronological visualization of sample collection dates
+
+### Analyze Volcano Page
+- **TAS by VEI**: Color-code TAS diagram points by Volcanic Explosivity Index
+- **Rock Type Distribution**: Percentage visualization (same as Compare Volcanoes)
+
+### Compare VEI Page
+- **Major Rock Types**: Display GVP major rock classification (maj_1, maj_2, maj_3)
+
+**Implementation Phases**:
+1. **Phase 1 (Critical + Quick Wins)**: 6-9 hours - Bbox search, About page, rock type distributions
+2. **Phase 2 (Analytical)**: 7-9 hours - VEI coloring, sample timeline, comparative analysis
+3. **Phase 3 (Complex)**: 4-5 hours - Harker diagrams (advanced geochemistry)
+
+**Documentation**: Complete technical specifications, UI/UX recommendations, implementation roadmap, and risk assessment available in the feature plan document.
 - ⚠️ **Medium Risk**: Production deployment (Phase 5)
 
 **Updated Timeline:**
