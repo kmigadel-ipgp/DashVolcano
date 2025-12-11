@@ -31,9 +31,11 @@ const MapPage = () => {
   const [viewport, setViewport] = useState(INITIAL_VIEWPORT);
 
   // Filter state
-  const [sampleFilters, setSampleFilters] = useState<SampleFilters>({limit: 100000}); // Increased default limit
+  const [sampleFilters, setSampleFilters] = useState<SampleFilters>({}); // Start with no filters - user must apply filters or bbox
   const [volcanoFilters, setVolcanoFilters] = useState<VolcanoFilters>({ limit: 5000 }); // Increased default limit
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const [hasAppliedFilters, setHasAppliedFilters] = useState(false); // Track if user has applied any filters
+  const [showNoSamplesMessage, setShowNoSamplesMessage] = useState(true); // Control visibility of "No Samples" popup
 
   // Chart panel state
   const [chartPanelOpen, setChartPanelOpen] = useState(false);
@@ -74,7 +76,8 @@ const MapPage = () => {
   const [clickedSample, setClickedSample] = useState<Sample | null>(null);
 
   // Fetch data using custom hooks (with filters)
-  const { samples, loading: samplesLoading, error: samplesError } = useSamples(sampleFilters);
+  // Don't auto-fetch samples - only fetch when user applies filters or bbox
+  const { samples, loading: samplesLoading, error: samplesError, refetch: refetchSamples } = useSamples(sampleFilters, hasAppliedFilters);
   const { volcanoes, loading: volcanoesLoading, error: volcanoesError } = useVolcanoes(volcanoFilters);
   const { boundaries, loading: tectonicLoading, error: tectonicError } = useTectonic();
 
@@ -95,6 +98,16 @@ const MapPage = () => {
       }
     }
   }, [volcanoFilters.volcano_name, volcanoes]);
+
+  // Detect when user applies filters from FilterPanel (excluding just limit changes)
+  useEffect(() => {
+    const hasNonLimitFilters = Object.keys(sampleFilters).some(
+      key => key !== 'limit' && key !== 'offset'
+    );
+    if (hasNonLimitFilters && !hasAppliedFilters) {
+      setHasAppliedFilters(true);
+    }
+  }, [sampleFilters, hasAppliedFilters]);
 
   // Loading state
   const isLoading = samplesLoading || volcanoesLoading || tectonicLoading;
@@ -201,7 +214,8 @@ const MapPage = () => {
         const newBbox: BBox = { minLon, minLat, maxLon, maxLat };
         setCurrentBbox(newBbox);
         const bboxString = formatBboxForAPI(newBbox);
-        setSampleFilters(prev => ({ ...prev, bbox: bboxString }));
+        setSampleFilters(prev => ({ ...prev, bbox: bboxString, limit: 10000 }));
+        setHasAppliedFilters(true); // Mark that filters have been applied
       }
 
       // Reset drawing state
@@ -225,7 +239,8 @@ const MapPage = () => {
     setCurrentBbox(bbox);
     // Update filters with bbox
     const bboxString = formatBboxForAPI(bbox);
-    setSampleFilters(prev => ({ ...prev, bbox: bboxString }));
+    setSampleFilters(prev => ({ ...prev, bbox: bboxString, limit: 10000 }));
+    setHasAppliedFilters(true); // Mark that filters have been applied
   };
 
   const handleClearBbox = () => {
@@ -238,6 +253,10 @@ const MapPage = () => {
       const { bbox, ...rest } = prev;
       return rest;
     });
+    // If no other filters remain, mark as no filters applied
+    if (Object.keys(sampleFilters).length <= 1) {
+      setHasAppliedFilters(false);
+    }
   };
 
   // Calculate drawing rectangle for visualization
@@ -277,6 +296,63 @@ const MapPage = () => {
       {error && (
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 max-w-md">
           <ErrorMessage message={error} />
+        </div>
+      )}
+
+      {/* No Samples Loaded Message */}
+      {!hasAppliedFilters && !samplesLoading && samples.length === 0 && showNoSamplesMessage && (
+        <div 
+          className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10"
+          onClick={(e) => {
+            // Close if clicking the backdrop (outside the white box)
+            if (e.target === e.currentTarget) {
+              setShowNoSamplesMessage(false);
+            }
+          }}
+        >
+          <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md relative">
+            {/* Close button */}
+            <button
+              onClick={() => setShowNoSamplesMessage(false)}
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors"
+              title="Dismiss message"
+              aria-label="Close message"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            
+            <div className="text-center space-y-4">
+              <div className="text-volcano-600 text-5xl mb-4">🗺️</div>
+              <h3 className="text-xl font-bold text-gray-800">No Samples Loaded</h3>
+              <p className="text-gray-600">
+                To display rock samples on the map, use one of these options:
+              </p>
+              <ul className="text-left text-gray-700 space-y-2 ml-6">
+                <li className="flex items-start">
+                  <span className="text-volcano-600 mr-2">•</span>
+                  <span><strong>Draw a bounding box</strong> using the spatial search tool on the left</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-volcano-600 mr-2">•</span>
+                  <span><strong>Apply filters</strong> using the filter button (top-left)</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-volcano-600 mr-2">•</span>
+                  <span><strong>Select a preset region</strong> from the spatial search widget</span>
+                </li>
+              </ul>
+              <div className="pt-4">
+                <button
+                  onClick={() => setFilterPanelOpen(true)}
+                  className="px-6 py-3 bg-volcano-600 text-white rounded-lg hover:bg-volcano-700 transition-colors font-medium"
+                >
+                  Open Filters
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

@@ -52,7 +52,7 @@ export const TASPlot: React.FC<TASPlotProps> = React.memo(({
   useEffect(() => {
     const fetchTASData = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/analytics/tas-polygons');
+        const response = await fetch('/api/analytics/tas-polygons');
         if (!response.ok) throw new Error('Failed to fetch TAS data');
         const data = await response.json();
         setTasData(data);

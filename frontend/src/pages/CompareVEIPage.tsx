@@ -35,7 +35,7 @@ const CompareVEIPage = () => {
   useEffect(() => {
     const loadVolcanoes = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/volcanoes?limit=5000');
+        const response = await fetch('/api/volcanoes?limit=5000');
         const data = await response.json();
         setVolcanoes(data.data || []);
         const names = (data.data as Array<{volcano_name: string}>)

@@ -243,7 +243,7 @@ const AnalyzeVolcanoPage: React.FC = () => {
   useEffect(() => {
     const loadVolcanoes = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/volcanoes?limit=5000');
+        const response = await fetch('/api/volcanoes?limit=5000');
         const data = await response.json();
         setVolcanoes(data.data || []);
         const names = (data.data as Array<{volcano_name: string}>)
@@ -278,7 +278,7 @@ const AnalyzeVolcanoPage: React.FC = () => {
         }
 
         const response = await fetch(
-          `http://localhost:8000/api/volcanoes/${volcano.volcano_number}/chemical-analysis`
+          `/api/volcanoes/${volcano.volcano_number}/chemical-analysis`
         );
         
         if (!response.ok) {
@@ -322,7 +322,7 @@ const AnalyzeVolcanoPage: React.FC = () => {
         if (!volcano) return;
 
         const response = await fetch(
-          `http://localhost:8000/api/analytics/volcano/${volcano.volcano_number}/samples-with-vei`
+          `/api/analytics/volcano/${volcano.volcano_number}/samples-with-vei`
         );
         
         if (response.ok) {

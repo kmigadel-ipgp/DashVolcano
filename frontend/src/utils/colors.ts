@@ -57,7 +57,7 @@ async function loadRockTypeColors(): Promise<void> {
   if (rockTypesLoaded) return;
   
   try {
-    const response = await fetch('http://localhost:8000/api/metadata/rock-types');
+    const response = await fetch('/api/metadata/rock-types');
     if (!response.ok) throw new Error('Failed to fetch rock types');
     
     const result = await response.json();
@@ -177,8 +177,8 @@ async function loadTectonicSettingColors(): Promise<void> {
   try {
     // Fetch both sample and volcano tectonic settings
     const [samplesResponse, volcanoesResponse] = await Promise.all([
-      fetch('http://localhost:8000/api/metadata/tectonic-settings-samples'),
-      fetch('http://localhost:8000/api/metadata/tectonic-settings-volcanoes'),
+      fetch('/api/metadata/tectonic-settings-samples'),
+      fetch('/api/metadata/tectonic-settings-volcanoes'),
     ]);
     
     if (!samplesResponse.ok || !volcanoesResponse.ok) {

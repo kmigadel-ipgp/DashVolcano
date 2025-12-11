@@ -25,7 +25,7 @@ async def get_samples(
         description="Bounding box as 'min_lon,min_lat,max_lon,max_lat' (e.g., '-10,35,20,60')",
         pattern=r"^-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?$"
     ),
-    limit: Optional[int] = Query(None, description="Maximum number of results"),
+    limit: int = Query(10000, ge=1, le=100000, description="Maximum number of results (default: 10000, max: 100000)"),
     offset: int = Query(0, ge=0, description="Pagination offset")
 ):
     """
@@ -119,10 +119,8 @@ async def get_samples(
         "matching_metadata": 1
     }
     
-    # Build query with optional limit and offset
-    cursor = db.samples.find(query, projection)
-    if limit is not None:
-        cursor = cursor.limit(limit)
+    # Build query with limit and offset
+    cursor = db.samples.find(query, projection).limit(limit)
     if offset > 0:
         cursor = cursor.skip(offset)
     

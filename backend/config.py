@@ -36,8 +36,15 @@ class Settings(BaseSettings):
     
     @property
     def mongodb_uri(self) -> str:
-        """Generate MongoDB connection URI"""
-        return f"mongodb+srv://{self.MONGO_USER}:{self.MONGO_PASSWORD}@{self.MONGO_CLUSTER}/?retryWrites=true&w=majority"
+        """Generate MongoDB connection URI with connection pool optimization"""
+        return (
+            f"mongodb+srv://{self.MONGO_USER}:{self.MONGO_PASSWORD}@{self.MONGO_CLUSTER}/"
+            f"?retryWrites=true&w=majority"
+            f"&maxPoolSize=100"
+            f"&minPoolSize=10"
+            f"&maxIdleTimeMS=60000"
+            f"&serverSelectionTimeoutMS=10000"
+        )
     
     class Config:
         env_file = ".env"

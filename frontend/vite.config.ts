@@ -11,7 +11,11 @@ export default defineConfig({
     },
   },
   server: {
+    // allow Vite to be accessed externally and accept this host
+    host: true,
     port: 5173,
+    // allow specific hostnames (prevents "Blocked request" errors)
+    allowedHosts: ['dashvolcano.ipgp.fr'],
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
