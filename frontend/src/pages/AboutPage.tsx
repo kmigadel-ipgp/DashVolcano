@@ -175,6 +175,37 @@ const AboutPage = () => {
           </div>
         </div>
 
+        {/* Latest Publications */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <FileText className="w-6 h-6 text-volcano-600" />
+            <h2 className="text-2xl font-bold text-gray-900">Latest Publications</h2>
+          </div>
+          <div className="space-y-4">
+            <div className="border-l-4 border-volcano-500 pl-4 bg-gray-50 p-4 rounded">
+              <p className="text-gray-700 leading-relaxed">
+                Oggier, F., Widiwijayanti, C., & Costa, F. (2023). 
+                <strong> Integrating global geochemical volcano rock composition with eruption history datasets</strong>. 
+                <em> Frontiers in Earth Science</em>, 11, 1108056.{' '}
+                <a 
+                  href="https://www.frontiersin.org/articles/10.3389/feart.2023.1108056"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-volcano-600 hover:text-volcano-700 underline inline-flex items-center gap-1"
+                >
+                  doi: 10.3389/feart.2023.1108056
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </p>
+            </div>
+            <p className="text-sm text-gray-600">
+              This publication describes the methodology for integrating global geochemical datasets 
+              (GEOROC, PetDB) with the Global Volcanism Program's eruption history database, forming 
+              the foundation of DashVolcano's data infrastructure.
+            </p>
+          </div>
+        </div>
+
         {/* Technology Stack */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
@@ -279,7 +310,7 @@ const AboutPage = () => {
             </div>
           
             {/* Data Processing */}
-            <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 mt-6">
+            <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
               <h3 className="font-semibold text-gray-800 mb-3">Data Processing & Analysis</h3>
               <ul className="space-y-2 text-gray-700">
                 <li className="flex items-start gap-2">
@@ -360,18 +391,83 @@ const AboutPage = () => {
           </div>
         </div>
 
-        {/* Team & Development */}
+        {/* Contributors */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
             <Users className="w-6 h-6 text-volcano-600" />
-            <h2 className="text-2xl font-bold text-gray-900">Team & Development</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Contributors</h2>
           </div>
-          <div className="space-y-4 text-gray-700">
-            <p>
-              <strong>DashVolcano</strong> is developed and maintained by researchers at the{' '}
+          <div className="space-y-4">
+            <p className="text-gray-700">
+              <strong>DashVolcano</strong> was designed and developed by:
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Contributor 1 */}
+              <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                <h3 className="font-semibold text-gray-900 mb-2">Fidel Costa</h3>
+                <p className="text-sm text-gray-600 mb-2">Project Principal Investigator</p>
+                <a 
+                  href="https://orcid.org/0000-0002-1409-5325"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-volcano-600 hover:text-volcano-700"
+                >
+                  <img 
+                    src="https://orcid.org/sites/default/files/images/orcid_16x16.png" 
+                    alt="ORCID logo"
+                    className="w-4 h-4"
+                  />
+                  ORCID: 0000-0002-1409-5325
+                </a>
+              </div>
+              
+              {/* Contributor 2 */}
+              <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                <h3 className="font-semibold text-gray-900 mb-2">Frederique Elise Oggier</h3>
+                <p className="text-sm text-gray-600 mb-2">
+                  Project Principal Investigator, Coordinator, Web Developer
+                </p>
+                <a 
+                  href="https://orcid.org/0000-0003-3141-3118"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-volcano-600 hover:text-volcano-700"
+                >
+                  <img 
+                    src="https://orcid.org/sites/default/files/images/orcid_16x16.png" 
+                    alt="ORCID logo"
+                    className="w-4 h-4"
+                  />
+                  ORCID: 0000-0003-3141-3118
+                </a>
+              </div>
+              
+              {/* Contributor 3 */}
+              <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                <h3 className="font-semibold text-gray-900 mb-2">Kévin Migadel</h3>
+                <p className="text-sm text-gray-600 mb-2">Coordinator, Web Developer</p>
+                <a 
+                  href="https://orcid.org/0009-0006-0147-3354"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-volcano-600 hover:text-volcano-700"
+                >
+                  <img 
+                    src="https://orcid.org/sites/default/files/images/orcid_16x16.png" 
+                    alt="ORCID logo"
+                    className="w-4 h-4"
+                  />
+                  ORCID: 0009-0006-0147-3354
+                </a>
+              </div>
+            </div>
+            
+            <p className="text-gray-700 mt-4">
+              This project is developed and maintained at the{' '}
               <a 
-                href={externalLinks.ipgp} 
-                target="_blank" 
+                href={externalLinks.ipgp}
+                target="_blank"
                 rel="noopener noreferrer"
                 className="text-volcano-600 hover:text-volcano-700 underline font-semibold"
               >
@@ -379,11 +475,8 @@ const AboutPage = () => {
               </a>
               , a leading research institution in Earth sciences and volcanology.
             </p>
-            <p>
-              The project aims to make volcanic data more accessible to the scientific community 
-              and the public, promoting education and research in volcanology and geochemistry.
-            </p>
-            <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+
+            <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 mt-4">
               <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
                 <Code className="w-5 h-5 text-volcano-600" />
                 Open Source
@@ -397,47 +490,173 @@ const AboutPage = () => {
                   <ExternalLink className="w-4 h-4"/>
                 </a>
               </h3>
-              <p className="text-gray-600 text-sm mb-3">
+              <p className="text-gray-600 text-sm">
                 This project is open source and available on GitHub. Contributions, bug reports, 
                 and feature requests are welcome.
               </p>
-              
             </div>
           </div>
         </div>
 
-        {/* License & Usage */}
+        {/* Data Sources and Citation */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center gap-3 mb-4">
             <FileText className="w-6 h-6 text-volcano-600" />
-            <h2 className="text-2xl font-bold text-gray-900">License & Usage</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Data Sources and Citation</h2>
           </div>
-          <div className="space-y-4 text-gray-700">
-            <p>
-              <strong>DashVolcano</strong> is provided for educational and research purposes. 
-              The application and its source code are available under an open-source license.
+          
+          <div className="space-y-6 text-gray-700">
+            <p className="text-lg font-medium">
+              This platform integrates data from three major databases: <strong>GEOROC</strong>, 
+              <strong> PetDB</strong>, and the <strong>Global Volcanism Program (GVP)</strong>. 
+              Each source has specific citation requirements outlined below.
             </p>
             
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-              <h3 className="font-semibold text-gray-800 mb-2">Data Attribution</h3>
-              <p className="text-sm text-gray-600 mb-2">
-                When using data from DashVolcano in publications or presentations, please cite:
+            {/* GEOROC Section */}
+            <div className="border border-gray-200 rounded-lg p-5 bg-gray-50">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xl font-bold text-gray-900">🔸 GEOROC</h3>
+                <a 
+                  href={externalLinks.georoc}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-volcano-600 hover:text-volcano-700"
+                >
+                  <ExternalLink className="w-5 h-5" />
+                </a>
+              </div>
+              
+              <p className="mb-3">
+                The <strong>GEOROC</strong> (Geochemistry of Rocks of the Oceans and Continents) 
+                database compiles peer-reviewed geochemical data from the literature. Data use is 
+                licensed under{' '}
+                <a 
+                  href="https://creativecommons.org/licenses/by-sa/4.0/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-volcano-600 hover:text-volcano-700 underline"
+                >
+                  CC BY-SA 4.0
+                </a>.
               </p>
-              <ul className="text-sm text-gray-600 space-y-1 ml-4">
-                <li>
-                  • <strong>GEOROC:</strong> Geochemistry of Rocks of the Oceans and Continents Database. 
-                  Max Planck Institute for Chemistry.{' '}
-                  <a href={externalLinks.georoc} target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:text-volcano-700 underline">https://georoc.eu/</a>
-                </li>
-                <li>
-                  • <strong>GVP:</strong> Global Volcanism Program, 2013. Volcanoes of the World, v. 4.11.0. 
-                  Venzke, E (ed.). Smithsonian Institution.{' '}
-                  <a href={externalLinks.gvp} target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:text-volcano-700 underline">https://volcano.si.edu/</a>
-                </li>
+              
+              <p className="mb-3 text-sm">
+                Data were downloaded from the GEOROC database on <strong>June 2023</strong>, using 
+                precompiled files corresponding to the following tectonic/geologic settings (with DOIs):
+              </p>
+              
+              <ul className="space-y-1 text-xs ml-4 mb-3">
+                <li>• Archaean Cratons: <a href="https://doi.org/10.25625/1KRR1P" target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:underline">10.25625/1KRR1P</a></li>
+                <li>• Continental Flood Basalts: <a href="https://doi.org/10.25625/WSTPOX" target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:underline">10.25625/WSTPOX</a></li>
+                <li>• Convergent Margins: <a href="https://doi.org/10.25625/PVFZCE" target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:underline">10.25625/PVFZCE</a></li>
+                <li>• Complex Volcanic Settings: <a href="https://doi.org/10.25625/1VOFM5" target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:underline">10.25625/1VOFM5</a></li>
+                <li>• Intraplate Volcanic Rocks: <a href="https://doi.org/10.25625/RZZ9VM" target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:underline">10.25625/RZZ9VM</a></li>
+                <li>• Rift Volcanics: <a href="https://doi.org/10.25625/KAIVCT" target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:underline">10.25625/KAIVCT</a></li>
+                <li>• Oceanic Plateaus: <a href="https://doi.org/10.25625/JRZIJF" target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:underline">10.25625/JRZIJF</a></li>
+                <li>• Ocean Basin Flood Basalts: <a href="https://doi.org/10.25625/AVLFC2" target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:underline">10.25625/AVLFC2</a></li>
+                <li>• Ocean Island Groups: <a href="https://doi.org/10.25625/WFJZKY" target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:underline">10.25625/WFJZKY</a></li>
+                <li>• Seamounts: <a href="https://doi.org/10.25625/JUQK7N" target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:underline">10.25625/JUQK7N</a></li>
               </ul>
+              
+              <div className="bg-volcano-50 border border-volcano-200 rounded p-3">
+                <p className="text-sm font-semibold mb-2">Citing GEOROC:</p>
+                <p className="text-xs italic">
+                  Lehnert, K., Su, Y., Langmuir, C. H., Sarbas, B., & Nohl, U. (2000). 
+                  A global geochemical database structure for rocks. <em>Geochemistry, Geophysics, Geosystems</em>, 
+                  1(5), 1012.{' '}
+                  <a 
+                    href="https://doi.org/10.1029/1999GC000026"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-volcano-600 hover:underline"
+                  >
+                    https://doi.org/10.1029/1999GC000026
+                  </a>
+                </p>
+              </div>
+            </div>
+            
+            {/* PetDB Section */}
+            <div className="border border-gray-200 rounded-lg p-5 bg-gray-50">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xl font-bold text-gray-900">🔸 PetDB</h3>
+                <a 
+                  href="https://search.earthchem.org/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-volcano-600 hover:text-volcano-700"
+                >
+                  <ExternalLink className="w-5 h-5" />
+                </a>
+              </div>
+              
+              <p className="mb-3">
+                <strong>PetDB</strong> (Petrological Database of the Ocean Floor) is hosted by the 
+                EarthChem Library and licensed under{' '}
+                <a 
+                  href="https://creativecommons.org/licenses/by-sa/4.0/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-volcano-600 hover:text-volcano-700 underline"
+                >
+                  CC BY-SA 4.0
+                </a>.
+              </p>
+              
+              <div className="bg-volcano-50 border border-volcano-200 rounded p-3">
+                <p className="text-sm font-semibold mb-2">Citing PetDB:</p>
+                <p className="text-xs italic">
+                  Lehnert, K. A., et al. (2000). A Global Geochemical Database Structure for Rocks. 
+                  <em>Geochemistry, Geophysics, Geosystems</em>, 1(5).{' '}
+                  <a 
+                    href="https://doi.org/10.1029/1999GC000026"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-volcano-600 hover:underline"
+                  >
+                    https://doi.org/10.1029/1999GC000026
+                  </a>
+                </p>
+              </div>
+            </div>
+            
+            {/* GVP Section */}
+            <div className="border border-gray-200 rounded-lg p-5 bg-gray-50">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xl font-bold text-gray-900">🔸 Global Volcanism Program</h3>
+                <a 
+                  href={externalLinks.gvp}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-volcano-600 hover:text-volcano-700"
+                >
+                  <ExternalLink className="w-5 h-5" />
+                </a>
+              </div>
+              
+              <p className="mb-3">
+                The <strong>Global Volcanism Program</strong> maintains comprehensive records of volcanic 
+                eruptions and volcano information worldwide.
+              </p>
+              
+              <div className="bg-volcano-50 border border-volcano-200 rounded p-3">
+                <p className="text-sm font-semibold mb-2">Citing GVP:</p>
+                <p className="text-xs italic">
+                  Global Volcanism Program, 2013. Volcanoes of the World, v. 4.11.0. 
+                  Venzke, E (ed.). Smithsonian Institution.{' '}
+                  <a 
+                    href="https://doi.org/10.5479/si.GVP.VOTW4-2013"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-volcano-600 hover:underline"
+                  >
+                    https://doi.org/10.5479/si.GVP.VOTW4-2013
+                  </a>
+                </p>
+              </div>
             </div>
 
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 mt-4">
               For questions, collaboration opportunities, or technical support, please contact us through 
               our GitHub repository or the IPGP website.
             </p>

@@ -1,12 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import Plot from 'react-plotly.js';
 import type { Sample } from '../../types';
+import { getVEIColor, getRockTypeColor } from '../../utils/colors';
 
 interface TASPlotProps {
   /** Array of samples to plot */
   samples: Sample[];
   /** Whether to show loading state */
   loading?: boolean;
+  /** Color mode: 'rock_type' or 'vei' */
+  colorBy?: 'rock_type' | 'vei';
+  /** Custom title for the plot */
+  title?: string;
 }
 
 interface TASPolygon {
@@ -34,9 +39,11 @@ interface TASData {
  * - Alkali/Subalkalic dividing line
  * - Sample points colored by rock type
  */
-export const TASPlot: React.FC<TASPlotProps> = ({
+export const TASPlot: React.FC<TASPlotProps> = React.memo(({
   samples,
   loading = false,
+  colorBy = 'rock_type',
+  title,
 }) => {
   const [tasData, setTasData] = useState<TASData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +75,8 @@ export const TASPlot: React.FC<TASPlotProps> = ({
         rock_type: s.rock_type || 'Unknown',
         sample_code: s.sample_code || s.sample_id,
         sample_id: s.sample_id,
+        vei: s.vei,
+        eruption_year: s.eruption_year,
       }));
   };
 
@@ -81,30 +90,6 @@ export const TASPlot: React.FC<TASPlotProps> = ({
     'INC': 'triangle-up',
     'Unknown': 'x',
   };
-
-  // Get unique rock types and assign consistent colors
-  const uniqueRockTypes = Array.from(new Set(sampleData.map(s => s.rock_type)));
-  const rockTypeColors: Record<string, string> = {};
-  const colorPalette = [
-    '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
-    '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf',
-    '#aec7e8', '#ffbb78', '#98df8a', '#ff9896', '#c5b0d5',
-    '#c49c94', '#f7b6d2', '#c7c7c7', '#dbdb8d', '#9edae5',
-  ];
-  for (let index = 0; index < uniqueRockTypes.length; index++) {
-    const rockType = uniqueRockTypes[index];
-    rockTypeColors[rockType] = colorPalette[index % colorPalette.length];
-  }
-
-  // Group samples by rock_type (for colors) and material (for shapes)
-  const samplesByRockTypeAndMaterial = sampleData.reduce((acc, sample) => {
-    const key = `${sample.rock_type}|${sample.material}`;
-    if (!acc[key]) {
-      acc[key] = [];
-    }
-    acc[key].push(sample);
-    return acc;
-  }, {} as Record<string, typeof sampleData>);
 
   if (error) {
     return (
@@ -167,43 +152,103 @@ export const TASPlot: React.FC<TASPlotProps> = ({
     hoverinfo: 'name',
   });
 
-  // Track which materials have been added to legend
-  const materialLegendShown = new Set<string>();
+  // Grouping strategy based on colorBy mode
+  if (colorBy === 'vei') {
+    // VEI MODE: Group by VEI value only, legend shows VEI 0, VEI 1, etc.
+    const samplesByVEI = sampleData.reduce((acc, sample) => {
+      const vei = sample.vei !== undefined && sample.vei !== null ? `VEI ${sample.vei}` : 'Unknown VEI';
+      if (!acc[vei]) {
+        acc[vei] = [];
+      }
+      acc[vei].push(sample);
+      return acc;
+    }, {} as Record<string, typeof sampleData>);
 
-  // Add sample points grouped by rock_type (colors) and material (shapes)
-  for (const [key, samples] of Object.entries(samplesByRockTypeAndMaterial)) {
-    const [rockType, material] = key.split('|');
-    const shape = materialShapes[material] || materialShapes['Unknown'];
-    const color = rockTypeColors[rockType] || '#999999';
-    const showLegend = !materialLegendShown.has(material);
-    
-    if (showLegend) {
-      materialLegendShown.add(material);
-    }
-    
-    plotlyData.push({
-      type: 'scatter',
-      mode: 'markers',
-      x: samples.map(s => s.sio2),
-      y: samples.map(s => s.alkali),
-      name: material,
-      legendgroup: material,
-      showlegend: showLegend,
-      marker: {
-        size: 8,
-        opacity: 0.7,
-        symbol: shape,
-        color: color,
-      },
-      text: samples.map(s => 
-        `${s.sample_code}<br>`+
-        `Rock Type: ${s.rock_type}<br>` +
-        `Material: ${s.material}<br>` +
-        `SiO2: ${s.sio2.toFixed(2)}%<br>` +
-        `Alkali: ${s.alkali.toFixed(2)}%`
-      ),
-      hoverinfo: 'text',
+    // Sort VEI keys to ensure correct order in legend
+    const sortedVEIKeys = Object.keys(samplesByVEI).sort((a, b) => {
+      if (a === 'Unknown VEI') return 1;
+      if (b === 'Unknown VEI') return -1;
+      const veiA = parseInt(a.replace('VEI ', ''));
+      const veiB = parseInt(b.replace('VEI ', ''));
+      return veiA - veiB;
     });
+
+    for (const veiLabel of sortedVEIKeys) {
+      const samples = samplesByVEI[veiLabel];
+      const veiValue = veiLabel === 'Unknown VEI' ? null : parseInt(veiLabel.replace('VEI ', ''));
+      const color = veiValue !== null ? getVEIColor(veiValue) : '#808080';
+      
+      plotlyData.push({
+        type: 'scatter',
+        mode: 'markers',
+        x: samples.map(s => s.sio2),
+        y: samples.map(s => s.alkali),
+        name: veiLabel,
+        legendgroup: veiLabel,
+        showlegend: true,
+        marker: {
+          size: 8,
+          opacity: 0.7,
+          symbol: 'circle',
+          color: color,
+        },
+        text: samples.map(s => 
+          `${s.sample_code}<br>Rock Type: ${s.rock_type}<br>Material: ${s.material}<br>SiO2: ${s.sio2.toFixed(2)}%<br>Alkali: ${s.alkali.toFixed(2)}%<br>VEI: ${s.vei !== undefined ? s.vei : 'Unknown'}${s.eruption_year ? ` (${s.eruption_year})` : ''}`
+        ),
+        hoverinfo: 'text',
+      });
+    }
+  } else {
+    // ROCK TYPE MODE: Group by rock_type|material (same as AFM)
+    // Legend shows materials (WR, GL, MIN, INC), colors show rock types
+    const uniqueRockTypes = Array.from(new Set(sampleData.map(s => s.rock_type)));
+    const rockTypeColors: Record<string, string> = {};
+    
+    for (const rockType of uniqueRockTypes) {
+      rockTypeColors[rockType] = getRockTypeColor(rockType);
+    }
+
+    const samplesByRockTypeAndMaterial = sampleData.reduce((acc, sample) => {
+      const key = `${sample.rock_type}|${sample.material}`;
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(sample);
+      return acc;
+    }, {} as Record<string, typeof sampleData>);
+
+    const materialLegendShown = new Set<string>();
+
+    for (const [key, samples] of Object.entries(samplesByRockTypeAndMaterial)) {
+      const [rockType, material] = key.split('|');
+      const shape = materialShapes[material] || materialShapes['Unknown'];
+      const color = rockTypeColors[rockType] || '#808080';
+      const showLegend = !materialLegendShown.has(material);
+      
+      if (showLegend) {
+        materialLegendShown.add(material);
+      }
+      
+      plotlyData.push({
+        type: 'scatter',
+        mode: 'markers',
+        x: samples.map(s => s.sio2),
+        y: samples.map(s => s.alkali),
+        name: material,
+        legendgroup: material,
+        showlegend: showLegend,
+        marker: {
+          size: 8,
+          opacity: 0.7,
+          symbol: shape,
+          color: color,
+        },
+        text: samples.map(s => 
+          `${s.sample_code}<br>Rock Type: ${s.rock_type}<br>Material: ${s.material}<br>SiO2: ${s.sio2.toFixed(2)}%<br>Alkali: ${s.alkali.toFixed(2)}%`
+        ),
+        hoverinfo: 'text',
+      });
+    }
   }
 
   return (
@@ -212,7 +257,7 @@ export const TASPlot: React.FC<TASPlotProps> = ({
         data={plotlyData}
         layout={{
           title: {
-            text: 'TAS (Total Alkali-Silica) Diagram',
+            text: title || `TAS Diagram ${colorBy === 'vei' ? '(Colored by VEI)' : '(Colored by Rock Type)'}`,
             font: { size: 16 },
           },
           xaxis: {
@@ -252,4 +297,4 @@ export const TASPlot: React.FC<TASPlotProps> = ({
       />
     </div>
   );
-};
+});

@@ -57,7 +57,7 @@ export const LayerControls: React.FC<LayerControlsProps> = ({
 
       {/* Collapsible Content */}
       {isExpanded && (
-        <div className="px-4 pb-4 border-t border-gray-200">
+        <div className="px-4 pb-4 pt-4 border-t border-gray-200">
       
       <div className="space-y-2">
         {/* Volcanoes toggle */}

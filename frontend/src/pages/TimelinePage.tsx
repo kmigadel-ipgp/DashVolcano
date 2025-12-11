@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Clock, Download, TrendingUp } from 'lucide-react';
 import EruptionTimelinePlot from '../components/Charts/EruptionTimelinePlot';
 import EruptionFrequencyChart from '../components/Charts/EruptionFrequencyChart';
+import { SampleTimelinePlot } from '../components/Charts/SampleTimelinePlot';
+import { fetchVolcanoSampleTimeline } from '../api/volcanoes';
 import { dateInfoToYear, getDateRange, formatYearRange } from '../utils/dateUtils';
-import { showError, showSuccess } from '../utils/toast';
+import { showError } from '../utils/toast';
+import { exportEruptionsToCSV } from '../utils/csvExport';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { ChartSkeleton, CardSkeleton } from '../components/LoadingSkeleton';
 import { EmptyState } from '../components/EmptyState';
-import type { Eruption } from '../types';
+import type { Eruption, SampleTimelineResponse } from '../types';
 
 /**
  * TimelinePage - Temporal visualization of volcanic eruption history
@@ -27,7 +30,9 @@ const TimelinePage: React.FC = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   
   const [eruptions, setEruptions] = useState<Eruption[]>([]);
+  const [sampleTimeline, setSampleTimeline] = useState<SampleTimelineResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [sampleLoading, setSampleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [timePeriod, setTimePeriod] = useState<'decade' | 'century'>('decade');
 
@@ -56,11 +61,13 @@ const TimelinePage: React.FC = () => {
   useEffect(() => {
     if (!selectedVolcano) {
       setEruptions([]);
+      setSampleTimeline(null);
       return;
     }
 
-    const loadEruptions = async () => {
+    const loadData = async () => {
       setLoading(true);
+      setSampleLoading(true);
       setError(null);
 
       try {
@@ -70,27 +77,32 @@ const TimelinePage: React.FC = () => {
           throw new Error('Volcano not found');
         }
 
-        const response = await fetch(
-          `http://localhost:8000/api/eruptions?volcano_number=${volcano.volcano_number}&limit=10000`
-        );
+        // Fetch both eruptions and sample timeline in parallel
+        const [eruptionResponse, sampleTimelineData] = await Promise.all([
+          fetch(`http://localhost:8000/api/eruptions?volcano_number=${volcano.volcano_number}&limit=10000`),
+          fetchVolcanoSampleTimeline(volcano.volcano_number).catch(() => null) // Don't fail if no samples
+        ]);
 
-        if (!response.ok) {
+        if (!eruptionResponse.ok) {
           throw new Error('Failed to fetch eruption data');
         }
 
-        const data = await response.json();
-        setEruptions(data.data || []);
+        const eruptionData = await eruptionResponse.json();
+        setEruptions(eruptionData.data || []);
+        setSampleTimeline(sampleTimelineData);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An error occurred';
         setError(errorMessage);
-        showError(`Failed to load eruptions for ${selectedVolcano}: ${errorMessage}`);
+        showError(`Failed to load data for ${selectedVolcano}: ${errorMessage}`);
         setEruptions([]);
+        setSampleTimeline(null);
       } finally {
         setLoading(false);
+        setSampleLoading(false);
       }
     };
 
-    loadEruptions();
+    loadData();
   }, [selectedVolcano, volcanoes]);
 
   // Calculate statistics
@@ -123,38 +135,7 @@ const TimelinePage: React.FC = () => {
   };
 
   const handleDownloadCSV = () => {
-    if (eruptions.length === 0) return;
-
-    // Helper to escape CSV fields
-    const escapeCSV = (field: string) => {
-      if (field.includes(',') || field.includes('"') || field.includes('\n')) {
-        return `"${field.replaceAll('"', '""')}"`;
-      }
-      return field;
-    };
-
-    // Build CSV
-    const headers = ['volcano_name', 'eruption_number', 'start_year', 'end_year', 'vei', 'category', 'area'];
-    const rows = eruptions.map((e) => [
-      escapeCSV(e.volcano_name || ''),
-      e.eruption_number?.toString() || '',
-      dateInfoToYear(e.start_date)?.toString() || '',
-      dateInfoToYear(e.end_date)?.toString() || '',
-      e.vei?.toString() || '',
-      escapeCSV(e.eruption_category || ''),
-      escapeCSV(e.area_of_activity || ''),
-    ]);
-
-    const csv = [headers, ...rows].map((row) => row.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${selectedVolcano.replaceAll(' ', '_')}_eruptions_timeline.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    
-    showSuccess('Eruption timeline data exported successfully!');
+    exportEruptionsToCSV(eruptions, selectedVolcano);
   };
 
   // Keyboard shortcut for CSV export
@@ -289,6 +270,43 @@ const TimelinePage: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {/* Sample Timeline */}
+            {sampleTimeline && sampleTimeline.total_samples > 0 && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Sample Collection Overview</h3>
+                  <div className="text-sm text-gray-600">
+                    {sampleTimeline.total_samples} samples
+                    {sampleTimeline.has_timeline_data && ` · ${sampleTimeline.samples_with_dates} dated`}
+                  </div>
+                </div>
+                {sampleLoading ? (
+                  <ChartSkeleton height="400px" />
+                ) : sampleTimeline.has_timeline_data ? (
+                  <SampleTimelinePlot
+                    data={sampleTimeline.timeline_data}
+                    volcanoName={selectedVolcano}
+                  />
+                ) : (
+                  <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm text-blue-700">
+                          Timeline visualization not available: eruption date information is missing for this volcano's samples.
+                          Samples are available ({sampleTimeline.rock_type_distribution.length} rock types) - use the <strong>Analyze Volcano</strong> tab to explore rock type distribution and geochemistry.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Timeline Plot */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">

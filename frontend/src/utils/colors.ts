@@ -1,41 +1,216 @@
 /**
  * Color utilities for rock types and visualizations
- * Based on constants from backend/constants/rocks.py and helpers.py
+ * Colors are dynamically generated from API data for consistency
  */
 
-// Rock type to hex color mapping
-export const ROCK_TYPE_COLORS: Record<string, string> = {
-  // Major rock types
-  'Basalt': '#FF6B6B',           // Red
-  'Andesite': '#FFA500',         // Orange
-  'Dacite': '#FFD700',           // Gold
-  'Rhyolite': '#FFFF00',         // Yellow
-  'Trachyte': '#90EE90',         // Light green
-  'Phonolite': '#00FF00',        // Green
-  'Basaltic-andesite': '#FF8C00', // Dark orange
-  'Trachyandesite': '#ADFF2F',   // Yellow-green
-  
-  // Alkaline rocks
-  'Basanite': '#8B008B',         // Purple
-  'Tephrite': '#9932CC',         // Dark orchid
-  'Phonotephrite': '#BA55D3',    // Medium orchid
-  
-  // Other types
-  'Picrite': '#8B4513',          // Saddle brown
-  'Komatiite': '#A0522D',        // Sienna
-  'Foidite': '#4B0082',          // Indigo
-  
-  // Default
-  'Unknown': '#808080'            // Gray
+// Base color palette for rock types (hue distributed across spectrum)
+const BASE_COLOR_PALETTE = [
+  '#FF6B6B',  // Red
+  '#00FF00',  // Green
+  '#FF8C00',  // Dark orange
+  '#4169E1',  // Royal blue
+  '#FFA500',  // Orange
+  '#00CED1',  // Dark turquoise
+  '#FFD700',  // Gold
+  '#8B008B',  // Dark magenta
+  '#DC143C',  // Crimson
+  '#ADFF2F',  // Yellow-green
+  '#BA55D3',  // Medium orchid
+  '#90EE90',  // Light green
+  '#9932CC',  // Dark orchid
+  '#8B4513',  // Saddle brown
+  '#A0522D',  // Sienna
+  '#4B0082',  // Indigo
+  '#FFFF00',  // Yellow
+  '#FF1493',  // Deep pink
+  '#32CD32',  // Lime green
+  '#808080',  // Gray
+];
+
+// Fallback rock type to color mapping (used until API loads)
+const FALLBACK_ROCK_TYPE_COLORS: Record<string, string> = {
+  'BASALT': '#FF6B6B',
+  'ANDESITE': '#FFA500',
+  'DACITE': '#FFD700',
+  'RHYOLITE': '#FFFF00',
+  'TRACHYTE/TRACHYDACITE': '#90EE90',
+  'PHONOLITE': '#00FF00',
+  'BASALTIC ANDESITE': '#FF8C00',
+  'BASALTIC TRACHYANDESITE': '#ADFF2F',
+  'TEPHRITE/BASANITE': '#8B008B',
+  'PHONO-TEPHRITE': '#9932CC',
+  'TEPHRI-PHONOLITE': '#BA55D3',
+  'PICROBASALT': '#8B4513',
+  'TRACHYANDESITE': '#A0522D',
+  'TRACHYBASALT': '#4B0082',
+  'FOIDITE': '#808080',
 };
 
-// Tectonic setting colors
-export const TECTONIC_SETTING_COLORS: Record<string, string> = {
-  'Subduction zone': '#FF4444',
-  'Intraplate': '#4444FF',
-  'Rift zone': '#44FF44',
-  'Unknown': '#808080'
+// Dynamic rock type colors (populated from API)
+let ROCK_TYPE_COLORS: Record<string, string> = { ...FALLBACK_ROCK_TYPE_COLORS };
+let rockTypesLoaded = false;
+
+/**
+ * Fetch rock types from API and generate color mapping
+ */
+async function loadRockTypeColors(): Promise<void> {
+  if (rockTypesLoaded) return;
+  
+  try {
+    const response = await fetch('http://localhost:8000/api/metadata/rock-types');
+    if (!response.ok) throw new Error('Failed to fetch rock types');
+    
+    const result = await response.json();
+    const rockTypes = result.data as string[];
+    
+    // Generate colors for each rock type
+    const newColors: Record<string, string> = {};
+    rockTypes.forEach((rockType, index) => {
+      // Use palette colors, cycling if needed
+      newColors[rockType] = BASE_COLOR_PALETTE[index % BASE_COLOR_PALETTE.length];
+    });
+    
+    ROCK_TYPE_COLORS = newColors;
+    rockTypesLoaded = true;
+    console.log(`Loaded ${rockTypes.length} rock types with colors from API`);
+  } catch (error) {
+    console.warn('Failed to load rock types from API, using fallback colors:', error);
+    ROCK_TYPE_COLORS = { ...FALLBACK_ROCK_TYPE_COLORS };
+  }
+}
+
+// Start loading rock types immediately
+loadRockTypeColors();
+
+// Export getter function instead of constant
+export function getRockTypeColors(): Record<string, string> {
+  return ROCK_TYPE_COLORS;
+}
+
+// Base colors for tectonic setting types
+const TECTONIC_BASE_COLORS: Record<string, string> = {
+  'Subduction zone': '#DC2626',      // Red (danger, active)
+  'Rift zone': '#16A34A',            // Green (growth, spreading)
+  'Intraplate': '#2563EB',           // Blue (stable, isolated)
+  'Unknown': '#808080',              // Gray
 };
+
+// Crust type modifiers (lightness variations)
+const CRUST_MODIFIERS: Record<string, number> = {
+  'Continental': 0,                   // Base color
+  'Intermediate': 0.15,               // Slightly lighter
+  'Oceanic': 0.30,                    // Lighter
+  'crust (>25 km)': 0,               // Continental (thick)
+  'crust (15-25 km)': 0.15,          // Intermediate
+  'crust (< 15 km)': 0.30,           // Oceanic (thin)
+  'Crustal thickness unknown': 0.20, // Medium lightness
+};
+
+// Fallback tectonic setting colors
+const FALLBACK_TECTONIC_COLORS: Record<string, string> = {
+  'Subduction zone / Continental crust (>25 km)': '#DC2626',
+  'Subduction zone / Intermediate crust (15-25 km)': '#EF4444',
+  'Subduction zone / Oceanic crust (< 15 km)': '#F87171',
+  'Subduction zone / Continental': '#DC2626',
+  'Subduction zone / Oceanic': '#F87171',
+  'Subduction zone / Crustal thickness unknown': '#EF4444',
+  'Rift zone / Continental crust (>25 km)': '#16A34A',
+  'Rift zone / Intermediate crust (15-25 km)': '#22C55E',
+  'Rift zone / Oceanic crust (< 15 km)': '#4ADE80',
+  'Rift at plate boundaries / Continental': '#16A34A',
+  'Rift at plate boundaries / Oceanic': '#4ADE80',
+  'Intraplate / Continental crust (>25 km)': '#2563EB',
+  'Intraplate / Intermediate crust (15-25 km)': '#3B82F6',
+  'Intraplate / Oceanic crust (< 15 km)': '#60A5FA',
+  'Intraplate / Continental': '#2563EB',
+  'Intraplate / Oceanic': '#60A5FA',
+  'Unknown': '#808080',
+};
+
+// Dynamic tectonic setting colors
+let TECTONIC_SETTING_COLORS: Record<string, string> = { ...FALLBACK_TECTONIC_COLORS };
+let tectonicSettingsLoaded = false;
+
+/**
+ * Generate color for a tectonic setting based on type and crust
+ */
+function generateTectonicColor(setting: string): string {
+  // Find base color from setting type
+  let baseColor = TECTONIC_BASE_COLORS['Unknown'];
+  for (const [type, color] of Object.entries(TECTONIC_BASE_COLORS)) {
+    if (setting.includes(type)) {
+      baseColor = color;
+      break;
+    }
+  }
+  
+  // Find crust modifier
+  let modifier = 0;
+  for (const [crustType, mod] of Object.entries(CRUST_MODIFIERS)) {
+    if (setting.includes(crustType)) {
+      modifier = mod;
+      break;
+    }
+  }
+  
+  // Apply lightness modification if needed
+  if (modifier > 0) {
+    const rgb = hexToRgb(baseColor);
+    if (rgb) {
+      // Lighten by interpolating towards white
+      const r = Math.round(rgb.r + (255 - rgb.r) * modifier);
+      const g = Math.round(rgb.g + (255 - rgb.g) * modifier);
+      const b = Math.round(rgb.b + (255 - rgb.b) * modifier);
+      return rgbToHex(r, g, b);
+    }
+  }
+  
+  return baseColor;
+}
+
+/**
+ * Fetch tectonic settings from API and generate color mapping
+ */
+async function loadTectonicSettingColors(): Promise<void> {
+  if (tectonicSettingsLoaded) return;
+  
+  try {
+    // Fetch both sample and volcano tectonic settings
+    const [samplesResponse, volcanoesResponse] = await Promise.all([
+      fetch('http://localhost:8000/api/metadata/tectonic-settings-samples'),
+      fetch('http://localhost:8000/api/metadata/tectonic-settings-volcanoes'),
+    ]);
+    
+    if (!samplesResponse.ok || !volcanoesResponse.ok) {
+      throw new Error('Failed to fetch tectonic settings');
+    }
+    
+    const samplesResult = await samplesResponse.json();
+    const volcanoesResult = await volcanoesResponse.json();
+    
+    const sampleSettings = samplesResult.data as string[];
+    const volcanoSettings = volcanoesResult.data as string[];
+    
+    // Combine all unique settings
+    const allSettings = [...new Set([...sampleSettings, ...volcanoSettings])];
+    
+    // Generate colors for each setting
+    const newColors: Record<string, string> = {};
+    allSettings.forEach((setting) => {
+      newColors[setting] = generateTectonicColor(setting);
+    });
+    
+    TECTONIC_SETTING_COLORS = newColors;
+    tectonicSettingsLoaded = true;
+    console.log(`Loaded ${allSettings.length} tectonic settings with colors from API`);
+  } catch (error) {
+    console.warn('Failed to load tectonic settings from API, using fallback colors:', error);
+    TECTONIC_SETTING_COLORS = { ...FALLBACK_TECTONIC_COLORS };
+  }
+}
+
+// Start loading tectonic settings immediately
+loadTectonicSettingColors();
 
 // Database colors
 export const DATABASE_COLORS: Record<string, string> = {
@@ -45,16 +220,17 @@ export const DATABASE_COLORS: Record<string, string> = {
 };
 
 // VEI colors (Volcanic Explosivity Index)
+// Using darker, more readable colors for better visibility on charts
 export const VEI_COLORS: string[] = [
-  '#90EE90',  // VEI 0 - Light green
-  '#FFFF00',  // VEI 1 - Yellow
-  '#FFA500',  // VEI 2 - Orange
-  '#FF8C00',  // VEI 3 - Dark orange
-  '#FF4500',  // VEI 4 - Orange red
-  '#FF0000',  // VEI 5 - Red
-  '#DC143C',  // VEI 6 - Crimson
-  '#8B0000',  // VEI 7 - Dark red
-  '#4B0000'   // VEI 8 - Very dark red
+  '#4A9B4A',  // VEI 0 - Medium green
+  '#C9A800',  // VEI 1 - Dark yellow/gold
+  '#D97706',  // VEI 2 - Amber
+  '#EA580C',  // VEI 3 - Dark orange
+  '#DC2626',  // VEI 4 - Red
+  '#B91C1C',  // VEI 5 - Dark red
+  '#991B1B',  // VEI 6 - Deeper red
+  '#7F1D1D',  // VEI 7 - Very dark red
+  '#5C1111'   // VEI 8 - Almost black red
 ];
 
 /**
@@ -64,15 +240,18 @@ export const VEI_COLORS: string[] = [
  * @returns Hex color string
  * 
  * @example
- * getRockTypeColor('Basalt') // "#FF6B6B"
+ * getRockTypeColor('BASALT') // "#FF6B6B"
  * getRockTypeColor('Unknown rock') // "#808080"
  */
 export function getRockTypeColor(rockType: string | undefined): string {
-  if (!rockType) return ROCK_TYPE_COLORS['Unknown'];
+  if (!rockType) return '#808080'; // Gray for unknown
+  
+  // Normalize to uppercase for exact match
+  const normalizedRockType = rockType.toUpperCase();
   
   // Try exact match
-  if (rockType in ROCK_TYPE_COLORS) {
-    return ROCK_TYPE_COLORS[rockType];
+  if (normalizedRockType in ROCK_TYPE_COLORS) {
+    return ROCK_TYPE_COLORS[normalizedRockType];
   }
   
   // Try partial match (case insensitive)
@@ -83,7 +262,20 @@ export function getRockTypeColor(rockType: string | undefined): string {
     }
   }
   
-  return ROCK_TYPE_COLORS['Unknown'];
+  // Return gray for truly unknown types
+  return '#808080';
+}
+
+/**
+ * Ensure rock type colors are loaded from API
+ * Call this before rendering charts to ensure colors are ready
+ * 
+ * @returns Promise that resolves when colors are loaded
+ */
+export async function ensureRockTypeColorsLoaded(): Promise<void> {
+  if (!rockTypesLoaded) {
+    await loadRockTypeColors();
+  }
 }
 
 /**
@@ -93,8 +285,42 @@ export function getRockTypeColor(rockType: string | undefined): string {
  * @returns Hex color string
  */
 export function getTectonicSettingColor(setting: string | undefined): string {
-  if (!setting) return TECTONIC_SETTING_COLORS['Unknown'];
-  return TECTONIC_SETTING_COLORS[setting] || TECTONIC_SETTING_COLORS['Unknown'];
+  if (!setting) return '#808080'; // Gray for unknown
+  
+  // Try exact match
+  if (setting in TECTONIC_SETTING_COLORS) {
+    return TECTONIC_SETTING_COLORS[setting];
+  }
+  
+  // Try partial match (in case of slight variations)
+  const settingLower = setting.toLowerCase();
+  for (const [key, color] of Object.entries(TECTONIC_SETTING_COLORS)) {
+    if (settingLower.includes(key.toLowerCase()) || key.toLowerCase().includes(settingLower)) {
+      return color;
+    }
+  }
+  
+  // Generate color on the fly if not found
+  return generateTectonicColor(setting);
+}
+
+/**
+ * Ensure tectonic setting colors are loaded from API
+ * Call this before rendering visualizations to ensure colors are ready
+ * 
+ * @returns Promise that resolves when colors are loaded
+ */
+export async function ensureTectonicSettingColorsLoaded(): Promise<void> {
+  if (!tectonicSettingsLoaded) {
+    await loadTectonicSettingColors();
+  }
+}
+
+/**
+ * Export getter function for tectonic setting colors
+ */
+export function getTectonicSettingColors(): Record<string, string> {
+  return TECTONIC_SETTING_COLORS;
 }
 
 /**

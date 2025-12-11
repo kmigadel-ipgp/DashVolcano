@@ -42,6 +42,16 @@ interface MapProps {
   onViewportChange?: (viewState: ViewState) => void;
   /** Whether the map is in loading state */
   loading?: boolean;
+  /** Active bbox filter to show border */
+  activeBbox?: { minLon: number; minLat: number; maxLon: number; maxLat: number } | null;
+  /** Drawing bbox for visualization */
+  drawingBboxProp?: { minLon: number; minLat: number; maxLon: number; maxLat: number } | null;
+  /** Whether bbox drawing mode is active */
+  isDrawingBbox?: boolean;
+  /** Callback when map is clicked (for drawing) */
+  onMapClick?: (info: any) => void;
+  /** Callback when mouse hovers over map (for drawing) */
+  onMapHover?: (info: any) => void;
 }
 
 // Mapbox token - you'll need to set this in your environment
@@ -85,6 +95,11 @@ export const VolcanoMap: React.FC<MapProps> = ({
   onSampleClick,
   onViewportChange,
   loading = false,
+  activeBbox = null,
+  drawingBboxProp = null,
+  isDrawingBbox = false,
+  onMapClick,
+  onMapHover,
 }) => {
   // Use external viewState if provided, otherwise use internal state
   const [internalViewState, setInternalViewState] = useState<ViewState>({
@@ -286,6 +301,74 @@ export const VolcanoMap: React.FC<MapProps> = ({
   }, [tectonicBoundaries, showTectonicBoundaries]);
 
   // Combine all layers
+  // Drawing bbox layer (for real-time preview during drawing)
+  const drawingBboxLayer = () => {
+    if (!drawingBboxProp) return null;
+
+    const { minLon, minLat, maxLon, maxLat } = drawingBboxProp;
+    
+    const bboxGeoJSON = {
+      type: 'Feature' as const,
+      properties: {},
+      geometry: {
+        type: 'Polygon' as const,
+        coordinates: [[
+          [minLon, minLat],
+          [maxLon, minLat],
+          [maxLon, maxLat],
+          [minLon, maxLat],
+          [minLon, minLat],
+        ]],
+      },
+    };
+
+    return new GeoJsonLayer({
+      id: 'drawing-bbox-layer',
+      data: [bboxGeoJSON],
+      filled: true,
+      stroked: true,
+      getFillColor: [59, 130, 246, 80], // Blue with transparency for shadow effect
+      getLineColor: [59, 130, 246, 200], // Semi-transparent blue border
+      getLineWidth: 2,
+      lineWidthMinPixels: 2,
+      getDashArray: [5, 3], // Dashed line
+      pickable: false,
+    });
+  };
+
+  // Active bbox layer (for showing the final selected search area)
+  const activeBboxLayer = () => {
+    if (!activeBbox) return null;
+
+    const { minLon, minLat, maxLon, maxLat } = activeBbox;
+    
+    const bboxGeoJSON = {
+      type: 'Feature' as const,
+      properties: {},
+      geometry: {
+        type: 'Polygon' as const,
+        coordinates: [[
+          [minLon, minLat],
+          [maxLon, minLat],
+          [maxLon, maxLat],
+          [minLon, maxLat],
+          [minLon, minLat],
+        ]],
+      },
+    };
+
+    return new GeoJsonLayer({
+      id: 'active-bbox-layer',
+      data: [bboxGeoJSON],
+      filled: false,
+      stroked: true,
+      getLineColor: [255, 165, 0, 255], // Solid orange border
+      getLineWidth: 3,
+      lineWidthMinPixels: 3,
+      pickable: false,
+    });
+  };
+
   const layers: any[] = [];
   
   // Add tectonic boundaries first (bottom layer)
@@ -308,6 +391,18 @@ export const VolcanoMap: React.FC<MapProps> = ({
   const volcano = volcanoLayer();
   if (volcano) {
     layers.push(volcano);
+  }
+
+  // Add active bbox border (selected search area)
+  const activeBboxBorder = activeBboxLayer();
+  if (activeBboxBorder) {
+    layers.push(activeBboxBorder);
+  }
+
+  // Add drawing bbox layer (on top)
+  const drawingBbox = drawingBboxLayer();
+  if (drawingBbox) {
+    layers.push(drawingBbox);
   }
 
   /**
@@ -396,14 +491,48 @@ export const VolcanoMap: React.FC<MapProps> = ({
     return null;
   };
 
+  // Handle click events
+  const handleClick = useCallback((info: any) => {
+    if (isDrawingBbox && onMapClick) {
+      onMapClick(info);
+      return;
+    }
+
+    // Handle normal clicks on objects
+    if (!info.object) return;
+
+    if ('volcano_name' in info.object && !('type' in info.object)) {
+      onVolcanoClick?.(info.object);
+    } else if ('type' in info.object && info.object.type === 'sample') {
+      onSampleClick?.(info.object);
+    }
+  }, [isDrawingBbox, onMapClick, onVolcanoClick, onSampleClick]);
+
+  // Handle hover events
+  const handleHover = useCallback((info: any) => {
+    if (isDrawingBbox && onMapHover) {
+      onMapHover(info);
+    }
+    
+    // Update hover info for tooltip
+    if (info.object) {
+      setHoverInfo(info);
+    } else {
+      setHoverInfo(null);
+    }
+  }, [isDrawingBbox, onMapHover]);
+
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full" style={{ cursor: isDrawingBbox ? 'crosshair' : 'default' }}>
       <DeckGL
         viewState={currentViewState}
         onViewStateChange={handleViewStateChange}
         controller={true}
         layers={layers}
+        onClick={handleClick}
+        onHover={handleHover}
         getTooltip={() => null}
+        getCursor={() => isDrawingBbox ? 'crosshair' : 'default'}
       >
         <MapboxMap
           mapboxAccessToken={MAPBOX_TOKEN}
@@ -411,8 +540,8 @@ export const VolcanoMap: React.FC<MapProps> = ({
         />
       </DeckGL>
 
-      {/* Tooltip overlay */}
-      {renderTooltip()}
+      {/* Tooltip overlay (hidden during drawing) */}
+      {!isDrawingBbox && renderTooltip()}
 
       {/* Loading overlay */}
       {loading && (

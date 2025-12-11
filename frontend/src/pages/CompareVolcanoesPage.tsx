@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Mountain, Download, X } from 'lucide-react';
 import { TASPlot } from '../components/Charts/TASPlot';
 import { AFMPlot } from '../components/Charts/AFMPlot';
+import { RockTypeDistributionChart } from '../components/Charts/RockTypeDistributionChart';
+import { HarkerDiagrams } from '../components/Charts/HarkerDiagrams';
 import { exportSamplesToCSV } from '../utils/csvExport';
 import { useKeyboardShortcuts, commonShortcuts } from '../hooks/useKeyboardShortcuts';
 import { showError } from '../utils/toast';
@@ -15,24 +17,91 @@ interface ChemicalAnalysisData {
   samples_count: number;
   tas_data: Array<{
     sample_code: string;
-    SiO2: number;
-    Na2O: number;
-    K2O: number;
-    Na2O_K2O: number;
+    sample_id: string;
+    db: string;
     rock_type: string;
     material: string;
+    tectonic_setting?: string;
+    geometry?: { type: 'Point'; coordinates: [number, number] };
+    matching_metadata?: Record<string, unknown>;
+    references?: string;
+    geographic_location?: string;
+    'SIO2(WT%)': number;
+    'NA2O(WT%)': number;
+    'K2O(WT%)': number;
+    'FEOT(WT%)'?: number;
+    'MGO(WT%)'?: number;
+    'TIO2(WT%)'?: number;
+    'AL2O3(WT%)'?: number;
+    'CAO(WT%)'?: number;
+    'P2O5(WT%)'?: number;
+    'MNO(WT%)'?: number;
   }>;
   afm_data: Array<{
     sample_code: string;
-    FeOT: number;
-    Na2O: number;
-    K2O: number;
-    MgO: number;
-    A: number;
-    F: number;
-    M: number;
+    sample_id: string;
+    db: string;
     rock_type: string;
     material: string;
+    tectonic_setting?: string;
+    geometry?: { type: 'Point'; coordinates: [number, number] };
+    matching_metadata?: Record<string, unknown>;
+    references?: string;
+    geographic_location?: string;
+    'FEOT(WT%)': number;
+    'NA2O(WT%)': number;
+    'K2O(WT%)': number;
+    'MGO(WT%)': number;
+    'SIO2(WT%)'?: number;
+    'TIO2(WT%)'?: number;
+    'AL2O3(WT%)'?: number;
+    'CAO(WT%)'?: number;
+    'P2O5(WT%)'?: number;
+    'MNO(WT%)'?: number;
+  }>;
+  harker_data?: Array<{
+    sample_code: string;
+    sample_id: string;
+    db: string;
+    'SIO2(WT%)': number;
+    rock_type: string;
+    material: string;
+    tectonic_setting?: string;
+    geometry?: { type: 'Point'; coordinates: [number, number] };
+    matching_metadata?: Record<string, unknown>;
+    references?: string;
+    geographic_location?: string;
+    'TIO2(WT%)'?: number;
+    'AL2O3(WT%)'?: number;
+    'FEOT(WT%)'?: number;
+    'MGO(WT%)'?: number;
+    'CAO(WT%)'?: number;
+    'NA2O(WT%)'?: number;
+    'K2O(WT%)'?: number;
+    'P2O5(WT%)'?: number;
+    'MNO(WT%)'?: number;
+  }>;
+  all_samples?: Array<{
+    sample_code: string;
+    sample_id: string;
+    db: string;
+    rock_type: string;
+    material: string;
+    tectonic_setting?: string;
+    geometry?: { type: 'Point'; coordinates: [number, number] };
+    matching_metadata?: Record<string, unknown>;
+    references?: string;
+    geographic_location?: string;
+    'SIO2(WT%)'?: number;
+    'NA2O(WT%)'?: number;
+    'K2O(WT%)'?: number;
+    'FEOT(WT%)'?: number;
+    'MGO(WT%)'?: number;
+    'TIO2(WT%)'?: number;
+    'AL2O3(WT%)'?: number;
+    'CAO(WT%)'?: number;
+    'P2O5(WT%)'?: number;
+    'MNO(WT%)'?: number;
   }>;
   rock_types: Record<string, number>;
 }
@@ -49,27 +118,78 @@ interface VolcanoSelection {
 const VOLCANO_COLORS = ['#DC2626', '#2563EB', '#16A34A'];
 
 /**
+ * Transform all_samples array (includes ALL samples regardless of oxide completeness)
+ */
+const transformAllSamples = (
+  allSamples: ChemicalAnalysisData['all_samples'],
+  volcanoName: string
+): Sample[] => {
+  if (!allSamples) return [];
+  
+  return allSamples.map(sample => {
+    const oxides: Record<string, number> = {};
+    if (sample['SIO2(WT%)'] !== undefined) oxides['SIO2(WT%)'] = sample['SIO2(WT%)'];
+    if (sample['NA2O(WT%)'] !== undefined) oxides['NA2O(WT%)'] = sample['NA2O(WT%)'];
+    if (sample['K2O(WT%)'] !== undefined) oxides['K2O(WT%)'] = sample['K2O(WT%)'];
+    if (sample['FEOT(WT%)'] !== undefined) oxides['FEOT(WT%)'] = sample['FEOT(WT%)'];
+    if (sample['MGO(WT%)'] !== undefined) oxides['MGO(WT%)'] = sample['MGO(WT%)'];
+    if (sample['TIO2(WT%)'] !== undefined) oxides['TIO2(WT%)'] = sample['TIO2(WT%)'];
+    if (sample['AL2O3(WT%)'] !== undefined) oxides['AL2O3(WT%)'] = sample['AL2O3(WT%)'];
+    if (sample['CAO(WT%)'] !== undefined) oxides['CAO(WT%)'] = sample['CAO(WT%)'];
+    if (sample['P2O5(WT%)'] !== undefined) oxides['P2O5(WT%)'] = sample['P2O5(WT%)'];
+    if (sample['MNO(WT%)'] !== undefined) oxides['MNO(WT%)'] = sample['MNO(WT%)'];
+
+    return {
+      _id: sample.sample_id,
+      sample_id: sample.sample_id,
+      sample_code: sample.sample_code,
+      db: sample.db,
+      geographic_location: sample.geographic_location || volcanoName,
+      material: sample.material,
+      rock_type: sample.rock_type,
+      tectonic_setting: sample.tectonic_setting,
+      geometry: sample.geometry || { type: 'Point', coordinates: [0, 0] },
+      matching_metadata: sample.matching_metadata,
+      references: sample.references,
+      oxides: Object.keys(oxides).length > 0 ? oxides : undefined,
+    };
+  });
+};
+
+/**
  * Transform backend chemical analysis data to Sample[] format
- * Reused from AnalyzeVolcanoPage (Sprint 3.1)
+ * Now preserves MongoDB field names without conversion
  */
 const transformToSamples = (data: ChemicalAnalysisData): Sample[] => {
   const sampleMap = new Map<string, Sample>();
 
   for (const tas of data.tas_data) {
+    const oxides: Record<string, number> = {
+      'SIO2(WT%)': tas['SIO2(WT%)'],
+      'NA2O(WT%)': tas['NA2O(WT%)'],
+      'K2O(WT%)': tas['K2O(WT%)'],
+    };
+    if (tas['FEOT(WT%)'] !== undefined) oxides['FEOT(WT%)'] = tas['FEOT(WT%)'];
+    if (tas['MGO(WT%)'] !== undefined) oxides['MGO(WT%)'] = tas['MGO(WT%)'];
+    if (tas['TIO2(WT%)'] !== undefined) oxides['TIO2(WT%)'] = tas['TIO2(WT%)'];
+    if (tas['AL2O3(WT%)'] !== undefined) oxides['AL2O3(WT%)'] = tas['AL2O3(WT%)'];
+    if (tas['CAO(WT%)'] !== undefined) oxides['CAO(WT%)'] = tas['CAO(WT%)'];
+    if (tas['P2O5(WT%)'] !== undefined) oxides['P2O5(WT%)'] = tas['P2O5(WT%)'];
+    if (tas['MNO(WT%)'] !== undefined) oxides['MNO(WT%)'] = tas['MNO(WT%)'];
+
     const sample: Sample = {
-      _id: tas.sample_code,
-      sample_id: tas.sample_code,
+      _id: tas.sample_id,
+      sample_id: tas.sample_id,
       sample_code: tas.sample_code,
-      db: 'GEOROC',
-      geographic_location: data.volcano_name,
+      db: tas.db,
+      geographic_location: tas.geographic_location || data.volcano_name,
       material: tas.material,
       rock_type: tas.rock_type,
-      geometry: { type: 'Point', coordinates: [0, 0] },
-      oxides: {
-        'SIO2(WT%)': tas.SiO2,
-        'NA2O(WT%)': tas.Na2O,
-        'K2O(WT%)': tas.K2O,
-      },
+      tectonic_setting: tas.tectonic_setting,
+      geometry: tas.geometry || { type: 'Point', coordinates: [0, 0] },
+      matching_metadata: tas.matching_metadata,
+      references: tas.references,
+      oxides,
     };
     sampleMap.set(tas.sample_code, sample);
   }
@@ -77,30 +197,43 @@ const transformToSamples = (data: ChemicalAnalysisData): Sample[] => {
   for (const afm of data.afm_data) {
     const existing = sampleMap.get(afm.sample_code);
     if (existing?.oxides) {
-      existing.oxides['FEOT(WT%)'] = afm.FeOT;
-      existing.oxides['MGO(WT%)'] = afm.MgO;
-      if (!existing.oxides['NA2O(WT%)']) {
-        existing.oxides['NA2O(WT%)'] = afm.Na2O;
-      }
-      if (!existing.oxides['K2O(WT%)']) {
-        existing.oxides['K2O(WT%)'] = afm.K2O;
-      }
+      existing.oxides['FEOT(WT%)'] = afm['FEOT(WT%)'];
+      existing.oxides['MGO(WT%)'] = afm['MGO(WT%)'];
+      if (!existing.oxides['NA2O(WT%)']) existing.oxides['NA2O(WT%)'] = afm['NA2O(WT%)'];
+      if (!existing.oxides['K2O(WT%)']) existing.oxides['K2O(WT%)'] = afm['K2O(WT%)'];
+      if (afm['SIO2(WT%)'] !== undefined && !existing.oxides['SIO2(WT%)']) existing.oxides['SIO2(WT%)'] = afm['SIO2(WT%)'];
+      if (afm['TIO2(WT%)'] !== undefined && !existing.oxides['TIO2(WT%)']) existing.oxides['TIO2(WT%)'] = afm['TIO2(WT%)'];
+      if (afm['AL2O3(WT%)'] !== undefined && !existing.oxides['AL2O3(WT%)']) existing.oxides['AL2O3(WT%)'] = afm['AL2O3(WT%)'];
+      if (afm['CAO(WT%)'] !== undefined && !existing.oxides['CAO(WT%)']) existing.oxides['CAO(WT%)'] = afm['CAO(WT%)'];
+      if (afm['P2O5(WT%)'] !== undefined && !existing.oxides['P2O5(WT%)']) existing.oxides['P2O5(WT%)'] = afm['P2O5(WT%)'];
+      if (afm['MNO(WT%)'] !== undefined && !existing.oxides['MNO(WT%)']) existing.oxides['MNO(WT%)'] = afm['MNO(WT%)'];
     } else {
+      const oxides: Record<string, number> = {
+        'FEOT(WT%)': afm['FEOT(WT%)'],
+        'MGO(WT%)': afm['MGO(WT%)'],
+        'NA2O(WT%)': afm['NA2O(WT%)'],
+        'K2O(WT%)': afm['K2O(WT%)'],
+      };
+      if (afm['SIO2(WT%)'] !== undefined) oxides['SIO2(WT%)'] = afm['SIO2(WT%)'];
+      if (afm['TIO2(WT%)'] !== undefined) oxides['TIO2(WT%)'] = afm['TIO2(WT%)'];
+      if (afm['AL2O3(WT%)'] !== undefined) oxides['AL2O3(WT%)'] = afm['AL2O3(WT%)'];
+      if (afm['CAO(WT%)'] !== undefined) oxides['CAO(WT%)'] = afm['CAO(WT%)'];
+      if (afm['P2O5(WT%)'] !== undefined) oxides['P2O5(WT%)'] = afm['P2O5(WT%)'];
+      if (afm['MNO(WT%)'] !== undefined) oxides['MNO(WT%)'] = afm['MNO(WT%)'];
+
       const sample: Sample = {
-        _id: afm.sample_code,
-        sample_id: afm.sample_code,
+        _id: afm.sample_id,
+        sample_id: afm.sample_id,
         sample_code: afm.sample_code,
-        db: 'GEOROC',
-        geographic_location: data.volcano_name,
+        db: afm.db,
+        geographic_location: afm.geographic_location || data.volcano_name,
         material: afm.material,
         rock_type: afm.rock_type,
-        geometry: { type: 'Point', coordinates: [0, 0] },
-        oxides: {
-          'FEOT(WT%)': afm.FeOT,
-          'MGO(WT%)': afm.MgO,
-          'NA2O(WT%)': afm.Na2O,
-          'K2O(WT%)': afm.K2O,
-        },
+        tectonic_setting: afm.tectonic_setting,
+        geometry: afm.geometry || { type: 'Point', coordinates: [0, 0] },
+        matching_metadata: afm.matching_metadata,
+        references: afm.references,
+        oxides,
       };
       sampleMap.set(afm.sample_code, sample);
     }
@@ -176,7 +309,10 @@ const CompareVolcanoesPage: React.FC = () => {
       }
 
       const data = await response.json();
-      const samples = transformToSamples(data);
+      // Use all_samples if available (includes samples with incomplete oxides)
+      const samples = data.all_samples && data.all_samples.length > 0
+        ? transformAllSamples(data.all_samples, volcanoName)
+        : transformToSamples(data);
 
       newSelections[index] = {
         name: volcanoName,
@@ -236,6 +372,35 @@ const CompareVolcanoesPage: React.FC = () => {
   const allSamples = selections.flatMap(s => s.samples);
   const selectedCount = selections.filter(s => s.name).length;
   const isLoading = selections.some(s => s.loading);
+
+  // Memoize expensive chart data preparations to prevent unnecessary re-renders
+  const rockTypeChartData = useMemo(() => {
+    return selections
+      .filter((v: VolcanoSelection) => v.data?.rock_types && Object.keys(v.data.rock_types).length > 0)
+      .map((v: VolcanoSelection, idx: number) => ({
+        volcanoName: v.name,
+        rockTypes: v.data!.rock_types,
+        color: VOLCANO_COLORS[idx]
+      }));
+  }, [selections]);
+
+  const harkerChartData = useMemo(() => {
+    return selections
+      .filter((v: VolcanoSelection) => v.data?.harker_data && v.data.harker_data.length > 0)
+      .map((v: VolcanoSelection, idx: number) => ({
+        volcanoName: v.name,
+        harkerData: v.data!.harker_data!,
+        color: VOLCANO_COLORS[idx]
+      }));
+  }, [selections]);
+
+  // Memoize sampled data for TAS/AFM plots to improve performance with large datasets
+  const sampledSelectionsData = useMemo(() => {
+    return selections.map(selection => ({
+      ...selection,
+      sampledSamples: selection.samples
+    }));
+  }, [selections]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -363,10 +528,28 @@ const CompareVolcanoesPage: React.FC = () => {
           ))}
         </div>
 
+        {/* Rock Type Distribution - Combined Chart for All Volcanoes */}
+        {selectedCount >= 2 && !isLoading && rockTypeChartData.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Rock Type Distribution Comparison</h2>
+            <RockTypeDistributionChart volcanoes={rockTypeChartData} />
+          </div>
+        )}
+
+        {/* Harker Diagrams - Major Oxide Variations (Lazy Loaded) */}
+        {selectedCount >= 2 && !isLoading && harkerChartData.length > 0 && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold text-gray-900">Harker Variation Diagrams</h2>
+            </div>
+            <HarkerDiagrams volcanoes={harkerChartData} />
+          </div>
+        )}
+
         {/* Side-by-Side Comparison */}
         {selectedCount >= 2 && !isLoading && (
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            {selections.filter(s => s.name && s.data).map((selection, index) => (
+            {sampledSelectionsData.filter(s => s.name && s.data).map((selection, index) => (
               <div 
                 key={selection.number}
                 className="bg-white rounded-lg shadow-sm border-2 p-6"
@@ -404,17 +587,31 @@ const CompareVolcanoesPage: React.FC = () => {
 
                 {/* TAS Plot */}
                 <div className="mb-6">
-                  <h3 className="text-md font-semibold text-gray-700 mb-3">TAS Diagram</h3>
-                  <div className="border border-gray-200 rounded-lg overflow-hidden h-[500px]">
-                    <TASPlot samples={selection.samples} />
+                  <h3 className="text-md font-semibold text-gray-700 mb-3">
+                    TAS Diagram
+                    {selection.samples.length > 1000 && (
+                      <span className="ml-2 text-xs text-gray-500">
+                        (showing {selection.sampledSamples.length} of {selection.samples.length} samples)
+                      </span>
+                    )}
+                  </h3>
+                  <div className="border border-gray-200 rounded-lg overflow-hidden h-[400px]">
+                    <TASPlot samples={selection.sampledSamples} />
                   </div>
                 </div>
 
                 {/* AFM Plot */}
                 <div>
-                  <h3 className="text-md font-semibold text-gray-700 mb-3">AFM Diagram</h3>
-                  <div className="border border-gray-200 rounded-lg overflow-hidden h-[500px]">
-                    <AFMPlot samples={selection.samples} />
+                  <h3 className="text-md font-semibold text-gray-700 mb-3">
+                    AFM Diagram
+                    {selection.samples.length > 1000 && (
+                      <span className="ml-2 text-xs text-gray-500">
+                        (showing {selection.sampledSamples.length} of {selection.samples.length} samples)
+                      </span>
+                    )}
+                  </h3>
+                  <div className="border border-gray-200 rounded-lg overflow-hidden h-[400px]">
+                    <AFMPlot samples={selection.sampledSamples} />
                   </div>
                 </div>
               </div>

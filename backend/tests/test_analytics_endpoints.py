@@ -344,8 +344,8 @@ class TestChemicalAnalysisEndpoint:
         assert data["samples_count"] <= 10
     
     def test_chemical_analysis_no_samples(self):
-        """Test chemical analysis for volcano with no samples (Abu 283001)."""
-        response = client.get("/api/volcanoes/283001/chemical-analysis")
+        """Test chemical analysis for volcano with no samples (Afdera 221110)."""
+        response = client.get("/api/volcanoes/221110/chemical-analysis")
         assert response.status_code == 200
         data = response.json()
         

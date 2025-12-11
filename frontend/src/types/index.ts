@@ -11,6 +11,14 @@ export interface Polygon {
 
 export type Geometry = Point | Polygon;
 
+// Bounding box for spatial filtering
+export interface BBox {
+  minLon: number;
+  minLat: number;
+  maxLon: number;
+  maxLat: number;
+}
+
 // Date and age types
 export interface DateInfo {
   year?: number;
@@ -67,6 +75,9 @@ export interface Sample {
   matching_metadata?: MatchingMetadata;
   geological_age?: GeologicalAge;
   references?: string;
+  // VEI data (from samples-with-vei endpoint)
+  vei?: number;
+  eruption_year?: number;
 }
 
 export interface Volcano {
@@ -180,6 +191,7 @@ export interface SampleFilters {
   volcano_number?: number;
   min_sio2?: number; // Updated to match backend naming
   max_sio2?: number; // Updated to match backend naming
+  bbox?: string; // Bounding box as "min_lon,min_lat,max_lon,max_lat"
   limit?: number;
   offset?: number;
 }
@@ -242,4 +254,43 @@ export interface TectonicBoundariesResponse {
   ridge_count: number;
   trench_count: number;
   transform_count: number;
+}
+
+// GVP Rock Types
+export interface RockType {
+  type: string;
+  rank: number; // 1 = primary, 2 = secondary, 3 = tertiary
+}
+
+export interface VolcanoRockTypesResponse {
+  volcano_number: number;
+  volcano_name: string;
+  rock_types: RockType[];
+}
+
+// Sample Timeline
+export interface SampleTimelineData {
+  year: number;
+  sample_count: number;
+  rock_types: string[];
+}
+
+export interface RockTypeDistribution {
+  rock_type: string;
+  count: number;
+}
+
+export interface SampleTimelineResponse {
+  volcano_number: number;
+  volcano_name: string;
+  total_samples: number;
+  samples_with_dates: number;
+  timeline_data: SampleTimelineData[];
+  rock_type_distribution: RockTypeDistribution[];
+  date_range: {
+    min_year: number | null;
+    max_year: number | null;
+    span_years: number;
+  };
+  has_timeline_data: boolean;
 }

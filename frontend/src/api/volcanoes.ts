@@ -8,6 +8,8 @@ import type {
   Eruption,
   VEIDistribution,
   ChemicalAnalysisResponse,
+  VolcanoRockTypesResponse,
+  SampleTimelineResponse,
 } from '../types';
 
 /**
@@ -90,6 +92,30 @@ export const fetchVolcanoChemicalAnalysis = async (
 ): Promise<ChemicalAnalysisResponse> => {
   const response = await apiClient.get<ChemicalAnalysisResponse>(
     `/volcanoes/${volcanoNumber}/chemical-analysis`
+  );
+  return response.data;
+};
+
+/**
+ * Fetch GVP rock types for a specific volcano
+ */
+export const fetchVolcanoRockTypes = async (
+  volcanoNumber: number
+): Promise<VolcanoRockTypesResponse> => {
+  const response = await apiClient.get<VolcanoRockTypesResponse>(
+    `/volcanoes/${volcanoNumber}/rock-types`
+  );
+  return response.data;
+};
+
+/**
+ * Fetch sample timeline (aggregated by year) for a specific volcano
+ */
+export const fetchVolcanoSampleTimeline = async (
+  volcanoNumber: number
+): Promise<SampleTimelineResponse> => {
+  const response = await apiClient.get<SampleTimelineResponse>(
+    `/volcanoes/${volcanoNumber}/sample-timeline`
   );
   return response.data;
 };

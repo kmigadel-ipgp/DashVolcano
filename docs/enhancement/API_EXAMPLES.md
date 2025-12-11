@@ -82,6 +82,11 @@ Get list of rock samples with optional filtering.
 - `min_sio2` (float, optional) - Minimum SiO2 content (%)
 - `max_sio2` (float, optional) - Maximum SiO2 content (%)
 - `volcano_number` (string, optional) - Filter by volcano number
+- `bbox` (string, optional) - Bounding box for spatial filtering as `min_lon,min_lat,max_lon,max_lat`
+  - Format: Four comma-separated decimal values
+  - Longitude range: -180 to 180
+  - Latitude range: -90 to 90
+  - Examples: `"-10,35,20,60"` (Western Europe), `"-130,24,-60,50"` (North America)
 - `limit` (integer, optional) - Maximum number of results (default: unlimited)
 - `offset` (integer, optional) - Pagination offset (default: 0)
 
@@ -100,6 +105,16 @@ curl "http://localhost:8000/api/samples?volcano_number=213004&limit=50"
 curl "http://localhost:8000/api/samples?min_sio2=63&max_sio2=80&limit=100"
 ```
 
+**Example 4: Get samples within bounding box (Western Europe)**
+```bash
+curl "http://localhost:8000/api/samples?bbox=-10,35,20,60&limit=100"
+```
+
+**Example 5: Combine bbox with rock type filter (Basalt samples in Pacific)**
+```bash
+curl "http://localhost:8000/api/samples?bbox=-180,-60,-120,-20&rock_type=Basalt&limit=200"
+```
+
 **Example 4: Multiple rock types and tectonic settings**
 ```bash
 curl "http://localhost:8000/api/samples?rock_type=Basalt,Andesite&tectonic_setting=Island%20Arc,Oceanic%20Island&limit=100"
@@ -109,8 +124,10 @@ curl "http://localhost:8000/api/samples?rock_type=Basalt,Andesite&tectonic_setti
 ```json
 {
   "count": 100,
+  "total": 1543,
   "limit": 100,
   "offset": 0,
+  "bbox": "-10,35,20,60",
   "data": [
     {
       "_id": "507f1f77bcf86cd799439011",

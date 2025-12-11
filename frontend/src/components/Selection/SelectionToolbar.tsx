@@ -8,6 +8,10 @@ interface SelectionToolbarProps {
   mode: SelectionMode;
   /** Number of samples currently selected */
   selectedCount: number;
+  /** Number of samples in current filtered view (e.g., bbox search) */
+  filteredSampleCount?: number;
+  /** Whether bbox filter is active */
+  hasBboxFilter?: boolean;
   /** Callback when selection mode changes */
   onModeChange: (mode: SelectionMode) => void;
   /** Callback to clear selection */
@@ -35,13 +39,17 @@ interface SelectionToolbarProps {
 export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({
   mode,
   selectedCount,
+  filteredSampleCount = 0,
+  hasBboxFilter = false,
   onModeChange,
   onClearSelection,
   onDownloadSelection,
   onShowCharts,
 }) => {
+  // Show chart button if: manual selection exists OR bbox filter is active with samples
+  const showChartButton = selectedCount > 0 || (hasBboxFilter && filteredSampleCount > 0);
   return (
-    <div className="absolute top-20 left-4 z-10 bg-white rounded-lg shadow-lg p-2 flex flex-col gap-2">
+    <div className="bg-white rounded-lg shadow-lg p-2 flex flex-col gap-2 w-fit">
       {/* Lasso Tool */}
       <button
         onClick={() => onModeChange(mode === 'lasso' ? 'none' : 'lasso')}
@@ -71,7 +79,7 @@ export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({
       </button>
 
       {/* Divider */}
-      {selectedCount > 0 && <div className="border-t border-gray-200 my-1" />}
+      {(selectedCount > 0 || (hasBboxFilter && filteredSampleCount > 0)) && <div className="border-t border-gray-200 my-1" />}
 
       {/* Clear Selection */}
       {selectedCount > 0 && (
@@ -86,11 +94,13 @@ export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({
       )}
 
       {/* Show Charts */}
-      {selectedCount > 0 && (
+      {showChartButton && (
         <button
           onClick={onShowCharts}
           className="p-2 rounded hover:bg-gray-100 text-gray-700"
-          title="Show Chemical Classification Diagrams"
+          title={hasBboxFilter && selectedCount === 0 
+            ? `Show charts for ${filteredSampleCount} samples in search area`
+            : "Show Chemical Classification Diagrams"}
           aria-label="Show TAS/AFM charts"
         >
           <BarChart3 className="w-5 h-5" />
@@ -98,21 +108,25 @@ export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({
       )}
 
       {/* Download Selection */}
-      {selectedCount > 0 && (
+      {(selectedCount > 0 || (hasBboxFilter && filteredSampleCount > 0)) && (
         <button
           onClick={onDownloadSelection}
           className="p-2 rounded hover:bg-gray-100 text-gray-700"
-          title={`Download ${selectedCount} samples`}
-          aria-label="Download selected samples"
+          title={selectedCount > 0 
+            ? `Download ${selectedCount} selected samples`
+            : `Download ${filteredSampleCount} samples in search area`}
+          aria-label="Download samples"
         >
           <Download className="w-5 h-5" />
         </button>
       )}
 
       {/* Selection Count */}
-      {selectedCount > 0 && (
+      {(selectedCount > 0 || (hasBboxFilter && filteredSampleCount > 0)) && (
         <div className="px-2 py-1 text-xs font-medium text-gray-700 text-center border-t border-gray-200 mt-1 pt-2">
-          {selectedCount} selected
+          {selectedCount > 0 
+            ? `${selectedCount} selected`
+            : `${filteredSampleCount} in area`}
         </div>
       )}
     </div>

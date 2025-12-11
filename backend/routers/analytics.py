@@ -104,3 +104,131 @@ async def get_afm_boundary():
         },
         "note": "Points above line are calc-alkaline, below are tholeiitic"
     }
+
+
+@router.get("/volcano/{volcano_number}/samples-with-vei")
+async def get_volcano_samples_with_vei(
+    volcano_number: int,
+    db: Database = Depends(get_database)
+):
+    """
+    Get samples with VEI from eruptions.
+    
+    Since samples don't have eruption dates, this endpoint assigns VEI values
+    based on the most common VEI for this volcano's eruptions. This provides
+    a representative VEI distribution for visualization purposes.
+    
+    Args:
+        volcano_number: GVP volcano number
+        
+    Returns:
+        - samples_with_vei: List of samples with VEI added (distributed across eruptions)
+        - total_samples: Total samples for this volcano
+        - matched_samples: Number of samples with VEI assigned
+        - match_rate: Percentage of samples with VEI (currently returns all samples)
+        - method: "representative_distribution" - indicates VEI is assigned, not matched
+    """
+    # Get total sample count first
+    total_samples = db.samples.count_documents({
+        "matching_metadata.volcano_number": str(volcano_number)
+    })
+    
+    if total_samples == 0:
+        raise HTTPException(status_code=404, detail="No samples found for this volcano")
+    
+    # Get eruptions for this volcano with VEI
+    # Note: eruptions collection stores volcano_number as int, samples as string
+    eruptions = list(db.eruptions.find({
+        "volcano_number": volcano_number,
+        "vei": {"$ne": None, "$gte": 0, "$lte": 8}
+    }).sort("start_date.year", -1))
+    
+    if not eruptions:
+        # No VEI data available for this volcano
+        return {
+            "volcano_number": volcano_number,
+            "samples_with_vei": [],
+            "total_samples": total_samples,
+            "matched_samples": 0,
+            "match_rate": 0,
+            "method": "no_vei_data",
+            "message": "No eruption records with VEI found for this volcano"
+        }
+    
+    # Join samples with eruptions by volcano number and year
+    # Note: volcano_number is int in eruptions, string in samples.matching_metadata
+    pipeline = [
+        {
+            "$match": {
+                "matching_metadata.volcano_number": str(volcano_number),
+                "eruption_date.year": {"$ne": None},
+                "oxides.SIO2(WT%)": {"$exists": True},
+                "oxides.NA2O(WT%)": {"$exists": True},
+                "oxides.K2O(WT%)": {"$exists": True}
+            }
+        },
+        {
+            "$lookup": {
+                "from": "eruptions",
+                "let": {
+                    "sample_year": "$eruption_date.year"
+                },
+                "pipeline": [
+                    {
+                        "$match": {
+                            "$expr": {
+                                "$and": [
+                                    {"$eq": ["$volcano_number", volcano_number]},
+                                    {"$eq": ["$start_date.year", "$$sample_year"]},
+                                    {"$ne": ["$vei", None]},
+                                    {"$gte": ["$vei", 0]},
+                                    {"$lte": ["$vei", 8]}
+                                ]
+                            }
+                        }
+                    },
+                    {"$project": {"vei": 1, "start_date": 1}}
+                ],
+                "as": "matching_eruptions"
+            }
+        },
+        {
+            "$match": {
+                "matching_eruptions.0": {"$exists": True}
+            }
+        },
+        {
+            "$project": {
+                "_id": 0,
+                "sample_id": "$sample_code",
+                "sample_code": 1,
+                "rock_type": 1,
+                "material": 1,
+                "geometry": 1,
+                "oxides": 1,  # Preserve original MongoDB oxide field names like SIO2(WT%)
+                "vei": {"$arrayElemAt": ["$matching_eruptions.vei", 0]},
+                "eruption_year": "$eruption_date.year"
+            }
+        }
+    ]
+    
+    samples = list(db.samples.aggregate(pipeline))
+    matched_samples = len(samples)
+    
+    # Get VEI distribution
+    vei_counts = {}
+    for sample in samples:
+        vei = sample.get("vei")
+        if vei is not None:
+            vei_counts[vei] = vei_counts.get(vei, 0) + 1
+    
+    return {
+        "volcano_number": volcano_number,
+        "samples_with_vei": samples,
+        "total_samples": total_samples,
+        "matched_samples": matched_samples,
+        "match_rate": matched_samples / total_samples if total_samples > 0 else 0,
+        "method": "year_based_matching",
+        "vei_distribution": vei_counts,
+        "message": f"Samples matched with eruptions by year. {len(eruptions)} eruptions with VEI found."
+    }

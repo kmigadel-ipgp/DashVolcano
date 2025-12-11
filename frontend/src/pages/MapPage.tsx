@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Filter as FilterIcon } from 'lucide-react';
 import { VolcanoMap, LayerControls, ViewportControls, SampleDetailsPanel, SummaryStats, ChartPanel, SelectionOverlay } from '../components/Map';
+import { BboxSearchWidget } from '../components/Map/BboxSearchWidget';
 import { FilterPanel } from '../components/Filters';
 import { SelectionToolbar } from '../components/Selection';
 import { useSamples } from '../hooks/useSamples';
@@ -11,7 +12,8 @@ import { Loader } from '../components/Common/Loader';
 import { ErrorMessage } from '../components/Common/ErrorMessage';
 import { exportSamplesToCSV } from '../utils/csvExport';
 import { useKeyboardShortcuts, commonShortcuts } from '../hooks/useKeyboardShortcuts';
-import type { Volcano, Sample, SampleFilters, VolcanoFilters } from '../types';
+import { formatBboxForAPI } from '../hooks/useBboxDraw';
+import type { Volcano, Sample, SampleFilters, VolcanoFilters, BBox } from '../types';
 
 const INITIAL_VIEWPORT = {
   longitude: 0,
@@ -35,6 +37,11 @@ const MapPage = () => {
 
   // Chart panel state
   const [chartPanelOpen, setChartPanelOpen] = useState(false);
+
+  // Bbox state
+  const [currentBbox, setCurrentBbox] = useState<BBox | null>(null);
+  const [isDrawingBbox, setIsDrawingBbox] = useState(false);
+  const [totalSamplesCount, setTotalSamplesCount] = useState<number | undefined>(undefined);
 
   // Selection state - using individual selectors for better reactivity
   const selectedSamples = useSelectionStore((state) => state.selectedSamples);
@@ -156,12 +163,142 @@ const MapPage = () => {
     setSelectionMode('none');
   };
 
+  // Bbox drawing state
+  const [drawingStart, setDrawingStart] = useState<{ lon: number; lat: number } | null>(null);
+  const [drawingCurrent, setDrawingCurrent] = useState<{ lon: number; lat: number } | null>(null);
+
+  // Bbox handlers
+  const handleStartDrawing = () => {
+    setIsDrawingBbox(true);
+    setDrawingStart(null);
+    setDrawingCurrent(null);
+    // Clear any existing selection mode to avoid conflicts
+    if (selectionMode !== 'none') {
+      setSelectionMode('none');
+    }
+  };
+
+  const handleMapClick = (info: any) => {
+    if (!isDrawingBbox) return;
+
+    const { coordinate } = info;
+    if (!coordinate) return;
+
+    const [lon, lat] = coordinate;
+
+    if (!drawingStart) {
+      // First click - set start point
+      setDrawingStart({ lon, lat });
+    } else {
+      // Second click - complete the bbox
+      const minLon = Math.min(drawingStart.lon, lon);
+      const maxLon = Math.max(drawingStart.lon, lon);
+      const minLat = Math.min(drawingStart.lat, lat);
+      const maxLat = Math.max(drawingStart.lat, lat);
+
+      // Validate minimum size (at least 0.1 degrees)
+      if (Math.abs(maxLon - minLon) > 0.1 && Math.abs(maxLat - minLat) > 0.1) {
+        const newBbox: BBox = { minLon, minLat, maxLon, maxLat };
+        setCurrentBbox(newBbox);
+        const bboxString = formatBboxForAPI(newBbox);
+        setSampleFilters(prev => ({ ...prev, bbox: bboxString }));
+      }
+
+      // Reset drawing state
+      setIsDrawingBbox(false);
+      setDrawingStart(null);
+      setDrawingCurrent(null);
+    }
+  };
+
+  const handleMapHover = (info: any) => {
+    if (!isDrawingBbox || !drawingStart) return;
+
+    const { coordinate } = info;
+    if (!coordinate) return;
+
+    const [lon, lat] = coordinate;
+    setDrawingCurrent({ lon, lat });
+  };
+
+  const handleSetPresetRegion = (bbox: BBox) => {
+    setCurrentBbox(bbox);
+    // Update filters with bbox
+    const bboxString = formatBboxForAPI(bbox);
+    setSampleFilters(prev => ({ ...prev, bbox: bboxString }));
+  };
+
+  const handleClearBbox = () => {
+    setCurrentBbox(null);
+    setIsDrawingBbox(false);
+    setDrawingStart(null);
+    setDrawingCurrent(null);
+    // Remove bbox from filters
+    setSampleFilters(prev => {
+      const { bbox, ...rest } = prev;
+      return rest;
+    });
+  };
+
+  // Calculate drawing rectangle for visualization
+  const getDrawingBbox = (): BBox | null => {
+    if (!drawingStart || !drawingCurrent) return null;
+    
+    return {
+      minLon: Math.min(drawingStart.lon, drawingCurrent.lon),
+      maxLon: Math.max(drawingStart.lon, drawingCurrent.lon),
+      minLat: Math.min(drawingStart.lat, drawingCurrent.lat),
+      maxLat: Math.max(drawingStart.lat, drawingCurrent.lat),
+    };
+  };
+
+  // Track total sample count when bbox is applied
+  useEffect(() => {
+    if (samples && samples.length > 0) {
+      setTotalSamplesCount(samples.length);
+    }
+  }, [samples]);
+
+  // ESC key to cancel bbox drawing
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isDrawingBbox) {
+        handleClearBbox();
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isDrawingBbox]);
+
   return (
     <div ref={mapContainerRef} className="relative w-full h-full">
       {/* Error Message */}
       {error && (
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 max-w-md">
           <ErrorMessage message={error} />
+        </div>
+      )}
+
+      {/* Drawing Instructions Overlay */}
+      {isDrawingBbox && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20">
+          <div className="bg-orange-500 text-white px-6 py-4 rounded-lg shadow-xl">
+            <div className="text-center space-y-2">
+              <div className="text-lg font-semibold">
+                {drawingStart ? 'Click to complete rectangle' : 'Click to start drawing'}
+              </div>
+              <div className="text-sm">
+                {drawingStart ? 'Second click sets the opposite corner' : 'First click sets one corner of the bounding box'}
+              </div>
+              <button
+                onClick={handleClearBbox}
+                className="mt-3 px-4 py-2 bg-white text-orange-600 rounded-md hover:bg-gray-100 font-medium"
+              >
+                Cancel Drawing (ESC)
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -179,6 +316,11 @@ const MapPage = () => {
         onVolcanoClick={handleVolcanoClick}
         onSampleClick={handleSampleClick}
         onViewportChange={handleViewportChange}
+        activeBbox={currentBbox}
+        drawingBboxProp={getDrawingBbox()}
+        isDrawingBbox={isDrawingBbox}
+        onMapClick={handleMapClick}
+        onMapHover={handleMapHover}
       />
 
       {/* Selection Overlay (for lasso/box selection) */}
@@ -228,21 +370,39 @@ const MapPage = () => {
         onResetView={handleResetView}
       />
 
-      {/* Selection Toolbar */}
-      <SelectionToolbar
-        mode={selectionMode}
-        selectedCount={selectedSamples.length}
-        onModeChange={setSelectionMode}
-        onClearSelection={clearSelection}
-        onDownloadSelection={() => {
-          exportSamplesToCSV(selectedSamples);
-        }}
-        onShowCharts={() => setChartPanelOpen(true)}
-      />
+      {/* Left Toolbar Container - Selection & Spatial Search */}
+      <div className="absolute top-20 left-4 z-10 flex flex-col gap-4">
+        {/* Selection Toolbar */}
+        <SelectionToolbar
+          mode={selectionMode}
+          selectedCount={selectedSamples.length}
+          filteredSampleCount={samples.length}
+          hasBboxFilter={currentBbox !== null}
+          onModeChange={setSelectionMode}
+          onClearSelection={clearSelection}
+          onDownloadSelection={() => {
+            // Download manually selected samples if any, otherwise download filtered samples
+            const samplesToDownload = selectedSamples.length > 0 ? selectedSamples : samples;
+            exportSamplesToCSV(samplesToDownload);
+          }}
+          onShowCharts={() => setChartPanelOpen(true)}
+        />
+
+        {/* Bbox Search Widget */}
+        <BboxSearchWidget
+          bbox={currentBbox}
+          isDrawing={isDrawingBbox}
+          sampleCount={samples?.length}
+          totalSamples={totalSamplesCount}
+          onStartDrawing={handleStartDrawing}
+          onSetPresetRegion={handleSetPresetRegion}
+          onClearBbox={handleClearBbox}
+        />
+      </div>
 
       {/* Chart Panel */}
       <ChartPanel
-        samples={selectedSamples}
+        samples={selectedSamples.length > 0 ? selectedSamples : samples}
         isOpen={chartPanelOpen}
         onToggle={() => setChartPanelOpen(prev => !prev)}
         onClose={() => setChartPanelOpen(false)}
@@ -251,7 +411,7 @@ const MapPage = () => {
       {/* Filter Button */}
       <button
         onClick={() => setFilterPanelOpen(true)}
-        className="absolute top-4 left-4 z-10 bg-white rounded-lg shadow-lg p-3 hover:bg-gray-50 transition-colors duration-200"
+        className="absolute top-4 left-4 z-10 bg-white rounded-lg shadow-lg p-4 hover:bg-gray-50 transition-colors duration-200"
         title="Open Filters"
         aria-label="Open filter panel"
       >

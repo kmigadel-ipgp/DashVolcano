@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react';
-import { Mountain } from 'lucide-react';
+import { Mountain, Download } from 'lucide-react';
 import { VEIBarChart } from '../components/Charts/VEIBarChart';
-import { fetchVolcanoVEIDistribution } from '../api/volcanoes';
+import { fetchVolcanoVEIDistribution, fetchVolcanoRockTypes } from '../api/volcanoes';
+import { RockTypeBadges } from '../components/RockTypeBadges';
 import { showError, showSuccess } from '../utils/toast';
-import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { useKeyboardShortcuts, commonShortcuts } from '../hooks/useKeyboardShortcuts';
 import { CardSkeleton, ChartSkeleton } from '../components/LoadingSkeleton';
 import { EmptyState } from '../components/EmptyState';
-import type { VEIDistribution } from '../types';
+import type { VEIDistribution, RockType } from '../types';
 
 interface VolcanoVEISelection {
   name: string;
   number: number;
   data: VEIDistribution | null;
+  rockTypes: RockType[] | null;
   loading: boolean;
   error: string | null;
 }
@@ -25,8 +27,8 @@ const CompareVEIPage = () => {
   const [showSuggestions, setShowSuggestions] = useState<boolean[]>([false, false]);
   
   const [selections, setSelections] = useState<VolcanoVEISelection[]>([
-    { name: '', number: 0, data: null, loading: false, error: null },
-    { name: '', number: 0, data: null, loading: false, error: null },
+    { name: '', number: 0, data: null, rockTypes: null, loading: false, error: null },
+    { name: '', number: 0, data: null, rockTypes: null, loading: false, error: null },
   ]);
 
   // Load volcano names on mount
@@ -53,28 +55,33 @@ const CompareVEIPage = () => {
     setSelections((prev) =>
       prev.map((sel, i) =>
         i === index
-          ? { name: volcanoName, number: volcanoNumber, data: null, loading: true, error: null }
+          ? { name: volcanoName, number: volcanoNumber, data: null, rockTypes: null, loading: true, error: null }
           : sel
       )
     );
 
     try {
-      const data = await fetchVolcanoVEIDistribution(volcanoNumber);
+      // Fetch both VEI distribution and rock types in parallel
+      const [data, rockTypesData] = await Promise.all([
+        fetchVolcanoVEIDistribution(volcanoNumber),
+        fetchVolcanoRockTypes(volcanoNumber)
+      ]);
+      
       setSelections((prev) =>
         prev.map((sel, i) =>
           i === index
-            ? { ...sel, data, loading: false, error: null }
+            ? { ...sel, data, rockTypes: rockTypesData.rock_types, loading: false, error: null }
             : sel
         )
       );
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : 'Failed to fetch VEI distribution';
+        err instanceof Error ? err.message : 'Failed to fetch data';
       showError(`Failed to load ${volcanoName}: ${errorMessage}`);
       setSelections((prev) =>
         prev.map((sel, i) =>
           i === index
-            ? { ...sel, data: null, loading: false, error: errorMessage }
+            ? { ...sel, data: null, rockTypes: null, loading: false, error: errorMessage }
             : sel
         )
       );
@@ -85,7 +92,7 @@ const CompareVEIPage = () => {
     setSelections((prev) =>
       prev.map((sel, i) =>
         i === index
-          ? { name: '', number: 0, data: null, loading: false, error: null }
+          ? { name: '', number: 0, data: null, rockTypes: null, loading: false, error: null }
           : sel
       )
     );
@@ -132,46 +139,51 @@ const CompareVEIPage = () => {
 
   // Keyboard shortcut for CSV export
   useKeyboardShortcuts([
-    {
-      key: 'd',
-      ctrlKey: true,
-      description: 'Download VEI comparison data as CSV',
-      action: () => {
-        if (hasAnyData) exportToCSV();
-      },
-    },
+    commonShortcuts.download(exportToCSV),
   ]);
 
   const hasAnyData = selections.some((sel) => sel.data !== null);
 
   return (
-    <main className="p-8" role="main" aria-label="Compare VEI distributions">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">💥 Compare VEI Distributions</h1>
-        <p className="text-gray-600 mb-4">
-          Compare Volcanic Explosivity Index (VEI) distributions between volcanoes
-        </p>
-        <div className="text-sm text-gray-500 bg-blue-50 p-4 rounded-lg">
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-3">
+                <Mountain className="w-8 h-8 text-volcano-600" aria-hidden="true" />
+                <h1 className="text-2xl font-bold text-gray-900">Compare VEI Distributions</h1>
+              </div>
+              <p className="mt-1 text-sm text-gray-600">
+                Compare Volcanic Explosivity Index (VEI) distributions between volcanoes
+              </p>
+            </div>
+            {hasAnyData && (
+              <button
+                onClick={exportToCSV}
+                className="flex items-center gap-2 px-4 py-2 bg-volcano-600 text-white rounded-lg hover:bg-volcano-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-volcano-500 focus:ring-offset-2"
+                aria-label="Download VEI comparison data as CSV"
+                title="Download CSV (Ctrl+D / Cmd+D)"
+              >
+                <Download className="w-4 h-4" aria-hidden="true" />
+                Download Combined CSV
+              </button>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-8" role="main" aria-label="Compare VEI distributions">
+        {/* About VEI Info Box */}
+        <div className="mb-6 text-sm text-gray-500 bg-blue-50 p-4 rounded-lg">
           <p className="font-semibold mb-1">About VEI:</p>
           <p>
             The Volcanic Explosivity Index (VEI) is a logarithmic scale (0-8) measuring the
             explosiveness of volcanic eruptions based on ejecta volume and eruption column height.
           </p>
         </div>
-      </div>
-
-      {/* Export Button */}
-      {hasAnyData && (
-        <div className="mb-6 flex justify-end">
-          <button
-            onClick={exportToCSV}
-            aria-label="Download VEI comparison data as CSV"
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 flex items-center gap-2"
-          >
-            📥 Export CSV
-          </button>
-        </div>
-      )}
 
       {/* Volcano Comparison Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -288,6 +300,16 @@ const CompareVEIPage = () => {
                   />
                 </div>
 
+                {/* Rock Type Badges */}
+                {selection.rockTypes && selection.rockTypes.length > 0 && (
+                  <div className="mb-6">
+                    <RockTypeBadges 
+                      rockTypes={selection.rockTypes}
+                      color={VOLCANO_COLORS[index]}
+                    />
+                  </div>
+                )}
+
                 {/* Statistics */}
                 <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                   <h3 className="font-semibold text-gray-800 mb-3">Summary Statistics</h3>
@@ -375,7 +397,8 @@ const CompareVEIPage = () => {
           </div>
         </div>
       )}
-    </main>
+      </main>
+    </div>
   );
 };
 

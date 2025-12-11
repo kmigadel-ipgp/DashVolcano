@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Plot from 'react-plotly.js';
 import type { Sample } from '../../types';
 import { fetchAFMBoundary } from '../../api/analytics';
+import { getRockTypeColor } from '../../utils/colors';
 
 interface AFMPlotProps {
   /** Array of samples to plot */
@@ -22,7 +23,7 @@ interface AFMPlotProps {
  * - x = 0.5 * (2*M + F) / (A + F + M)
  * - y = (√3/2) * A / (A + F + M)
  */
-export const AFMPlot: React.FC<AFMPlotProps> = ({
+export const AFMPlot: React.FC<AFMPlotProps> = React.memo(({
   samples,
   loading = false,
 }) => {
@@ -111,18 +112,12 @@ export const AFMPlot: React.FC<AFMPlotProps> = ({
     'Unknown': 'x',
   };
 
-  // Get unique rock types and assign consistent colors
+  // Get unique rock types and assign consistent colors using shared color utility
   const uniqueRockTypes = Array.from(new Set(sampleData.map(s => s.rock_type)));
   const rockTypeColors: Record<string, string> = {};
-  const colorPalette = [
-    '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
-    '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf',
-    '#aec7e8', '#ffbb78', '#98df8a', '#ff9896', '#c5b0d5',
-    '#c49c94', '#f7b6d2', '#c7c7c7', '#dbdb8d', '#9edae5',
-  ];
-  for (let index = 0; index < uniqueRockTypes.length; index++) {
-    const rockType = uniqueRockTypes[index];
-    rockTypeColors[rockType] = colorPalette[index % colorPalette.length];
+  
+  for (const rockType of uniqueRockTypes) {
+    rockTypeColors[rockType] = getRockTypeColor(rockType);
   }
 
   // Group samples by rock_type (for colors) and material (for shapes)
@@ -405,4 +400,4 @@ export const AFMPlot: React.FC<AFMPlotProps> = ({
       />
     </div>
   );
-};
+});

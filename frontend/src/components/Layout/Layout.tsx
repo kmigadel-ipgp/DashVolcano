@@ -23,7 +23,7 @@ const Layout = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <span className="text-3xl">🌋</span>
-              <h1 className="text-2xl font-bold">DashVolcano v3.0</h1>
+              <h1 className="text-2xl font-bold">DashVolcano</h1>
             </div>
             {/* Desktop Navigation */}
             <nav className="hidden md:flex space-x-6">

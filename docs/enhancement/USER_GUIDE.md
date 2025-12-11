@@ -98,10 +98,53 @@ Filter samples by their tectonic environment:
 **Common tectonic settings:**
 - **Island Arc**: Volcanic arc formed by subduction (e.g., Japan, Indonesia)
 - **Oceanic Island**: Hotspot volcanism (e.g., Hawaii, Iceland)
-- **Continental Arc**: Subduction under continental crust (e.g., Andes)
-- **Rift Zone**: Divergent plate boundaries (e.g., East African Rift)
 
-#### 3. Country Filter
+#### 3. Spatial Search (Bounding Box)
+
+**NEW IN v3.1**: Filter samples by geographic location using bounding boxes.
+
+The Spatial Search widget (top-left corner) allows you to limit samples to a specific geographic area, significantly improving performance when exploring regional data.
+
+**How to use:**
+
+**Option 1: Preset Regions (Recommended)**
+1. Click to expand the "Spatial Search" panel
+2. Click one of the preset region buttons:
+   - **Europe**: Western Europe region
+   - **North America**: North American continent
+   - **Asia-Pacific**: Asia and Pacific region
+   - **South America**: South American continent
+3. The map automatically filters to show only samples in that region
+4. Sample count updates to show filtered results
+
+**Option 2: Custom Bounding Box (Coming Soon)**
+1. Click "Draw Search Area" button
+2. Click and drag on the map to draw a rectangle
+3. Release to apply the bounding box filter
+   - Note: Full drawing functionality is in development. Use preset regions for now.
+
+**Features:**
+- **Current Area Display**: Shows the active bounding box coordinates
+- **Sample Count**: Displays number of samples within the bbox (e.g., "1,234 of 60,000 samples")
+- **Clear Button** (X icon): Removes the bounding box filter to show all samples again
+
+**Performance Benefits:**
+- Reduces data transfer from ~2MB to ~50-200KB typically
+- Faster map rendering with fewer points
+- More responsive filtering and interaction
+- Ideal for regional studies
+
+**Example Use Cases:**
+- Studying Mediterranean volcanism → Use "Europe" preset
+- Analyzing Pacific Ring of Fire → Use "Asia-Pacific" preset
+- Comparing Cascade Range volcanoes → Use "North America" preset then zoom in
+
+**Tips:**
+- Combine bbox with rock type filters for powerful queries (e.g., "Basalts in North America")
+- Use bbox before applying other filters to reduce initial data load
+- Clear bbox when switching to a different region
+
+#### 4. Country Filter
 
 Filter samples by country where they were collected:
 
@@ -112,7 +155,7 @@ Filter samples by country where they were collected:
 
 **Tip:** Use the search box to quickly find countries (e.g., type "United" to find United States)
 
-#### 4. Volcano Filter
+#### 5. Volcano Filter
 
 Filter samples from specific volcanoes:
 
@@ -123,7 +166,7 @@ Filter samples from specific volcanoes:
 
 **Tip:** After filtering by country, the volcano list will show only volcanoes in that country
 
-#### 5. Apply Filters
+#### 6. Apply Filters
 
 Click the **"Apply Filters"** button to update the map with your selections. The map will reload with the filtered samples.
 

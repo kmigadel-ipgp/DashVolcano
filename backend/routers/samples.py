@@ -20,11 +20,19 @@ async def get_samples(
     min_sio2: Optional[float] = Query(None, description="Minimum SiO2 content (%)"),
     max_sio2: Optional[float] = Query(None, description="Maximum SiO2 content (%)"),
     volcano_number: Optional[str] = Query(None, description="Filter by volcano number"),
+    bbox: Optional[str] = Query(
+        None, 
+        description="Bounding box as 'min_lon,min_lat,max_lon,max_lat' (e.g., '-10,35,20,60')",
+        pattern=r"^-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?$"
+    ),
     limit: Optional[int] = Query(None, description="Maximum number of results"),
     offset: int = Query(0, ge=0, description="Pagination offset")
 ):
     """
-    Get list of rock samples with optional filters
+    Get list of rock samples with optional filters.
+    
+    Bounding box format: min_lon,min_lat,max_lon,max_lat
+    Example: bbox=-10,35,20,60 (covers Western Europe)
     """
     query = {}
     sio2_field = "oxides.SIO2(WT%)"
@@ -60,6 +68,41 @@ async def get_samples(
     if volcano_number:
         query["matching_metadata.volcano_number"] = volcano_number
     
+    # Bounding box filter - MongoDB geospatial query
+    if bbox:
+        try:
+            coords = [float(x) for x in bbox.split(',')]
+            if len(coords) != 4:
+                raise HTTPException(status_code=400, detail="bbox must have 4 values: min_lon,min_lat,max_lon,max_lat")
+            
+            min_lon, min_lat, max_lon, max_lat = coords
+            
+            # Validate coordinate ranges
+            if not (-180 <= min_lon <= 180 and -180 <= max_lon <= 180):
+                raise HTTPException(status_code=400, detail="Longitude must be between -180 and 180")
+            if not (-90 <= min_lat <= 90 and -90 <= max_lat <= 90):
+                raise HTTPException(status_code=400, detail="Latitude must be between -90 and 90")
+            if min_lon >= max_lon:
+                raise HTTPException(status_code=400, detail="min_lon must be less than max_lon")
+            if min_lat >= max_lat:
+                raise HTTPException(status_code=400, detail="min_lat must be less than max_lat")
+            
+            # MongoDB geospatial query using $geoWithin and $box
+            # Note: MongoDB uses [longitude, latitude] order
+            query["geometry"] = {
+                "$geoWithin": {
+                    "$box": [
+                        [min_lon, min_lat],  # Southwest corner
+                        [max_lon, max_lat]   # Northeast corner
+                    ]
+                }
+            }
+        except ValueError as e:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid bbox format. Use: min_lon,min_lat,max_lon,max_lat. Error: {str(e)}"
+            )
+    
     # Project only necessary fields for performance
     projection = {
         "_id": 1,
@@ -90,10 +133,15 @@ async def get_samples(
         if "_id" in sample:
             sample["_id"] = str(sample["_id"])
     
+    # Get total count for the query (useful for pagination)
+    total_count = db.samples.count_documents(query)
+    
     return {
         "count": len(samples),
+        "total": total_count,
         "limit": limit,
         "offset": offset,
+        "bbox": bbox,
         "data": samples
     }
 

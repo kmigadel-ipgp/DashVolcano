@@ -219,6 +219,8 @@ async def get_volcano_chemical_analysis(
     
     tas_data = []
     afm_data = []
+    harker_data = []
+    all_samples = []  # Include ALL samples for CSV export
     rock_types = {}
     
     for sample in samples:
@@ -233,6 +235,11 @@ async def get_volcano_chemical_analysis(
         k2o = oxides.get("K2O(WT%)")
         feot = oxides.get("FEOT(WT%)")
         mgo = oxides.get("MGO(WT%)")
+        tio2 = oxides.get("TIO2(WT%)")
+        al2o3 = oxides.get("AL2O3(WT%)")
+        cao = oxides.get("CAO(WT%)")
+        p2o5 = oxides.get("P2O5(WT%)")
+        mno = oxides.get("MNO(WT%)")
         
         sample_code = str(sample.get("sample_code", ""))
         rock_type = sample.get("rock_type", "Unknown")
@@ -240,32 +247,148 @@ async def get_volcano_chemical_analysis(
         # Count rock types
         rock_types[rock_type] = rock_types.get(rock_type, 0) + 1
         
-        # TAS data (needs SiO2, Na2O, K2O)
-        if sio2 is not None and na2o is not None and k2o is not None:
-            tas_data.append({
-                "sample_code": sample_code,
-                "SiO2": round(sio2, 2),
-                "Na2O": round(na2o, 2),
-                "K2O": round(k2o, 2),
-                "Na2O_K2O": round(na2o + k2o, 2),
-                "rock_type": rock_type,
-                "material": sample.get("material", "Unknown")
-            })
+        # Add ALL samples to all_samples array (for complete CSV export)
+        all_sample_entry = {
+            "sample_code": sample_code,
+            "sample_id": sample.get("sample_id", sample_code),
+            "db": sample.get("db", "Unknown"),
+            "rock_type": rock_type,
+            "material": sample.get("material", "Unknown"),
+            "tectonic_setting": sample.get("tectonic_setting"),
+            "geometry": sample.get("geometry"),
+            "matching_metadata": sample.get("matching_metadata"),
+            "references": sample.get("references"),
+            "geographic_location": sample.get("geographic_location"),
+        }
+        # Add all available oxides (even if incomplete)
+        if sio2 is not None:
+            all_sample_entry["SIO2(WT%)"] = round(sio2, 2)
+        if na2o is not None:
+            all_sample_entry["NA2O(WT%)"] = round(na2o, 2)
+        if k2o is not None:
+            all_sample_entry["K2O(WT%)"] = round(k2o, 2)
+        if feot is not None:
+            all_sample_entry["FEOT(WT%)"] = round(feot, 2)
+        if mgo is not None:
+            all_sample_entry["MGO(WT%)"] = round(mgo, 2)
+        if tio2 is not None:
+            all_sample_entry["TIO2(WT%)"] = round(tio2, 2)
+        if al2o3 is not None:
+            all_sample_entry["AL2O3(WT%)"] = round(al2o3, 2)
+        if cao is not None:
+            all_sample_entry["CAO(WT%)"] = round(cao, 2)
+        if p2o5 is not None:
+            all_sample_entry["P2O5(WT%)"] = round(p2o5, 2)
+        if mno is not None:
+            all_sample_entry["MNO(WT%)"] = round(mno, 2)
+        all_samples.append(all_sample_entry)
         
-        # AFM data (needs FeOT, Na2O+K2O, MgO)
-        if feot is not None and na2o is not None and k2o is not None and mgo is not None:
-            afm_data.append({
+        # TAS data (preserve MongoDB field names and include all metadata)
+        if sio2 is not None and na2o is not None and k2o is not None:
+            tas_entry = {
                 "sample_code": sample_code,
-                "FeOT": round(feot, 2),
-                "Na2O": round(na2o, 2),
-                "K2O": round(k2o, 2),
-                "MgO": round(mgo, 2),
-                "A": round(feot, 2),
-                "F": round(na2o + k2o, 2),
-                "M": round(mgo, 2),
+                "sample_id": sample.get("sample_id", sample_code),
+                "db": sample.get("db", "Unknown"),
                 "rock_type": rock_type,
-                "material": sample.get("material", "Unknown")
-            })
+                "material": sample.get("material", "Unknown"),
+                "tectonic_setting": sample.get("tectonic_setting"),
+                "geometry": sample.get("geometry"),
+                "matching_metadata": sample.get("matching_metadata"),
+                "references": sample.get("references"),
+                "geographic_location": sample.get("geographic_location"),
+                "SIO2(WT%)": round(sio2, 2),
+                "NA2O(WT%)": round(na2o, 2),
+                "K2O(WT%)": round(k2o, 2)
+            }
+            # Add all other oxides if available
+            if feot is not None:
+                tas_entry["FEOT(WT%)"] = round(feot, 2)
+            if mgo is not None:
+                tas_entry["MGO(WT%)"] = round(mgo, 2)
+            if tio2 is not None:
+                tas_entry["TIO2(WT%)"] = round(tio2, 2)
+            if al2o3 is not None:
+                tas_entry["AL2O3(WT%)"] = round(al2o3, 2)
+            if cao is not None:
+                tas_entry["CAO(WT%)"] = round(cao, 2)
+            if p2o5 is not None:
+                tas_entry["P2O5(WT%)"] = round(p2o5, 2)
+            if mno is not None:
+                tas_entry["MNO(WT%)"] = round(mno, 2)
+            tas_data.append(tas_entry)
+        
+        # AFM data (preserve MongoDB field names and include all metadata)
+        if feot is not None and na2o is not None and k2o is not None and mgo is not None:
+            afm_entry = {
+                "sample_code": sample_code,
+                "sample_id": sample.get("sample_id", sample_code),
+                "db": sample.get("db", "Unknown"),
+                "rock_type": rock_type,
+                "material": sample.get("material", "Unknown"),
+                "tectonic_setting": sample.get("tectonic_setting"),
+                "geometry": sample.get("geometry"),
+                "matching_metadata": sample.get("matching_metadata"),
+                "references": sample.get("references"),
+                "geographic_location": sample.get("geographic_location"),
+                "FEOT(WT%)": round(feot, 2),
+                "NA2O(WT%)": round(na2o, 2),
+                "K2O(WT%)": round(k2o, 2),
+                "MGO(WT%)": round(mgo, 2)
+            }
+            # Add other oxides if available
+            if sio2 is not None:
+                afm_entry["SIO2(WT%)"] = round(sio2, 2)
+            if tio2 is not None:
+                afm_entry["TIO2(WT%)"] = round(tio2, 2)
+            if al2o3 is not None:
+                afm_entry["AL2O3(WT%)"] = round(al2o3, 2)
+            if cao is not None:
+                afm_entry["CAO(WT%)"] = round(cao, 2)
+            if p2o5 is not None:
+                afm_entry["P2O5(WT%)"] = round(p2o5, 2)
+            if mno is not None:
+                afm_entry["MNO(WT%)"] = round(mno, 2)
+            afm_data.append(afm_entry)
+        
+        # Harker data (preserve MongoDB field names and include all metadata)
+        if sio2 is not None and 35 <= sio2 <= 80:  # Valid SiO2 range
+            harker_point = {
+                "sample_code": sample_code,
+                "sample_id": sample.get("sample_id", sample_code),
+                "db": sample.get("db", "Unknown"),
+                "rock_type": rock_type,
+                "material": sample.get("material", "Unknown"),
+                "tectonic_setting": sample.get("tectonic_setting"),
+                "geometry": sample.get("geometry"),
+                "matching_metadata": sample.get("matching_metadata"),
+                "references": sample.get("references"),
+                "geographic_location": sample.get("geographic_location"),
+                "SIO2(WT%)": round(sio2, 2)
+            }
+            
+            # Add available oxides (preserve MongoDB field names)
+            if tio2 is not None:
+                harker_point["TIO2(WT%)"] = round(tio2, 2)
+            if al2o3 is not None:
+                harker_point["AL2O3(WT%)"] = round(al2o3, 2)
+            if feot is not None:
+                harker_point["FEOT(WT%)"] = round(feot, 2)
+            if mgo is not None:
+                harker_point["MGO(WT%)"] = round(mgo, 2)
+            if cao is not None:
+                harker_point["CAO(WT%)"] = round(cao, 2)
+            if na2o is not None:
+                harker_point["NA2O(WT%)"] = round(na2o, 2)
+            if k2o is not None:
+                harker_point["K2O(WT%)"] = round(k2o, 2)
+            if p2o5 is not None:
+                harker_point["P2O5(WT%)"] = round(p2o5, 2)
+            if mno is not None:
+                harker_point["MNO(WT%)"] = round(mno, 2)
+            
+            # Only add if at least one other oxide is present
+            if len(harker_point) > 9:  # More than sample_code, sample_id, db, SiO2, rock_type, material, tectonic_setting, geometry, matching_metadata
+                harker_data.append(harker_point)
     
     return {
         "volcano_number": volcano_num,
@@ -273,5 +396,140 @@ async def get_volcano_chemical_analysis(
         "samples_count": len(samples),
         "tas_data": tas_data,
         "afm_data": afm_data,
+        "harker_data": harker_data,
+        "all_samples": all_samples,  # All samples with any oxide data for CSV export
         "rock_types": rock_types
+    }
+
+
+@router.get("/{volcano_number}/rock-types")
+async def get_volcano_rock_types(
+    volcano_number: str,
+    db: Database = Depends(get_database)
+):
+    """
+    Get GVP major rock types for a volcano.
+    Returns the major rock types from the volcano's rocks field (maj_1, maj_2, maj_3).
+    """
+    try:
+        volcano_num = int(volcano_number)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid volcano number format")
+    
+    volcano = db.volcanoes.find_one(
+        {"volcano_number": volcano_num},
+        {"volcano_name": 1, "volcano_number": 1, "rocks": 1}
+    )
+    
+    if not volcano:
+        raise HTTPException(status_code=404, detail="Volcano not found")
+    
+    # Extract major rock types
+    rock_types = []
+    rocks = volcano.get("rocks", {})
+    
+    if rocks.get("maj_1"):
+        rock_types.append({"type": rocks["maj_1"], "rank": 1})
+    if rocks.get("maj_2"):
+        rock_types.append({"type": rocks["maj_2"], "rank": 2})
+    if rocks.get("maj_3"):
+        rock_types.append({"type": rocks["maj_3"], "rank": 3})
+    
+    return {
+        "volcano_number": volcano["volcano_number"],
+        "volcano_name": volcano["volcano_name"],
+        "rock_types": rock_types
+    }
+
+
+@router.get("/{volcano_number}/sample-timeline")
+async def get_volcano_sample_timeline(
+    volcano_number: str,
+    db: Database = Depends(get_database)
+):
+    """
+    Get sample statistics for timeline context.
+    Returns basic sample counts by rock type since eruption dates are rarely available.
+    """
+    try:
+        volcano_num = int(volcano_number)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid volcano number format")
+    
+    # Verify volcano exists
+    volcano = db.volcanoes.find_one({"volcano_number": volcano_num})
+    if not volcano:
+        raise HTTPException(status_code=404, detail="Volcano not found")
+    
+    # Try to aggregate by eruption year first (preferred but rarely available)
+    year_pipeline = [
+        {
+            "$match": {
+                "matching_metadata.volcano_number": str(volcano_num),
+                "eruption_date.year": {"$ne": None, "$exists": True, "$type": "number"}
+            }
+        },
+        {
+            "$group": {
+                "_id": "$eruption_date.year",
+                "sample_count": {"$sum": 1},
+                "rock_types": {"$addToSet": "$rock_type"}
+            }
+        },
+        {
+            "$project": {
+                "year": "$_id",
+                "sample_count": 1,
+                "rock_types": 1,
+                "_id": 0
+            }
+        },
+        {"$sort": {"year": 1}}
+    ]
+    
+    timeline_data = list(db.samples.aggregate(year_pipeline))
+    
+    # Get total sample count and rock type distribution (always available)
+    total_samples = db.samples.count_documents({
+        "matching_metadata.volcano_number": str(volcano_num)
+    })
+    
+    # Get rock type distribution
+    rock_type_pipeline = [
+        {
+            "$match": {
+                "matching_metadata.volcano_number": str(volcano_num),
+                "rock_type": {"$ne": None, "$exists": True}
+            }
+        },
+        {
+            "$group": {
+                "_id": "$rock_type",
+                "count": {"$sum": 1}
+            }
+        },
+        {"$sort": {"count": -1}}
+    ]
+    
+    rock_type_dist = list(db.samples.aggregate(rock_type_pipeline))
+    
+    # Calculate statistics
+    years = [item["year"] for item in timeline_data]
+    
+    return {
+        "volcano_number": volcano_num,
+        "volcano_name": volcano.get("volcano_name", "Unknown"),
+        "total_samples": total_samples,
+        "samples_with_dates": sum(item["sample_count"] for item in timeline_data),
+        "timeline_data": timeline_data,
+        "rock_type_distribution": [
+            {"rock_type": item["_id"], "count": item["count"]} 
+            for item in rock_type_dist
+        ],
+        "date_range": {
+            "min_year": min(years) if years else None,
+            "max_year": max(years) if years else None,
+            "span_years": max(years) - min(years) if years else 0
+        },
+        "has_timeline_data": len(timeline_data) > 0
     }
