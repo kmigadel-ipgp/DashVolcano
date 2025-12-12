@@ -16,48 +16,32 @@ chemical_analysis_cache = TTLCache(maxsize=100, ttl=300)  # 5 minutes
 cache_lock = threading.Lock()
 
 
-@router.get("/")
-async def get_volcanoes(
+@router.get("/summary")
+async def get_volcanoes_summary(
     db: Database = Depends(get_database),
-    country: Optional[str] = Query(None, description="Filter by country"),
-    region: Optional[str] = Query(None, description="Filter by region"),
-    tectonic_setting: Optional[str] = Query(None, description="Filter by tectonic setting"),
-    volcano_name: Optional[str] = Query(None, description="Filter by volcano name"),
     limit: int = Query(1000, le=10000),
     offset: int = Query(0, ge=0)
 ):
     """
-    Get list of volcanoes with optional filters
+    Lightweight summary endpoint returning minimal fields for map/list views.
+    Used by frontend for volcano selection and map display.
     """
-    query = {}
-    
-    # Case-insensitive regex match for country
-    if country:
-        query["country"] = {"$regex": country, "$options": "i"}
-    
-    # Case-insensitive regex match for region
-    if region:
-        query["region"] = {"$regex": region, "$options": "i"}
-    
-    if tectonic_setting:
-        query["tectonic_setting"] = tectonic_setting
-    
-    # Exact match for volcano name
-    if volcano_name:
-        query["volcano_name"] = volcano_name
-    
-    volcanoes = list(db.volcanoes.find(query).limit(limit).skip(offset))
-    
-    for volcano in volcanoes:
-        if "_id" in volcano:
-            volcano["_id"] = str(volcano["_id"])
-    
-    return {
-        "count": len(volcanoes),
-        "limit": limit,
-        "offset": offset,
-        "data": volcanoes
+    projection = {
+        "_id": 1,
+        "volcano_number": 1,
+        "volcano_name": 1,
+        "country": 1,
+        "geometry": 1,
     }
+
+    cursor = db.volcanoes.find({}, projection).limit(limit).skip(offset).batch_size(1000)
+    volcanoes = []
+    for v in cursor:
+        if "_id" in v:
+            v["_id"] = str(v["_id"])
+        volcanoes.append(v)
+
+    return {"count": len(volcanoes), "limit": limit, "offset": offset, "data": volcanoes}
 
 
 @router.get("/{volcano_number}")

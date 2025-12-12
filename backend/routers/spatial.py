@@ -64,43 +64,6 @@ async def get_samples_in_bounds(
     }
 
 
-@router.get("/nearby")
-async def get_samples_nearby(
-    db: Database = Depends(get_database),
-    lon: float = Query(..., description="Center longitude"),
-    lat: float = Query(..., description="Center latitude"),
-    radius: float = Query(..., ge=0, description="Radius in meters (must be non-negative)"),
-    limit: int = Query(1000, le=10000)
-):
-    """
-    Get samples near a point within a radius
-    """
-    query = {
-        "geometry": {
-            "$nearSphere": {
-                "$geometry": {
-                    "type": "Point",
-                    "coordinates": [lon, lat]
-                },
-                "$maxDistance": radius
-            }
-        }
-    }
-    
-    samples = list(db.samples.find(query).limit(limit))
-    
-    for sample in samples:
-        if "_id" in sample:
-            sample["_id"] = str(sample["_id"])
-    
-    return {
-        "count": len(samples),
-        "center": {"lon": lon, "lat": lat},
-        "radius": radius,
-        "data": samples
-    }
-
-
 @router.get("/tectonic-plates")
 async def get_tectonic_plates():
     """

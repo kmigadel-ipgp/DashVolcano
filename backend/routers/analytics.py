@@ -13,23 +13,6 @@ from backend.dependencies import get_database
 router = APIRouter()
 
 
-@router.get("/")
-async def analytics_root():
-    """
-    Analytics endpoints root
-    """
-    return {
-        "message": "Analytics API",
-        "endpoints": [
-            "/tas-polygons",
-            "/tas-data",
-            "/afm-data",
-            "/vei-distribution",
-            "/chemical-analysis"
-        ]
-    }
-
-
 @router.get("/tas-polygons")
 async def get_tas_polygons():
     """

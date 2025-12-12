@@ -77,7 +77,7 @@ const MapPage = () => {
 
   // Fetch data using custom hooks (with filters)
   // Don't auto-fetch samples - only fetch when user applies filters or bbox
-  const { samples, loading: samplesLoading, error: samplesError, refetch: refetchSamples } = useSamples(sampleFilters, hasAppliedFilters);
+  const { samples, loading: samplesLoading, error: samplesError, refetch: _ } = useSamples(sampleFilters, hasAppliedFilters);
   const { volcanoes, loading: volcanoesLoading, error: volcanoesError } = useVolcanoes(volcanoFilters);
   const { boundaries, loading: tectonicLoading, error: tectonicError } = useTectonic();
 

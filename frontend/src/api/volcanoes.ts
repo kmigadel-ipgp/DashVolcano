@@ -18,6 +18,19 @@ import type {
 export const fetchVolcanoes = async (
   filters?: VolcanoFilters
 ): Promise<PaginatedResponse<Volcano>> => {
+  // Use the lightweight summary endpoint by default for initial map/list loads.
+  const response = await apiClient.get<PaginatedResponse<Volcano>>('/volcanoes/summary', {
+    params: filters,
+  });
+  return response.data;
+};
+
+/**
+ * Fetch the full volcano documents (fallback when callers need all fields).
+ */
+export const fetchFullVolcanoes = async (
+  filters?: VolcanoFilters
+): Promise<PaginatedResponse<Volcano>> => {
   const response = await apiClient.get<PaginatedResponse<Volcano>>('/volcanoes', {
     params: filters,
   });

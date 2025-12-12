@@ -44,27 +44,3 @@ async def get_eruptions(
         "offset": offset,
         "data": eruptions
     }
-
-
-@router.get("/{eruption_number}")
-async def get_eruption_by_number(
-    eruption_number: str,
-    db: Database = Depends(get_database)
-):
-    """
-    Get a single eruption by eruption number
-    """
-    try:
-        eruption_num = int(eruption_number)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid eruption number format")
-    
-    eruption = db.eruptions.find_one({"eruption_number": eruption_num})
-    
-    if not eruption:
-        raise HTTPException(status_code=404, detail="Eruption not found")
-    
-    if "_id" in eruption:
-        eruption["_id"] = str(eruption["_id"])
-    
-    return eruption
