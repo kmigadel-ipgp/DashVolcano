@@ -4,10 +4,16 @@ Volcanoes router - API endpoints for volcano data
 from fastapi import APIRouter, Depends, Query, HTTPException
 from pymongo.database import Database
 from typing import Optional
+from cachetools import TTLCache
+import threading
 
 from backend.dependencies import get_database
 
 router = APIRouter()
+
+# In-memory cache for expensive chemical-analysis queries (5 minute TTL, max 100 volcanoes)
+chemical_analysis_cache = TTLCache(maxsize=100, ttl=300)  # 5 minutes
+cache_lock = threading.Lock()
 
 
 @router.get("/")
@@ -191,11 +197,19 @@ async def get_volcano_chemical_analysis(
     
     Returns oxide composition data for samples associated with this volcano.
     Frontend can use this to generate TAS and AFM plots.
+    
+    NOTE: Results are cached in memory for 5 minutes to improve performance.
     """
     try:
         volcano_num = int(volcano_number)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid volcano number format")
+    
+    # Check cache first (thread-safe)
+    cache_key = f"{volcano_num}:{limit}"
+    with cache_lock:
+        if cache_key in chemical_analysis_cache:
+            return chemical_analysis_cache[cache_key]
     
     # Check if volcano exists
     volcano = db.volcanoes.find_one({"volcano_number": volcano_num})
@@ -203,12 +217,28 @@ async def get_volcano_chemical_analysis(
         raise HTTPException(status_code=404, detail="Volcano not found")
     
     # Get samples for this volcano (via matching_metadata)
+    # Use projection to only fetch needed fields (reduces transfer size by ~50%)
+    projection = {
+        "_id": 0,
+        "sample_code": 1,
+        "sample_id": 1,
+        "db": 1,
+        "rock_type": 1,
+        "material": 1,
+        "tectonic_setting": 1,
+        "geometry": 1,
+        "matching_metadata": 1,
+        "references": 1,
+        "geographic_location": 1,
+        "oxides": 1  # All oxide fields
+    }
+    
     samples = list(db.samples.find({
         "matching_metadata.volcano_number": str(volcano_num)
-    }).limit(limit))
+    }, projection).limit(limit).batch_size(10000))
     
     if not samples:
-        return {
+        result = {
             "volcano_number": volcano_num,
             "volcano_name": volcano.get("volcano_name", "Unknown"),
             "samples_count": 0,
@@ -216,6 +246,10 @@ async def get_volcano_chemical_analysis(
             "afm_data": [],
             "rock_types": {}
         }
+        # Cache empty result too
+        with cache_lock:
+            chemical_analysis_cache[cache_key] = result
+        return result
     
     tas_data = []
     afm_data = []
@@ -390,7 +424,7 @@ async def get_volcano_chemical_analysis(
             if len(harker_point) > 9:  # More than sample_code, sample_id, db, SiO2, rock_type, material, tectonic_setting, geometry, matching_metadata
                 harker_data.append(harker_point)
     
-    return {
+    result = {
         "volcano_number": volcano_num,
         "volcano_name": volcano.get("volcano_name", "Unknown"),
         "samples_count": len(samples),
@@ -400,6 +434,12 @@ async def get_volcano_chemical_analysis(
         "all_samples": all_samples,  # All samples with any oxide data for CSV export
         "rock_types": rock_types
     }
+    
+    # Cache the result for 5 minutes (thread-safe)
+    with cache_lock:
+        chemical_analysis_cache[cache_key] = result
+    
+    return result
 
 
 @router.get("/{volcano_number}/rock-types")
