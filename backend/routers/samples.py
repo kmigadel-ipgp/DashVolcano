@@ -123,6 +123,7 @@ async def get_samples(
         "matching_metadata.volcano_number": 1,
         "matching_metadata.volcano_name": 1,
         "matching_metadata.distance_km": 1,
+        "references": 1,
         # Include key oxides for TAS/AFM plots (only what's needed)
         "oxides.SIO2(WT%)": 1,
         "oxides.NA2O(WT%)": 1,
