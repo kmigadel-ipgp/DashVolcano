@@ -509,7 +509,7 @@ const CompareVolcanoesPage: React.FC = () => {
               )}
 
               {selection.data && (
-                <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="mt-4 grid grid-cols-3 gap-3">
                   <div className="bg-gray-50 rounded p-2">
                     <p className="text-xs text-gray-600">Samples</p>
                     <p className="text-lg font-bold" style={{ color: VOLCANO_COLORS[index] }}>
@@ -520,6 +520,12 @@ const CompareVolcanoesPage: React.FC = () => {
                     <p className="text-xs text-gray-600">TAS Points</p>
                     <p className="text-lg font-bold" style={{ color: VOLCANO_COLORS[index] }}>
                       {selection.data.tas_data.length}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 rounded p-2">
+                    <p className="text-xs text-gray-600">AFM Points</p>
+                    <p className="text-lg font-bold" style={{ color: VOLCANO_COLORS[index] }}>
+                      {selection.data.afm_data.length}
                     </p>
                   </div>
                 </div>
