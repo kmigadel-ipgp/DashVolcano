@@ -64,18 +64,40 @@ async function loadRockTypeColors(): Promise<void> {
     const rockTypes = result.data as string[];
     
     // Generate colors for each rock type
+    // Start from fallback colors (normalized to uppercase keys) so we preserve
+    // special mappings (e.g. FOIDITE -> #808080). Then assign palette colors
+    // to remaining rock types reported by the API.
     const newColors: Record<string, string> = {};
-    rockTypes.forEach((rockType, index) => {
-      // Use palette colors, cycling if needed
-      newColors[rockType] = BASE_COLOR_PALETTE[index % BASE_COLOR_PALETTE.length];
-    });
-    
+
+    // Copy fallback colors with normalized uppercase keys
+    for (const [key, color] of Object.entries(FALLBACK_ROCK_TYPE_COLORS)) {
+      newColors[key.toUpperCase()] = color;
+    }
+
+    // Assign palette colors for rock types not covered by the fallback
+    let paletteIndex = 0;
+    for (const rockType of rockTypes) {
+      const key = rockType.toUpperCase();
+      if (newColors[key]) {
+        // keep fallback color
+        continue;
+      }
+      // Use next palette color (cycle through palette)
+      newColors[key] = BASE_COLOR_PALETTE[paletteIndex % BASE_COLOR_PALETTE.length];
+      paletteIndex += 1;
+    }
+
     ROCK_TYPE_COLORS = newColors;
     rockTypesLoaded = true;
     console.log(`Loaded ${rockTypes.length} rock types with colors from API`);
   } catch (error) {
     console.warn('Failed to load rock types from API, using fallback colors:', error);
-    ROCK_TYPE_COLORS = { ...FALLBACK_ROCK_TYPE_COLORS };
+    // Ensure fallback keys are normalized to uppercase for consistency
+    const fallbackNormalized: Record<string, string> = {};
+    for (const [k, v] of Object.entries(FALLBACK_ROCK_TYPE_COLORS)) {
+      fallbackNormalized[k.toUpperCase()] = v;
+    }
+    ROCK_TYPE_COLORS = fallbackNormalized;
   }
 }
 
