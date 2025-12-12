@@ -27,11 +27,21 @@ async def get_samples_in_bounds(
 ):
     """
     Get samples within a bounding box
+    Uses $geoIntersects with Polygon for proper 2dsphere index usage
     """
     query = {
         "geometry": {
-            "$geoWithin": {
-                "$box": [[min_lon, min_lat], [max_lon, max_lat]]
+            "$geoIntersects": {
+                "$geometry": {
+                    "type": "Polygon",
+                    "coordinates": [[
+                        [min_lon, min_lat],  # Southwest
+                        [max_lon, min_lat],  # Southeast
+                        [max_lon, max_lat],  # Northeast
+                        [min_lon, max_lat],  # Northwest
+                        [min_lon, min_lat]   # Close polygon
+                    ]]
+                }
             }
         }
     }

@@ -127,6 +127,7 @@ async def get_samples(
         "oxides.K2O(WT%)": 1,
         "oxides.MGO(WT%)": 1,
         "oxides.FE2O3(WT%)": 1,
+        "oxides.FEOT(WT%)": 1,
         "oxides.CAO(WT%)": 1,
         "oxides.AL2O3(WT%)": 1,
         "oxides.TIO2(WT%)": 1
