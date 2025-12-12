@@ -87,14 +87,21 @@ async def get_samples(
             if min_lat >= max_lat:
                 raise HTTPException(status_code=400, detail="min_lat must be less than max_lat")
             
-            # MongoDB geospatial query using $geoWithin and $box
+            # MongoDB geospatial query using $geoIntersects with $geometry (Polygon)
+            # $geoIntersects uses the 2dsphere index efficiently (unlike $geoWithin)
             # Note: MongoDB uses [longitude, latitude] order
             query["geometry"] = {
-                "$geoWithin": {
-                    "$box": [
-                        [min_lon, min_lat],  # Southwest corner
-                        [max_lon, max_lat]   # Northeast corner
-                    ]
+                "$geoIntersects": {
+                    "$geometry": {
+                        "type": "Polygon",
+                        "coordinates": [[
+                            [min_lon, min_lat],  # Southwest corner
+                            [max_lon, min_lat],  # Southeast corner
+                            [max_lon, max_lat],  # Northeast corner
+                            [min_lon, max_lat],  # Northwest corner
+                            [min_lon, min_lat]   # Close the polygon
+                        ]]
+                    }
                 }
             }
         except ValueError as e:
@@ -104,23 +111,30 @@ async def get_samples(
             )
     
     # Project only necessary fields for performance
+    # Minimize data transfer by excluding large nested objects unless specifically needed
     projection = {
         "_id": 1,
         "sample_id": 1,
-        "sample_code": 1,
         "rock_type": 1,
         "db": 1,
         "geometry": 1,
-        "oxides": 1,
         "tectonic_setting": 1,
-        "references": 1,
-        "geographic_location": 1,
         "material": 1,
-        "matching_metadata": 1
+        "matching_metadata.volcano_number": 1,
+        # Include key oxides for TAS/AFM plots (only what's needed)
+        "oxides.SIO2(WT%)": 1,
+        "oxides.NA2O(WT%)": 1,
+        "oxides.K2O(WT%)": 1,
+        "oxides.MGO(WT%)": 1,
+        "oxides.FE2O3(WT%)": 1,
+        "oxides.CAO(WT%)": 1,
+        "oxides.AL2O3(WT%)": 1,
+        "oxides.TIO2(WT%)": 1
     }
     
     # Build query with limit and offset
-    cursor = db.samples.find(query, projection).limit(limit)
+    # Use larger batch size (10000) to reduce network round-trips to MongoDB Atlas
+    cursor = db.samples.find(query, projection).limit(limit).batch_size(10000)
     if offset > 0:
         cursor = cursor.skip(offset)
     
