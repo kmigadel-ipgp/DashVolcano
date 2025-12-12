@@ -185,8 +185,150 @@ export const RockTypeDistributionChart: React.FC<RockTypeDistributionChartProps>
           </tbody>
         </table>
       </div>
+
+      {/* Comparison Insights */}
+      {volcanoes.length >= 2 && (
+        <div className="mt-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6">
+          <h3 className="text-xl font-semibold mb-4">📊 Comparison Insights</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Similarity Score */}
+            <div className="bg-white rounded-lg p-4 shadow">
+              <p className="text-sm text-gray-600 mb-1">Similarity Score</p>
+              <p className="text-lg font-bold text-purple-600">
+                {getRockTypeSimilarity(volcanoStats)}%
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Distribution overlap</p>
+            </div>
+
+            {/* Most Diverse */}
+            <div className="bg-white rounded-lg p-4 shadow">
+              <p className="text-sm text-gray-600 mb-1">Most Diverse</p>
+              <p className="text-lg font-bold" style={{ color: getMostDiverseColor(volcanoStats) }}>
+                {getMostDiverseVolcano(volcanoStats)}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Unique rock types</p>
+            </div>
+
+            {/* Dominant Rock Type */}
+            <div className="bg-white rounded-lg p-4 shadow">
+              <p className="text-sm text-gray-600 mb-1">Common Rock Type</p>
+              <p className="text-lg font-bold text-orange-600">
+                {getCommonDominantRockType(volcanoStats)}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Most frequent overall</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });
 
 export default RockTypeDistributionChart;
+
+// Helper Functions for Comparison Insights
+
+function getRockTypeSimilarity(volcanoStats: Array<{ volcanoName: string; total: number; percentages: Record<string, { count: number; percentage: number }> }>): number {
+  if (volcanoStats.length < 2) return 0;
+
+  // For simplicity, compare first two volcanoes
+  const v1 = volcanoStats[0];
+  const v2 = volcanoStats[1];
+
+  // Collect all rock types from both volcanoes
+  const allRockTypes = new Set([
+    ...Object.keys(v1.percentages),
+    ...Object.keys(v2.percentages)
+  ]);
+
+  if (allRockTypes.size === 0) return 0;
+
+  let weightedSimilarity = 0;
+  let totalWeight = 0;
+
+  for (const rockType of allRockTypes) {
+    const pct1 = v1.percentages[rockType]?.percentage || 0;
+    const pct2 = v2.percentages[rockType]?.percentage || 0;
+
+    // Calculate local similarity (100% = identical, 0% = max difference)
+    const localSimilarity = 100 - Math.abs(pct1 - pct2);
+
+    // Weight by the combined count of this rock type
+    const count1 = v1.percentages[rockType]?.count || 0;
+    const count2 = v2.percentages[rockType]?.count || 0;
+    const weight = count1 + count2;
+
+    weightedSimilarity += localSimilarity * weight;
+    totalWeight += weight;
+  }
+
+  return totalWeight === 0 ? 0 : Math.round(weightedSimilarity / totalWeight);
+}
+
+function getMostDiverseVolcano(volcanoStats: Array<{ volcanoName: string; rockTypes: Record<string, number>; color: string }>): string {
+  if (volcanoStats.length === 0) return 'None';
+
+  let maxDiversity = 0;
+  let mostDiverse = volcanoStats[0].volcanoName;
+
+  for (const volcano of volcanoStats) {
+    const diversity = Object.keys(volcano.rockTypes).length;
+    if (diversity > maxDiversity) {
+      maxDiversity = diversity;
+      mostDiverse = volcano.volcanoName;
+    }
+  }
+
+  return `${mostDiverse} (${maxDiversity} types)`;
+}
+
+function getMostDiverseColor(volcanoStats: Array<{ volcanoName: string; rockTypes: Record<string, number>; color: string }>): string {
+  if (volcanoStats.length === 0) return '#6B7280';
+
+  let maxDiversity = 0;
+  let color = volcanoStats[0].color;
+
+  for (const volcano of volcanoStats) {
+    const diversity = Object.keys(volcano.rockTypes).length;
+    if (diversity > maxDiversity) {
+      maxDiversity = diversity;
+      color = volcano.color;
+    }
+  }
+
+  return color;
+}
+
+function getCommonDominantRockType(volcanoStats: Array<{ volcanoName: string; rockTypes: Record<string, number>; total: number; percentages: Record<string, { count: number; percentage: number }> }>): string {
+  // Find rock type with highest combined dominance score (product of percentages)
+  // This identifies rock types that are dominant across multiple volcanoes
+  
+  if (volcanoStats.length === 0) return 'None';
+
+  // Collect all unique rock types
+  const allRockTypes = new Set<string>();
+  volcanoStats.forEach(v => {
+    Object.keys(v.percentages).forEach(rt => allRockTypes.add(rt));
+  });
+
+  if (allRockTypes.size === 0) return 'None';
+
+  let maxScore = 0;
+  let dominantType = 'None';
+
+  for (const rockType of allRockTypes) {
+    // Calculate score as product of percentages across all volcanoes
+    let score = 1;
+    for (const volcano of volcanoStats) {
+      const percentage = volcano.percentages[rockType]?.percentage || 0;
+      score *= percentage;
+    }
+
+    if (score > maxScore) {
+      maxScore = score;
+      dominantType = rockType;
+    }
+  }
+
+  return dominantType;
+}
