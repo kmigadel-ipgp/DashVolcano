@@ -1,10 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Filter as FilterIcon } from 'lucide-react';
 import { VolcanoMap, LayerControls, ViewportControls, SampleDetailsPanel, SummaryStats, ChartPanel, SelectionOverlay } from '../components/Map';
 import { BboxSearchWidget } from '../components/Map/BboxSearchWidget';
 import { FilterPanel } from '../components/Filters';
 import { SelectionToolbar } from '../components/Selection';
-import { useSamples } from '../hooks/useSamples';
 import { useVolcanoes } from '../hooks/useVolcanoes';
 import { useTectonic } from '../hooks/useTectonic';
 import { useSelectionStore } from '../store';
@@ -13,6 +12,7 @@ import { ErrorMessage } from '../components/Common/ErrorMessage';
 import { exportSamplesToCSV } from '../utils/csvExport';
 import { useKeyboardShortcuts, commonShortcuts } from '../hooks/useKeyboardShortcuts';
 import { formatBboxForAPI } from '../hooks/useBboxDraw';
+import { fetchSamples } from '../api/samples';
 import type { Volcano, Sample, SampleFilters, VolcanoFilters, BBox } from '../types';
 
 const INITIAL_VIEWPORT = {
@@ -36,6 +36,12 @@ const MapPage = () => {
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const [hasAppliedFilters, setHasAppliedFilters] = useState(false); // Track if user has applied any filters
   const [showNoSamplesMessage, setShowNoSamplesMessage] = useState(true); // Control visibility of "No Samples" popup
+  
+  // Separate state for volcano samples and bbox samples (for OR logic)
+  const [volcanoSamples, setVolcanoSamples] = useState<Sample[]>([]);
+  const [bboxSamples, setBboxSamples] = useState<Sample[]>([]);
+  const [loadingVolcanoSamples, setLoadingVolcanoSamples] = useState(false);
+  const [loadingBboxSamples, setLoadingBboxSamples] = useState(false);
 
   // Chart panel state
   const [chartPanelOpen, setChartPanelOpen] = useState(false);
@@ -76,38 +82,132 @@ const MapPage = () => {
   const [clickedSample, setClickedSample] = useState<Sample | null>(null);
 
   // Fetch data using custom hooks (with filters)
-  // Don't auto-fetch samples - only fetch when user applies filters or bbox
-  const { samples, loading: samplesLoading, error: samplesError, refetch: _ } = useSamples(sampleFilters, hasAppliedFilters);
   const { volcanoes, loading: volcanoesLoading, error: volcanoesError } = useVolcanoes(volcanoFilters);
   const { boundaries, loading: tectonicLoading, error: tectonicError } = useTectonic();
+  
+  // Merge volcano samples and bbox samples (OR logic)
+  const samples = useMemo(() => {
+    // If we have both, merge and deduplicate by sample _id
+    if (volcanoSamples.length > 0 && bboxSamples.length > 0) {
+      const sampleMap = new Map<string, Sample>();
+      
+      // Add volcano samples first
+      volcanoSamples.forEach(sample => {
+        if (sample._id) sampleMap.set(sample._id, sample);
+      });
+      
+      // Add bbox samples (won't overwrite duplicates)
+      bboxSamples.forEach(sample => {
+        if (sample._id && !sampleMap.has(sample._id)) {
+          sampleMap.set(sample._id, sample);
+        }
+      });
+      
+      return Array.from(sampleMap.values());
+    }
+    
+    // If only one source has samples, return that
+    if (volcanoSamples.length > 0) return volcanoSamples;
+    if (bboxSamples.length > 0) return bboxSamples;
+    
+    return [];
+  }, [volcanoSamples, bboxSamples]);
+  
+  const samplesLoading = loadingVolcanoSamples || loadingBboxSamples;
+  const samplesError = null; // We'll handle errors separately for each fetch
 
   // Convert boundaries response to array
   const tectonicBoundaries = boundaries?.features || [];
 
-  // Zoom to selected volcano when volcano_name filter is applied
+  // Fetch samples for selected volcano
   useEffect(() => {
-    if (volcanoFilters.volcano_name && volcanoes && volcanoes.length > 0) {
-      const selectedVolcano = volcanoes.find(v => v.volcano_name === volcanoFilters.volcano_name);
-      if (selectedVolcano?.geometry?.coordinates) {
-        const [longitude, latitude] = selectedVolcano.geometry.coordinates;
-        setViewport({
-          longitude,
-          latitude,
-          zoom: 8, // Close zoom to see volcano and samples
-        });
+    const fetchVolcanoSamples = async () => {
+      if (volcanoFilters.volcano_name && volcanoes && volcanoes.length > 0) {
+        const selectedVolcano = volcanoes.find(v => v.volcano_name === volcanoFilters.volcano_name);
+        
+        if (selectedVolcano) {
+          // Zoom to volcano
+          if (selectedVolcano.geometry?.coordinates) {
+            const [longitude, latitude] = selectedVolcano.geometry.coordinates;
+            setViewport({
+              longitude,
+              latitude,
+              zoom: 8, // Close zoom to see volcano and samples
+            });
+          }
+          
+          // Fetch samples for this volcano
+          if (selectedVolcano.volcano_number) {
+            setLoadingVolcanoSamples(true);
+            setHasAppliedFilters(true);
+            
+            try {
+              const response = await fetchSamples({
+                volcano_number: selectedVolcano.volcano_number,
+                limit: 10000
+              });
+              setVolcanoSamples(response.data);
+            } catch (error) {
+              console.error('Error fetching volcano samples:', error);
+              setVolcanoSamples([]);
+            } finally {
+              setLoadingVolcanoSamples(false);
+            }
+          }
+        }
+      } else {
+        // Clear volcano samples if no volcano selected
+        setVolcanoSamples([]);
       }
-    }
+    };
+    
+    fetchVolcanoSamples();
   }, [volcanoFilters.volcano_name, volcanoes]);
 
+  // Fetch samples within bbox
+  useEffect(() => {
+    const fetchBboxSamples = async () => {
+      if (currentBbox) {
+        setLoadingBboxSamples(true);
+        setHasAppliedFilters(true);
+        
+        try {
+          const bboxString = formatBboxForAPI(currentBbox);
+          const response = await fetchSamples({
+            bbox: bboxString,
+            limit: 10000
+          });
+          setBboxSamples(response.data);
+        } catch (error) {
+          console.error('Error fetching bbox samples:', error);
+          setBboxSamples([]);
+        } finally {
+          setLoadingBboxSamples(false);
+        }
+      } else {
+        // Clear bbox samples if no bbox selected
+        setBboxSamples([]);
+      }
+    };
+    
+    fetchBboxSamples();
+  }, [currentBbox]);
+  
   // Detect when user applies filters from FilterPanel (excluding just limit changes)
+  // Also detect when filters are CLEARED (empty object) to prevent unnecessary fetches
   useEffect(() => {
     const hasNonLimitFilters = Object.keys(sampleFilters).some(
-      key => key !== 'limit' && key !== 'offset'
+      key => key !== 'limit' && key !== 'offset' && key !== 'bbox' && key !== 'volcano_number'
     );
+    
     if (hasNonLimitFilters && !hasAppliedFilters) {
+      // User applied filters - allow fetching
       setHasAppliedFilters(true);
+    } else if (!hasNonLimitFilters && hasAppliedFilters && !currentBbox && !volcanoFilters.volcano_name) {
+      // Filters were cleared AND no bbox/volcano - prevent fetching
+      setHasAppliedFilters(false);
     }
-  }, [sampleFilters, hasAppliedFilters]);
+  }, [sampleFilters, hasAppliedFilters, currentBbox, volcanoFilters.volcano_name]);
 
   // Loading state
   const isLoading = samplesLoading || volcanoesLoading || tectonicLoading;
@@ -212,10 +312,7 @@ const MapPage = () => {
       // Validate minimum size (at least 0.1 degrees)
       if (Math.abs(maxLon - minLon) > 0.1 && Math.abs(maxLat - minLat) > 0.1) {
         const newBbox: BBox = { minLon, minLat, maxLon, maxLat };
-        setCurrentBbox(newBbox);
-        const bboxString = formatBboxForAPI(newBbox);
-        setSampleFilters(prev => ({ ...prev, bbox: bboxString, limit: 10000 }));
-        setHasAppliedFilters(true); // Mark that filters have been applied
+        setCurrentBbox(newBbox); // This will trigger bbox sample fetch via useEffect
       }
 
       // Reset drawing state
@@ -236,27 +333,14 @@ const MapPage = () => {
   };
 
   const handleSetPresetRegion = (bbox: BBox) => {
-    setCurrentBbox(bbox);
-    // Update filters with bbox
-    const bboxString = formatBboxForAPI(bbox);
-    setSampleFilters(prev => ({ ...prev, bbox: bboxString, limit: 10000 }));
-    setHasAppliedFilters(true); // Mark that filters have been applied
+    setCurrentBbox(bbox); // This will trigger bbox sample fetch via useEffect
   };
 
   const handleClearBbox = () => {
-    setCurrentBbox(null);
+    setCurrentBbox(null); // This will clear bbox samples via useEffect
     setIsDrawingBbox(false);
     setDrawingStart(null);
     setDrawingCurrent(null);
-    // Remove bbox from filters
-    setSampleFilters(prev => {
-      const { bbox, ...rest } = prev;
-      return rest;
-    });
-    // If no other filters remain, mark as no filters applied
-    if (Object.keys(sampleFilters).length <= 1) {
-      setHasAppliedFilters(false);
-    }
   };
 
   // Calculate drawing rectangle for visualization

@@ -199,6 +199,7 @@ export const VolcanoMap: React.FC<MapProps> = ({
       getPosition: (d: Sample) => d.geometry.coordinates,
       getRadius: 3000, // 3km radius points
       getFillColor: (d: Sample) => {
+        console.log(selectedVolcanoName, d)
         // Highlight samples from the selected volcano with orange color
         if (selectedVolcanoName && d.matching_metadata?.volcano_name === selectedVolcanoName) {
           return [255, 140, 0, 200]; // Orange with higher opacity for selected volcano

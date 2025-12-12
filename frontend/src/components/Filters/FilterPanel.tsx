@@ -113,8 +113,16 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
       processedSampleFilters.rock_type = processedSampleFilters.rock_type.join(',');
     }
     
+    // Process volcano filters - convert arrays to comma-separated strings
+    const processedVolcanoFilters = { ...localVolcanoFilters };
+    
+    // Convert tectonic_setting array to comma-separated string
+    if (Array.isArray(processedVolcanoFilters.tectonic_setting)) {
+      processedVolcanoFilters.tectonic_setting = processedVolcanoFilters.tectonic_setting.join(',');
+    }
+    
     onSampleFiltersChange(processedSampleFilters);
-    onVolcanoFiltersChange(localVolcanoFilters);
+    onVolcanoFiltersChange(processedVolcanoFilters);
   }, [localSampleFilters, localVolcanoFilters, onSampleFiltersChange, onVolcanoFiltersChange]);
 
   /**

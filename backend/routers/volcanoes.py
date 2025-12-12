@@ -19,22 +19,51 @@ cache_lock = threading.Lock()
 @router.get("/summary")
 async def get_volcanoes_summary(
     db: Database = Depends(get_database),
+    country: Optional[str] = Query(None, description="Filter by country"),
+    region: Optional[str] = Query(None, description="Filter by region"),
+    tectonic_setting: Optional[str] = Query(None, description="Filter by tectonic setting (comma-separated for multiple)"),
+    volcano_name: Optional[str] = Query(None, description="Filter by volcano name (partial match)"),
     limit: int = Query(1000, le=10000),
     offset: int = Query(0, ge=0)
 ):
     """
     Lightweight summary endpoint returning minimal fields for map/list views.
     Used by frontend for volcano selection and map display.
+    Supports filtering by country, region, tectonic_setting, and volcano_name.
     """
+    # Build query filter
+    query = {}
+    
+    if country:
+        query["country"] = country
+    
+    if region:
+        query["region"] = region
+    
+    if tectonic_setting:
+        # Support comma-separated values for multiple tectonic settings
+        settings = [s.strip() for s in tectonic_setting.split(',')]
+        if len(settings) == 1:
+            query["tectonic_setting"] = settings[0]
+        else:
+            query["tectonic_setting"] = {"$in": settings}
+    
+    if volcano_name:
+        # Partial match with case-insensitive search
+        query["volcano_name"] = {"$regex": volcano_name, "$options": "i"}
+    
     projection = {
         "_id": 1,
         "volcano_number": 1,
         "volcano_name": 1,
         "country": 1,
+        "tectonic_setting": 1,
+        "region": 1,
+        "primary_volcano_type": 1,
         "geometry": 1,
     }
 
-    cursor = db.volcanoes.find({}, projection).limit(limit).skip(offset).batch_size(1000)
+    cursor = db.volcanoes.find(query, projection).limit(limit).skip(offset).batch_size(1000)
     volcanoes = []
     for v in cursor:
         if "_id" in v:
