@@ -42,6 +42,8 @@ const MapPage = () => {
   const [bboxSamples, setBboxSamples] = useState<Sample[]>([]);
   const [loadingVolcanoSamples, setLoadingVolcanoSamples] = useState(false);
   const [loadingBboxSamples, setLoadingBboxSamples] = useState(false);
+  const [volcanoSamplesError, setVolcanoSamplesError] = useState<string | null>(null);
+  const [bboxSamplesError, setBboxSamplesError] = useState<string | null>(null);
 
   // Chart panel state
   const [chartPanelOpen, setChartPanelOpen] = useState(false);
@@ -140,6 +142,7 @@ const MapPage = () => {
           if (selectedVolcano.volcano_number) {
             setLoadingVolcanoSamples(true);
             setHasAppliedFilters(true);
+            setVolcanoSamplesError(null); // Clear previous errors
             
             try {
               // Combine volcano_number with sampleFilters (database, rock_type, tectonic_setting, SiO2)
@@ -149,8 +152,11 @@ const MapPage = () => {
                 ...sampleFilters, // Include all sample filters (database, rock_type, tectonic_setting, min_sio2, max_sio2)
               });
               setVolcanoSamples(response.data);
-            } catch (error) {
+              setVolcanoSamplesError(null);
+            } catch (error: any) {
               console.error('Error fetching volcano samples:', error);
+              const errorMessage = error.response?.data?.detail || error.message || 'Failed to fetch volcano samples';
+              setVolcanoSamplesError(errorMessage);
               setVolcanoSamples([]);
             } finally {
               setLoadingVolcanoSamples(false);
@@ -160,6 +166,7 @@ const MapPage = () => {
       } else {
         // Clear volcano samples if no volcano selected
         setVolcanoSamples([]);
+        setVolcanoSamplesError(null);
       }
     };
     
@@ -172,6 +179,7 @@ const MapPage = () => {
       if (currentBbox) {
         setLoadingBboxSamples(true);
         setHasAppliedFilters(true);
+        setBboxSamplesError(null); // Clear previous errors
         
         try {
           const bboxString = formatBboxForAPI(currentBbox);
@@ -182,8 +190,11 @@ const MapPage = () => {
             ...sampleFilters, // Include all sample filters (database, rock_type, tectonic_setting, min_sio2, max_sio2)
           });
           setBboxSamples(response.data);
-        } catch (error) {
+          setBboxSamplesError(null);
+        } catch (error: any) {
           console.error('Error fetching bbox samples:', error);
+          const errorMessage = error.response?.data?.detail || error.message || 'Failed to fetch samples in bounding box';
+          setBboxSamplesError(errorMessage);
           setBboxSamples([]);
         } finally {
           setLoadingBboxSamples(false);
@@ -191,6 +202,7 @@ const MapPage = () => {
       } else {
         // Clear bbox samples if no bbox selected
         setBboxSamples([]);
+        setBboxSamplesError(null);
       }
     };
     
@@ -215,7 +227,12 @@ const MapPage = () => {
 
   // Loading state
   const isLoading = samplesLoading || volcanoesLoading || tectonicLoading;
-  const error = samplesError || volcanoesError || tectonicError;
+  
+  // Combine all errors for display
+  const allErrors = [volcanoesError, tectonicError, volcanoSamplesError, bboxSamplesError]
+    .filter(Boolean)
+    .join(' | ');
+  const error = allErrors || null;
 
   // Handle volcano click
   const handleVolcanoClick = (volcano: Volcano) => {
