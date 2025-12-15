@@ -40,7 +40,7 @@ const TimelinePage: React.FC = () => {
   useEffect(() => {
     const loadVolcanoes = async () => {
       try {
-        const response = await fetch('/api/volcanoes/summary?limit=5000');
+        const response = await fetch('/api/volcanoes/summary');
         const data = await response.json();
         setVolcanoes(data.data || []);
         const names = (data.data as Array<{ volcano_name: string }>)
@@ -79,7 +79,7 @@ const TimelinePage: React.FC = () => {
 
         // Fetch both eruptions and sample timeline in parallel
         const [eruptionResponse, sampleTimelineData] = await Promise.all([
-          fetch(`/api/eruptions?volcano_number=${volcano.volcano_number}&limit=10000`),
+          fetch(`/api/eruptions?volcano_number=${volcano.volcano_number}`),
           fetchVolcanoSampleTimeline(volcano.volcano_number).catch(() => null) // Don't fail if no samples
         ]);
 

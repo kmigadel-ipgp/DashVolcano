@@ -68,7 +68,7 @@ async def get_volcanoes_summary(
         cursor = cursor.limit(limit)
     if offset > 0:
         cursor = cursor.skip(offset)
-    cursor = cursor.batch_size(1000)
+    cursor = cursor.batch_size(5000)
     volcanoes = []
     for v in cursor:
         if "_id" in v:
@@ -106,7 +106,7 @@ async def get_volcano_by_number(
 async def get_volcanoes_geojson(
     db: Database = Depends(get_database),
     country: Optional[str] = Query(None),
-    limit: int = Query(1000, le=10000)
+    limit: Optional[int] = Query(None, description="Maximum number of results to return (default: None = no limit)"),
 ):
     """
     Get volcanoes in GeoJSON format for map visualization
@@ -116,8 +116,10 @@ async def get_volcanoes_geojson(
     if country:
         query["country"] = country
     
-    volcanoes = list(db.volcanoes.find(query).limit(limit))
-    
+    volcanoes = db.volcanoes.find(query)
+    if limit is not None:
+        volcanoes = volcanoes.limit(limit)
+        
     features = []
     for volcano in volcanoes:
         if "geometry" in volcano:
