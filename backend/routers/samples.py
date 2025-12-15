@@ -120,7 +120,6 @@ async def get_samples(
         "geometry": 1,
         "tectonic_setting": 1,
         "material": 1,
-        "geographic_location": 1,  # Added for CSV export
         "matching_metadata.volcano_number": 1,
         "matching_metadata.volcano_name": 1,
         "matching_metadata.distance_km": 1,

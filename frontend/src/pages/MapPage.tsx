@@ -142,9 +142,11 @@ const MapPage = () => {
             setHasAppliedFilters(true);
             
             try {
+              // Combine volcano_number with sampleFilters (database, rock_type, tectonic_setting, SiO2)
               const response = await fetchSamples({
                 volcano_number: selectedVolcano.volcano_number,
-                limit: 10000
+                limit: 10000,
+                ...sampleFilters, // Include all sample filters (database, rock_type, tectonic_setting, min_sio2, max_sio2)
               });
               setVolcanoSamples(response.data);
             } catch (error) {
@@ -162,7 +164,7 @@ const MapPage = () => {
     };
     
     fetchVolcanoSamples();
-  }, [volcanoFilters.volcano_name, volcanoes]);
+  }, [volcanoFilters.volcano_name, volcanoes, sampleFilters]);
 
   // Fetch samples within bbox
   useEffect(() => {
@@ -173,9 +175,11 @@ const MapPage = () => {
         
         try {
           const bboxString = formatBboxForAPI(currentBbox);
+          // Combine bbox with sampleFilters (database, rock_type, tectonic_setting, SiO2)
           const response = await fetchSamples({
             bbox: bboxString,
-            limit: 10000
+            limit: 10000,
+            ...sampleFilters, // Include all sample filters (database, rock_type, tectonic_setting, min_sio2, max_sio2)
           });
           setBboxSamples(response.data);
         } catch (error) {
@@ -191,7 +195,7 @@ const MapPage = () => {
     };
     
     fetchBboxSamples();
-  }, [currentBbox]);
+  }, [currentBbox, sampleFilters]);
   
   // Detect when user applies filters from FilterPanel (excluding just limit changes)
   // Also detect when filters are CLEARED (empty object) to prevent unnecessary fetches

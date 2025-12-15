@@ -59,7 +59,6 @@ export const exportSamplesToCSV = (samples: Sample[], filename?: string): void =
       metadata?.volcano_name || '',
       metadata?.distance_km === undefined ? '' : metadata.distance_km.toFixed(2),
       formatConfidenceForCSV(metadata?.confidence_level), // NEW: Standardized confidence value
-      sample.geographic_location || '',
       sample.references || '',
       // Oxides
       oxides['SIO2(WT%)'] === undefined ? '' : oxides['SIO2(WT%)'].toFixed(2),

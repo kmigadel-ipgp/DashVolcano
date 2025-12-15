@@ -67,7 +67,6 @@ export interface Sample {
   sample_id: string;
   sample_code?: string; // Display-friendly sample identifier
   db: string;
-  geographic_location: string;
   material: string;
   rock_type?: string;
   tectonic_setting?: string;
