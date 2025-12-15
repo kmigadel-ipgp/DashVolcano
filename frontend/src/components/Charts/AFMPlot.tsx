@@ -100,6 +100,7 @@ export const AFMPlot: React.FC<AFMPlotProps> = React.memo(({
           rock_type: s.rock_type || 'Unknown',
           sample_code: s.sample_code || s.sample_id,
           sample_id: s.sample_id,
+          volcano_name: s.matching_metadata?.volcano_name,
           confidence: confidence,
           confidenceLabel: confidenceLabel,
         };
@@ -280,6 +281,7 @@ export const AFMPlot: React.FC<AFMPlotProps> = React.memo(({
         `FeOT: ${s.feot.toFixed(2)}%<br>` +
         `MgO: ${s.mgo.toFixed(2)}%<br>` +
         `Alkali: ${s.alkali.toFixed(2)}%<br>`+
+        `Volcano: ${s.volcano_name ? s.volcano_name : ''}<br>`+
         `Confidence: ${s.confidenceLabel}`
       ),
       hoverinfo: 'text',

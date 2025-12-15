@@ -23,7 +23,7 @@ async def get_volcanoes_summary(
     region: Optional[str] = Query(None, description="Filter by region"),
     tectonic_setting: Optional[str] = Query(None, description="Filter by tectonic setting (comma-separated for multiple)"),
     volcano_name: Optional[str] = Query(None, description="Filter by volcano name (partial match)"),
-    limit: int = Query(1000, le=10000),
+    limit: Optional[int] = Query(None, description="Maximum number of results to return (default: None = no limit)"),
     offset: int = Query(0, ge=0)
 ):
     """
@@ -63,7 +63,12 @@ async def get_volcanoes_summary(
         "geometry": 1,
     }
 
-    cursor = db.volcanoes.find(query, projection).limit(limit).skip(offset).batch_size(1000)
+    cursor = db.volcanoes.find(query, projection)
+    if limit is not None:
+        cursor = cursor.limit(limit)
+    if offset > 0:
+        cursor = cursor.skip(offset)
+    cursor = cursor.batch_size(1000)
     volcanoes = []
     for v in cursor:
         if "_id" in v:

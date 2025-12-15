@@ -25,7 +25,7 @@ async def get_samples(
         description="Bounding box as 'min_lon,min_lat,max_lon,max_lat' (e.g., '-10,35,20,60')",
         pattern=r"^-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?$"
     ),
-    limit: int = Query(10000, ge=1, le=100000, description="Maximum number of results (default: 10000, max: 100000)"),
+    limit: Optional[int] = Query(None, ge=1, le=100000, description="Maximum number of results (default: None = no limit, max: 100000)"),
     offset: int = Query(0, ge=0, description="Pagination offset")
 ):
     """
@@ -141,9 +141,12 @@ async def get_samples(
     
     # Build query with limit and offset
     # Use larger batch size (10000) to reduce network round-trips to MongoDB Atlas
-    cursor = db.samples.find(query, projection).limit(limit).batch_size(10000)
+    cursor = db.samples.find(query, projection)
+    if limit is not None:
+        cursor = cursor.limit(limit)
     if offset > 0:
         cursor = cursor.skip(offset)
+    cursor = cursor.batch_size(10000)
     
     samples = list(cursor)
     

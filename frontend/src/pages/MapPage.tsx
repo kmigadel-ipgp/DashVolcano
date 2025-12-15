@@ -32,7 +32,7 @@ const MapPage = () => {
 
   // Filter state
   const [sampleFilters, setSampleFilters] = useState<SampleFilters>({}); // Start with no filters - user must apply filters or bbox
-  const [volcanoFilters, setVolcanoFilters] = useState<VolcanoFilters>({ limit: 5000 }); // Increased default limit
+  const [volcanoFilters, setVolcanoFilters] = useState<VolcanoFilters>({}); // Increased default limit
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const [hasAppliedFilters, setHasAppliedFilters] = useState(false); // Track if user has applied any filters
   const [showNoSamplesMessage, setShowNoSamplesMessage] = useState(true); // Control visibility of "No Samples" popup
@@ -148,7 +148,6 @@ const MapPage = () => {
               // Combine volcano_number with sampleFilters (database, rock_type, tectonic_setting, SiO2)
               const response = await fetchSamples({
                 volcano_number: selectedVolcano.volcano_number,
-                limit: 10000,
                 ...sampleFilters, // Include all sample filters (database, rock_type, tectonic_setting, min_sio2, max_sio2)
               });
               setVolcanoSamples(response.data);
@@ -186,7 +185,6 @@ const MapPage = () => {
           // Combine bbox with sampleFilters (database, rock_type, tectonic_setting, SiO2)
           const response = await fetchSamples({
             bbox: bboxString,
-            limit: 10000,
             ...sampleFilters, // Include all sample filters (database, rock_type, tectonic_setting, min_sio2, max_sio2)
           });
           setBboxSamples(response.data);
