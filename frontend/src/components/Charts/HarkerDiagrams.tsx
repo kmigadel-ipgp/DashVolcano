@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Plot from 'react-plotly.js';
+import { normalizeConfidence, getConfidenceLabel } from '../../utils/confidence';
 
 interface HarkerDataPoint {
   sample_code: string;
@@ -14,6 +15,11 @@ interface HarkerDataPoint {
   'NA2O(WT%)'?: number;
   'K2O(WT%)'?: number;
   'P2O5(WT%)'?: number;
+  volcano_name?: string;
+  matching_metadata?: {
+    confidence_level?: string | number;
+  };
+  confidenceLabel?: string;
 }
 
 interface VolcanoHarkerData {
@@ -176,14 +182,20 @@ export const HarkerDiagrams: React.FC<HarkerDiagramsProps> = React.memo(({ volca
                 line: { width: 0 }           // No borders = much faster
               },
               text: validData.map((d) => d.sample_code),
-              customdata: validData.map((d) => [d.rock_type, d.material]),
+              customdata: validData.map((d) => [
+                d.rock_type, 
+                d.material,
+                d.confidenceLabel || getConfidenceLabel(normalizeConfidence(d.matching_metadata?.confidence_level)),
+                d.volcano_name || volcano.volcanoName
+              ]),
               hovertemplate:
-                `<b>${volcano.volcanoName}</b><br>` +
+                `<b>%{customdata[3]}</b><br>` +
                 `Sample: %{text}<br>` +
                 `SiO₂: %{x:.2f} wt%<br>` +
                 `${yaxis.replace(/<[^>]*>/g, '')}: %{y:.2f} wt%<br>` +
                 `Rock Type: %{customdata[0]}<br>` +
                 `Material: %{customdata[1]}<br>` +
+                `Confidence: %{customdata[2]}<br>` +
                 `<extra></extra>`
             };
           }).filter(trace => trace !== null);

@@ -120,9 +120,11 @@ async def get_samples(
         "geometry": 1,
         "tectonic_setting": 1,
         "material": 1,
+        "geographic_location": 1,  # Added for CSV export
         "matching_metadata.volcano_number": 1,
         "matching_metadata.volcano_name": 1,
         "matching_metadata.distance_km": 1,
+        "matching_metadata.confidence_level": 1,  # CRITICAL: Data quality indicator
         "references": 1,
         # Include key oxides for TAS/AFM plots (only what's needed)
         "oxides.SIO2(WT%)": 1,
@@ -133,7 +135,9 @@ async def get_samples(
         "oxides.FEOT(WT%)": 1,
         "oxides.CAO(WT%)": 1,
         "oxides.AL2O3(WT%)": 1,
-        "oxides.TIO2(WT%)": 1
+        "oxides.TIO2(WT%)": 1,
+        "oxides.P2O5(WT%)": 1,
+        "oxides.MNO(WT%)": 1
     }
     
     # Build query with limit and offset

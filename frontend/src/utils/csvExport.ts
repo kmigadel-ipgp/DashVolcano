@@ -1,5 +1,6 @@
 import type { Sample } from '../types';
 import { showSuccess, showError } from './toast';
+import { formatConfidenceForCSV } from './confidence';
 
 /**
  * Exports an array of samples to a CSV file and triggers a browser download
@@ -24,6 +25,7 @@ export const exportSamplesToCSV = (samples: Sample[], filename?: string): void =
     'Longitude',
     'Volcano Name',
     'Distance (km)',
+    'Matching Confidence',  // NEW: Confidence score for volcano-sample association
     'Location',
     'References',
     // Major oxides
@@ -31,6 +33,7 @@ export const exportSamplesToCSV = (samples: Sample[], filename?: string): void =
     'AL2O3(WT%)',
     'FEOT(WT%)',
     'MGO(WT%)',
+    'FE2O3(WT%)',
     'CAO(WT%)',
     'NA2O(WT%)',
     'K2O(WT%)',
@@ -55,6 +58,7 @@ export const exportSamplesToCSV = (samples: Sample[], filename?: string): void =
       longitude.toFixed(6),
       metadata?.volcano_name || '',
       metadata?.distance_km === undefined ? '' : metadata.distance_km.toFixed(2),
+      formatConfidenceForCSV(metadata?.confidence_level), // NEW: Standardized confidence value
       sample.geographic_location || '',
       sample.references || '',
       // Oxides
@@ -62,6 +66,7 @@ export const exportSamplesToCSV = (samples: Sample[], filename?: string): void =
       oxides['AL2O3(WT%)'] === undefined ? '' : oxides['AL2O3(WT%)'].toFixed(2),
       oxides['FEOT(WT%)'] === undefined ? '' : oxides['FEOT(WT%)'].toFixed(2),
       oxides['MGO(WT%)'] === undefined ? '' : oxides['MGO(WT%)'].toFixed(2),
+      oxides['FE2O3(WT%)'] === undefined ? '' : oxides['FE2O3(WT%)'].toFixed(2),
       oxides['CAO(WT%)'] === undefined ? '' : oxides['CAO(WT%)'].toFixed(2),
       oxides['NA2O(WT%)'] === undefined ? '' : oxides['NA2O(WT%)'].toFixed(2),
       oxides['K2O(WT%)'] === undefined ? '' : oxides['K2O(WT%)'].toFixed(2),

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Plot from 'react-plotly.js';
 import type { Sample } from '../../types';
 import { getVEIColor, getRockTypeColor } from '../../utils/colors';
+import { normalizeConfidence, getConfidenceLabel } from '../../utils/confidence';
 
 interface TASPlotProps {
   /** Array of samples to plot */
@@ -68,16 +69,24 @@ export const TASPlot: React.FC<TASPlotProps> = React.memo(({
   const prepareSampleData = () => {
     return samples
       .filter(s => s.oxides?.['SIO2(WT%)'] && s.oxides?.['NA2O(WT%)'] && s.oxides?.['K2O(WT%)'])
-      .map(s => ({
-        sio2: s.oxides!['SIO2(WT%)']!,
-        alkali: s.oxides!['NA2O(WT%)']! + s.oxides!['K2O(WT%)']!,
-        material: s.material || 'Unknown',
-        rock_type: s.rock_type || 'Unknown',
-        sample_code: s.sample_code || s.sample_id,
-        sample_id: s.sample_id,
-        vei: s.vei,
-        eruption_year: s.eruption_year,
-      }));
+      .map(s => {
+        const confidence = normalizeConfidence(s.matching_metadata?.confidence_level);
+        const confidenceLabel = getConfidenceLabel(confidence);
+                
+        return {
+          sio2: s.oxides!['SIO2(WT%)']!,
+          alkali: s.oxides!['NA2O(WT%)']! + s.oxides!['K2O(WT%)']!,
+          material: s.material || 'Unknown',
+          rock_type: s.rock_type || 'Unknown',
+          sample_code: s.sample_code || s.sample_id,
+          sample_id: s.sample_id,
+          vei: s.vei,
+          eruption_year: s.eruption_year,
+          volcano_name: s.matching_metadata?.volcano_name,
+          confidence: confidence,
+          confidenceLabel: confidenceLabel,
+        };
+      });
   };
 
   const sampleData = prepareSampleData();
@@ -177,7 +186,7 @@ export const TASPlot: React.FC<TASPlotProps> = React.memo(({
       const samples = samplesByVEI[veiLabel];
       const veiValue = veiLabel === 'Unknown VEI' ? null : parseInt(veiLabel.replace('VEI ', ''));
       const color = veiValue !== null ? getVEIColor(veiValue) : '#808080';
-      
+
       plotlyData.push({
         type: 'scatter',
         mode: 'markers',
@@ -193,7 +202,14 @@ export const TASPlot: React.FC<TASPlotProps> = React.memo(({
           color: color,
         },
         text: samples.map(s => 
-          `${s.sample_code}<br>Rock Type: ${s.rock_type}<br>Material: ${s.material}<br>SiO2: ${s.sio2.toFixed(2)}%<br>Alkali: ${s.alkali.toFixed(2)}%<br>VEI: ${s.vei !== undefined ? s.vei : 'Unknown'}${s.eruption_year ? ` (${s.eruption_year})` : ''}`
+          `${s.sample_code}<br>`+
+          `Rock Type: ${s.rock_type}<br>`+
+          `Material: ${s.material}<br>`+
+          `SiO2: ${s.sio2.toFixed(2)}%<br>`+
+          `Alkali: ${s.alkali.toFixed(2)}%<br>`+
+          `VEI: ${s.vei !== undefined ? s.vei : 'Unknown'}${s.eruption_year ? ` (${s.eruption_year})` : ''}${s.volcano_name ? `<br>`+
+          `Volcano: ${s.volcano_name}` : ''}<br>`+
+          `Confidence: ${s.confidenceLabel}`
         ),
         hoverinfo: 'text',
       });
@@ -244,7 +260,13 @@ export const TASPlot: React.FC<TASPlotProps> = React.memo(({
           color: color,
         },
         text: samples.map(s => 
-          `${s.sample_code}<br>Rock Type: ${s.rock_type}<br>Material: ${s.material}<br>SiO2: ${s.sio2.toFixed(2)}%<br>Alkali: ${s.alkali.toFixed(2)}%`
+          `${s.sample_code}<br>`+
+          `Rock Type: ${s.rock_type}<br>`+
+          `Material: ${s.material}<br>`+
+          `SiO2: ${s.sio2.toFixed(2)}%<br>`+
+          `Alkali: ${s.alkali.toFixed(2)}%${s.volcano_name ? `<br>`+
+          `Volcano: ${s.volcano_name}` : ''}<br>`+
+          `Confidence: ${s.confidenceLabel}`
         ),
         hoverinfo: 'text',
       });

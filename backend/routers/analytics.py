@@ -190,7 +190,8 @@ async def get_volcano_samples_with_vei(
                 "geometry": 1,
                 "oxides": 1,  # Preserve original MongoDB oxide field names like SIO2(WT%)
                 "vei": {"$arrayElemAt": ["$matching_eruptions.vei", 0]},
-                "eruption_year": "$eruption_date.year"
+                "eruption_year": "$eruption_date.year",
+                "matching_metadata": 1
             }
         }
     ]

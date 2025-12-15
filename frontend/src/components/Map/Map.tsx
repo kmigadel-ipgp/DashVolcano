@@ -3,6 +3,14 @@ import DeckGL from '@deck.gl/react';
 import { Map as MapboxMap } from 'react-map-gl/mapbox';
 import { ScatterplotLayer, GeoJsonLayer, IconLayer } from '@deck.gl/layers';
 import type { Sample, Volcano, TectonicBoundary } from '../../types';
+import { 
+  normalizeConfidence, 
+  getConfidenceColor, 
+  getConfidenceLabel,
+  getConfidenceDescription,
+  getConfidenceIcon,
+  type ConfidenceLevel 
+} from '../../utils/confidence';
 
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -112,7 +120,20 @@ export const VolcanoMap: React.FC<MapProps> = ({
     : internalViewState;
 
   // Hover state for tooltips
-  type HoverObject = Volcano | { type: string; volcano_name?: string; rock_name?: string; longitude?: number; latitude?: number; boundaryType?: string; tectonic_setting?: string | string[]; references?: string };
+  type HoverObject = Volcano | { 
+    type: string; 
+    volcano_name?: string; 
+    rock_name?: string; 
+    longitude?: number; 
+    latitude?: number; 
+    boundaryType?: string; 
+    tectonic_setting?: string | string[]; 
+    references?: string;
+    confidence_level?: ConfidenceLevel;
+    confidence_label?: string;
+    confidence_description?: string;
+    confidence_icon?: string;
+  };
   const [hoverInfo, setHoverInfo] = useState<{
     x: number;
     y: number;
@@ -187,8 +208,18 @@ export const VolcanoMap: React.FC<MapProps> = ({
 
   /**
    * Sample points layer for individual sample visualization and selection
-   * Displays each sample as a small semi-transparent point
-   * Highlights samples from the selected volcano with a different color
+   * 
+   * Color Priority Logic:
+   * 1. HIGHEST: Selected volcano samples → Orange fill [255, 140, 0] (always visible)
+   *    - Border/stroke shows confidence: Green (high), Amber (medium), Red (low), Gray (unknown)
+   * 2. SECONDARY: Non-selected samples use confidence-based fill color
+   *    - High: Green (reliable association)
+   *    - Medium: Amber (moderate confidence)
+   *    - Low: Red (uncertain)
+   *    - Unknown: Gray (no metadata)
+   * 
+   * This ensures users can always identify selected volcano samples (orange fill) while
+   * still seeing data quality via the colored border, even for selected samples.
    */
   const samplePointsLayer = useCallback(() => {
     if (!showSamplePoints || samples.length === 0) return null;
@@ -199,15 +230,40 @@ export const VolcanoMap: React.FC<MapProps> = ({
       getPosition: (d: Sample) => d.geometry.coordinates,
       getRadius: 3000, // 3km radius points
       getFillColor: (d: Sample) => {
-        // Highlight samples from the selected volcano with orange color
+        // PRIORITY 1: Highlight samples from the selected volcano with orange color
+        // This ALWAYS takes precedence over confidence coloring for the FILL
         if (selectedVolcanoName && d.matching_metadata?.volcano_name === selectedVolcanoName) {
           return [255, 140, 0, 200]; // Orange with higher opacity for selected volcano
         }
-        // Default blue for other samples
-        return [100, 150, 200, 100]; // Semi-transparent blue
+        
+        // PRIORITY 2: Use confidence-based coloring for non-selected samples
+        // Provides subtle data quality indication without overwhelming the visualization
+        const confidence = normalizeConfidence(d.matching_metadata?.confidence_level);
+        return getConfidenceColor(confidence);
+      },
+      // NEW: Line color (stroke/border) always shows confidence level
+      // This allows selected volcano samples to display data quality via border
+      getLineColor: (d: Sample) => {
+        const confidence = normalizeConfidence(d.matching_metadata?.confidence_level);
+        const color = getConfidenceColor(confidence);
+        // Return RGB with full opacity for visible border
+        return [color[0], color[1], color[2], 255];
+      },
+      // Enable stroke and set width
+      stroked: true,
+      lineWidthMinPixels: 1,
+      lineWidthMaxPixels: 2,
+      getLineWidth: (d: Sample) => {
+        // Thicker border for selected volcano samples to make confidence more visible
+        if (selectedVolcanoName && d.matching_metadata?.volcano_name === selectedVolcanoName) {
+          return 2;
+        }
+        return 1;
       },
       updateTriggers: {
         getFillColor: [selectedVolcanoName], // Force re-render when selected volcano changes
+        getLineColor: [selectedVolcanoName], // Update borders too
+        getLineWidth: [selectedVolcanoName],
       },
       pickable: true,
       radiusMinPixels: 2,
@@ -218,10 +274,12 @@ export const VolcanoMap: React.FC<MapProps> = ({
           onSampleClick(info.object as Sample);
         }
       },
-      // Hover interaction
+      // Hover interaction - now includes confidence information
       onHover: (info: any) => {
         if (info.object) {
           const sample = info.object as Sample;
+          const confidence = normalizeConfidence(sample.matching_metadata?.confidence_level);
+          
           setHoverInfo({
             x: info.x,
             y: info.y,
@@ -232,7 +290,11 @@ export const VolcanoMap: React.FC<MapProps> = ({
               longitude: sample.geometry.coordinates[0],
               latitude: sample.geometry.coordinates[1],
               tectonic_setting: sample.tectonic_setting,
-              references: sample.references
+              references: sample.references,
+              confidence_level: confidence,
+              confidence_label: getConfidenceLabel(confidence),
+              confidence_description: getConfidenceDescription(confidence),
+              confidence_icon: getConfidenceIcon(confidence),
             } as any,
           });
         } else {
@@ -438,8 +500,13 @@ export const VolcanoMap: React.FC<MapProps> = ({
       );
     }
 
-    // Sample tooltip
+    // Sample tooltip - now includes confidence information
     if ('type' in object && object.type === 'sample') {
+      // Get confidence color for border accent
+      const confidenceColor = object.confidence_level 
+        ? getConfidenceColor(object.confidence_level as ConfidenceLevel)
+        : [156, 163, 175, 140];
+      
       return (
         <div
           style={{
@@ -448,19 +515,54 @@ export const VolcanoMap: React.FC<MapProps> = ({
             top: y,
             pointerEvents: 'none',
             padding: '8px',
-            background: 'rgba(0, 0, 0, 0.8)',
+            background: 'rgba(0, 0, 0, 0.9)',
             color: 'white',
             borderRadius: '4px',
             fontSize: '12px',
             zIndex: 1000,
+            borderLeft: `3px solid rgba(${confidenceColor[0]}, ${confidenceColor[1]}, ${confidenceColor[2]}, ${confidenceColor[3] / 255})`,
+            minWidth: '200px',
           }}
         >
-          <div><strong>Sample</strong></div>
+          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Sample</div>
           <div>Volcano: {object.volcano_name || 'N/A'}</div>
           <div>Rock: {object.rock_name || 'N/A'}</div>
           <div>Location: {object.latitude?.toFixed(2)}°, {object.longitude?.toFixed(2)}°</div>
           <div>Tectonic Setting: {object.tectonic_setting || 'N/A'}</div>
-          <div>References: {object.references || 'N/A'}</div>
+          
+          {/* Confidence Score Section */}
+          {object.confidence_level && (
+            <>
+              <div style={{ 
+                borderTop: '1px solid rgba(255, 255, 255, 0.2)', 
+                marginTop: '6px', 
+                paddingTop: '6px' 
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '14px' }}>{object.confidence_icon}</span>
+                  <span style={{ fontWeight: 'bold' }}>{object.confidence_label}</span>
+                </div>
+                <div style={{ 
+                  fontSize: '10px', 
+                  color: 'rgba(255, 255, 255, 0.7)', 
+                  marginTop: '2px',
+                  fontStyle: 'italic' 
+                }}>
+                  {object.confidence_description}
+                </div>
+              </div>
+            </>
+          )}
+          
+          <div style={{ 
+            fontSize: '10px', 
+            color: 'rgba(255, 255, 255, 0.5)', 
+            marginTop: '4px',
+            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+            paddingTop: '4px'
+          }}>
+            References: {object.references || 'N/A'}
+          </div>
         </div>
       );
     }

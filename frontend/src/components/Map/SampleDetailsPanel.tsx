@@ -1,6 +1,13 @@
 import React from 'react';
-import { X, MapPin, Mountain, Database, Layers, FileText } from 'lucide-react';
+import { X, MapPin, Mountain, Database, Layers, FileText, CheckCircle, AlertCircle, HelpCircle, MinusCircle } from 'lucide-react';
 import type { Sample } from '../../types';
+import { 
+  normalizeConfidence, 
+  getConfidenceColorHex, 
+  getConfidenceLabel,
+  getConfidenceDescription,
+  getConfidenceIcon 
+} from '../../utils/confidence';
 
 interface SampleDetailsPanelProps {
   /** The selected sample to display */
@@ -129,6 +136,47 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
               </div>
             </div>
           )}
+
+          {/* Confidence Score Badge */}
+          {matching_metadata?.volcano_name && (() => {
+            const confidence = normalizeConfidence(matching_metadata.confidence_level);
+            const color = getConfidenceColorHex(confidence);
+            const label = getConfidenceLabel(confidence);
+            const description = getConfidenceDescription(confidence);
+            const icon = getConfidenceIcon(confidence);
+            
+            // Icon component based on confidence level
+            const ConfidenceIconComponent = confidence === 'high' ? CheckCircle :
+                                           confidence === 'medium' ? AlertCircle :
+                                           confidence === 'low' ? HelpCircle :
+                                           MinusCircle;
+            
+            return (
+              <div className="flex items-start gap-2">
+                <ConfidenceIconComponent 
+                  className="w-4 h-4 mt-0.5 flex-shrink-0" 
+                  style={{ color }}
+                />
+                <div className="flex-1">
+                  <p className="text-xs text-gray-500">Match Confidence</p>
+                  <div 
+                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium"
+                    style={{ 
+                      backgroundColor: `${color}20`,
+                      color: color,
+                      border: `1px solid ${color}40`
+                    }}
+                  >
+                    <span className="text-sm">{icon}</span>
+                    <span>{label}</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1 italic">
+                    {description}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Tectonic Setting */}
           {tectonic_setting && (

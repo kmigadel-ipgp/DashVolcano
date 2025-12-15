@@ -58,6 +58,7 @@ export interface MatchingMetadata {
   vei?: number;
   start_date?: DateInfo;
   distance_km?: number;
+  confidence_level?: string | number; // Data quality indicator: 'high', 'medium', 'low', or numeric
 }
 
 // Main entity types
