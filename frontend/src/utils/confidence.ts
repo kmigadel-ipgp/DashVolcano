@@ -24,9 +24,9 @@ export const normalizeConfidence = (
   
   const conf = String(confidence).toLowerCase().trim();
   
-  if (conf === 'high' || conf === '3') return 'high';
+  if (conf === 'high' || conf === '1') return 'high';
   if (conf === 'medium' || conf === '2') return 'medium';
-  if (conf === 'low' || conf === '1') return 'low';
+  if (conf === 'low' || conf === '3') return 'low';
   
   return 'unknown';
 };

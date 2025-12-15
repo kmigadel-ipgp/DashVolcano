@@ -26,7 +26,6 @@ export const exportSamplesToCSV = (samples: Sample[], filename?: string): void =
     'Volcano Name',
     'Distance (km)',
     'Matching Confidence',  // NEW: Confidence score for volcano-sample association
-    'Location',
     'References',
     // Major oxides
     'SIO2(WT%)',

@@ -113,7 +113,7 @@ async def get_volcano_samples_with_vei(
     """
     # Get total sample count first
     total_samples = db.samples.count_documents({
-        "matching_metadata.volcano_number": str(volcano_number)
+        "matching_metadata.volcano_number": volcano_number
     })
     
     if total_samples == 0:
@@ -143,7 +143,7 @@ async def get_volcano_samples_with_vei(
     pipeline = [
         {
             "$match": {
-                "matching_metadata.volcano_number": str(volcano_number),
+                "matching_metadata.volcano_number": volcano_number,
                 "eruption_date.year": {"$ne": None},
                 "oxides.SIO2(WT%)": {"$exists": True},
                 "oxides.NA2O(WT%)": {"$exists": True},

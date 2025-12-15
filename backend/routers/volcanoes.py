@@ -247,7 +247,7 @@ async def get_volcano_chemical_analysis(
     }
     
     samples = list(db.samples.find({
-        "matching_metadata.volcano_number": str(volcano_num)
+        "matching_metadata.volcano_number": volcano_num
     }, projection).limit(limit).batch_size(10000))
     
     if not samples:
@@ -518,7 +518,7 @@ async def get_volcano_sample_timeline(
     year_pipeline = [
         {
             "$match": {
-                "matching_metadata.volcano_number": str(volcano_num),
+                "matching_metadata.volcano_number": volcano_num,
                 "eruption_date.year": {"$ne": None, "$exists": True, "$type": "number"}
             }
         },
@@ -544,14 +544,14 @@ async def get_volcano_sample_timeline(
     
     # Get total sample count and rock type distribution (always available)
     total_samples = db.samples.count_documents({
-        "matching_metadata.volcano_number": str(volcano_num)
+        "matching_metadata.volcano_number": volcano_num
     })
     
     # Get rock type distribution
     rock_type_pipeline = [
         {
             "$match": {
-                "matching_metadata.volcano_number": str(volcano_num),
+                "matching_metadata.volcano_number": volcano_num,
                 "rock_type": {"$ne": None, "$exists": True}
             }
         },
