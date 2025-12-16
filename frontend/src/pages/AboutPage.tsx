@@ -670,6 +670,18 @@ const AboutPage = () => {
                     https://doi.org/10.5479/si.GVP.VOTW4-2013
                   </a>
                 </p>
+                <p className="text-xs italic">
+                  Global Volcanism Program, 2023. [Database] Volcanoes of the World (v. 5.1.0; 9 Jun 2023). 
+                  Distributed by Smithsonian Institution, compiled by Venzke, E.{' '}
+                  <a 
+                    href="https://doi.org/10.5479/si.GVP.VOTW5-2023.5.1"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-volcano-600 hover:underline"
+                  >
+                    https://doi.org/10.5479/si.GVP.VOTW5-2023.5.1
+                  </a>
+                </p>
               </div>
             </div>
 
