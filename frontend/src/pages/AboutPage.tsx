@@ -556,6 +556,7 @@ const AboutPage = () => {
                 <li>• Ocean Basin Flood Basalts: <a href="https://doi.org/10.25625/AVLFC2" target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:underline">10.25625/AVLFC2</a></li>
                 <li>• Ocean Island Groups: <a href="https://doi.org/10.25625/WFJZKY" target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:underline">10.25625/WFJZKY</a></li>
                 <li>• Seamounts: <a href="https://doi.org/10.25625/JUQK7N" target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:underline">10.25625/JUQK7N</a></li>
+                <li>• Inclusions: <a href="https://doi.org/10.25625/7JW6XU" target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:underline">10.25625/7JW6XU</a></li>
               </ul>
               
               <div className="bg-volcano-50 border border-volcano-200 rounded p-3">
