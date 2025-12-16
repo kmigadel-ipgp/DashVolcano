@@ -591,8 +591,8 @@ const AboutPage = () => {
               </div>
               
               <p className="mb-3">
-                <strong>PetDB</strong> (Petrological Database of the Ocean Floor) is hosted by the 
-                EarthChem Library and licensed under{' '}
+                <strong>PetDB</strong> (Petrological Database of the Ocean Floor) is hosted by the
+                EarthChem Library and licensed under{" "}
                 <a 
                   href="https://creativecommons.org/licenses/by-sa/4.0/"
                   target="_blank"
@@ -602,12 +602,27 @@ const AboutPage = () => {
                   CC BY-SA 4.0
                 </a>.
               </p>
-              
+
+              <p className="mb-3 text-sm">
+                This application uses{" "}
+                <a 
+                  href="https://earthchem.org/petdb" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-volcano-600 hover:text-volcano-700 underline"
+                >
+                  PetDB 2.0
+                </a>, accessed via the <strong> EarthChem Data Synthesis API</strong> (PetDB API v4.50, Export Service v3.0).
+                PetDB 2.0 provides modern, FAIR-compliant access to geochemical, geochronological,
+                and petrological data, enabling improved data discovery, reuse, and long-term
+                preservation.
+              </p>
+
               <div className="bg-volcano-50 border border-volcano-200 rounded p-3">
                 <p className="text-sm font-semibold mb-2">Citing PetDB:</p>
                 <p className="text-xs italic">
-                  Lehnert, K. A., et al. (2000). A Global Geochemical Database Structure for Rocks. 
-                  <em>Geochemistry, Geophysics, Geosystems</em>, 1(5).{' '}
+                  Lehnert, K. A., et al. (2000). A Global Geochemical Database Structure for Rocks.{" "}
+                  <em>Geochemistry, Geophysics, Geosystems</em>, 1(5).{" "}
                   <a 
                     href="https://doi.org/10.1029/1999GC000026"
                     target="_blank"
@@ -619,6 +634,7 @@ const AboutPage = () => {
                 </p>
               </div>
             </div>
+
             
             {/* GVP Section */}
             <div className="border border-gray-200 rounded-lg p-5 bg-gray-50">
