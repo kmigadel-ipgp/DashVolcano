@@ -175,3 +175,22 @@ export const filterSamplesByConfidence = <T extends { matching_metadata?: { conf
     return selectedLevels.includes(confidence);
   });
 };
+
+/**
+ * Calculate rock type distribution from samples
+ * Used to compute rock type counts after applying confidence filtering
+ */
+export const calculateRockTypeDistribution = <T extends { rock_type: string }>(
+  samples: T[]
+): Record<string, number> => {
+  const distribution: Record<string, number> = {};
+  
+  for (const sample of samples) {
+    const rockType = sample.rock_type;
+    if (rockType) {
+      distribution[rockType] = (distribution[rockType] || 0) + 1;
+    }
+  }
+  
+  return distribution;
+};
