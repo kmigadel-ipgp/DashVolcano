@@ -18,9 +18,24 @@ export const RockTypeBadges: React.FC<RockTypeBadgesProps> = ({
 }) => {
   if (!rockTypes || rockTypes.length === 0) {
     return (
-      <div className="text-sm text-gray-500 italic mt-2">
-        No rock type data available
+      <div className="mt-3">
+        <div className="text-xs text-gray-600 mb-1.5 font-medium">
+          GVP Major Rock Types{volcanoName ? ` - ${volcanoName}` : ''}:
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <span
+            className={`px-3 py-1 rounded-full font-medium transition-all text-white text-sm shadow-sm`}
+            style={{backgroundColor: color, opacity: '1'}}
+            title={`Primary rock type from GVP`}
+          >
+            No rock type available
+          </span>
+        
+        </div>
+      <div className="text-xs text-gray-500 mt-1.5 italic">
+        Source: Global Volcanism Program (GVP)
       </div>
+    </div>
     );
   }
 

@@ -301,7 +301,7 @@ const CompareVEIPage = () => {
                 </div>
 
                 {/* Rock Type Badges */}
-                {selection.rockTypes && selection.rockTypes.length > 0 && (
+                {selection.rockTypes && (
                   <div className="mb-6">
                     <RockTypeBadges 
                       rockTypes={selection.rockTypes}

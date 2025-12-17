@@ -8,7 +8,10 @@ import { useKeyboardShortcuts, commonShortcuts } from '../hooks/useKeyboardShort
 import { showError } from '../utils/toast';
 import { CardSkeleton, ChartSkeleton } from '../components/LoadingSkeleton';
 import { EmptyState } from '../components/EmptyState';
+import { ConfidenceFilter } from '../components/Filters';
 import type { Sample } from '../types';
+import type { ConfidenceLevel } from '../utils/confidence';
+import { filterSamplesByConfidence } from '../utils/confidence';
 
 interface ChemicalAnalysisData {
   volcano_number: number;
@@ -24,7 +27,6 @@ interface ChemicalAnalysisData {
     geometry?: { type: 'Point'; coordinates: [number, number] };
     matching_metadata?: Record<string, unknown>;
     references?: string;
-    geographic_location?: string;
     'SIO2(WT%)': number;
     'NA2O(WT%)': number;
     'K2O(WT%)': number;
@@ -46,7 +48,6 @@ interface ChemicalAnalysisData {
     geometry?: { type: 'Point'; coordinates: [number, number] };
     matching_metadata?: Record<string, unknown>;
     references?: string;
-    geographic_location?: string;
     'FEOT(WT%)': number;
     'NA2O(WT%)': number;
     'K2O(WT%)': number;
@@ -68,7 +69,6 @@ interface ChemicalAnalysisData {
     geometry?: { type: 'Point'; coordinates: [number, number] };
     matching_metadata?: Record<string, unknown>;
     references?: string;
-    geographic_location?: string;
     'SIO2(WT%)'?: number;
     'NA2O(WT%)'?: number;
     'K2O(WT%)'?: number;
@@ -88,7 +88,6 @@ interface ChemicalAnalysisData {
  */
 const transformAllSamples = (
   allSamples: ChemicalAnalysisData['all_samples'],
-  volcanoName: string
 ): Sample[] => {
   if (!allSamples) return [];
   
@@ -110,7 +109,6 @@ const transformAllSamples = (
       sample_id: sample.sample_id,
       sample_code: sample.sample_code,
       db: sample.db,
-      geographic_location: sample.geographic_location || volcanoName,
       material: sample.material,
       rock_type: sample.rock_type,
       tectonic_setting: sample.tectonic_setting,
@@ -150,7 +148,6 @@ const transformToSamples = (data: ChemicalAnalysisData): Sample[] => {
       sample_id: tas.sample_id,
       sample_code: tas.sample_code,
       db: tas.db,
-      geographic_location: tas.geographic_location || data.volcano_name,
       material: tas.material,
       rock_type: tas.rock_type,
       tectonic_setting: tas.tectonic_setting,
@@ -196,7 +193,6 @@ const transformToSamples = (data: ChemicalAnalysisData): Sample[] => {
         sample_id: afm.sample_id,
         sample_code: afm.sample_code,
         db: afm.db,
-        geographic_location: afm.geographic_location || data.volcano_name,
         material: afm.material,
         rock_type: afm.rock_type,
         tectonic_setting: afm.tectonic_setting,
@@ -237,7 +233,9 @@ const AnalyzeVolcanoPage: React.FC = () => {
   // TAS by VEI data
   const [samplesWithVEI, setSamplesWithVEI] = useState<Sample[]>([]);
   const [veiLoading, setVeiLoading] = useState(false);
-  const [veiMatchRate, setVeiMatchRate] = useState<number>(0);
+  
+  // Confidence level filter
+  const [selectedConfidenceLevels, setSelectedConfidenceLevels] = useState<ConfidenceLevel[]>(['high', 'medium', 'low', 'unknown']);
 
   // Load volcano names on mount
   useEffect(() => {
@@ -289,7 +287,7 @@ const AnalyzeVolcanoPage: React.FC = () => {
         setChemicalData(data);
         // Use all_samples if available (includes samples with incomplete oxides), otherwise use transformToSamples
         if (data.all_samples && data.all_samples.length > 0) {
-          setSamples(transformAllSamples(data.all_samples, data.volcano_name));
+          setSamples(transformAllSamples(data.all_samples));
         } else {
           setSamples(transformToSamples(data));
         }
@@ -311,7 +309,6 @@ const AnalyzeVolcanoPage: React.FC = () => {
   useEffect(() => {
     if (!selectedVolcano) {
       setSamplesWithVEI([]);
-      setVeiMatchRate(0);
       return;
     }
 
@@ -328,7 +325,6 @@ const AnalyzeVolcanoPage: React.FC = () => {
         if (response.ok) {
           const data = await response.json();
           setSamplesWithVEI(data.samples_with_vei || []);
-          setVeiMatchRate(data.match_rate || 0);
         }
       } catch (err) {
         console.error('Failed to load VEI data:', err);
@@ -352,10 +348,14 @@ const AnalyzeVolcanoPage: React.FC = () => {
     setShowSuggestions(false);
   };
 
+  // Filter samples by confidence level
+  const filteredSamples = filterSamplesByConfidence(samples, selectedConfidenceLevels);
+  const filteredSamplesWithVEI = filterSamplesByConfidence(samplesWithVEI, selectedConfidenceLevels);
+
   const handleDownloadCSV = () => {
-    if (samples.length === 0) return;
+    if (filteredSamples.length === 0) return;
     const filename = `${selectedVolcano.replaceAll(' ', '_')}_chemical_analysis.csv`;
-    exportSamplesToCSV(samples, filename);
+    exportSamplesToCSV(filteredSamples, filename);
   };
 
   // Keyboard shortcuts
@@ -416,6 +416,15 @@ const AnalyzeVolcanoPage: React.FC = () => {
             )}
           </div>
         </div>
+
+        {/* Confidence Level Filter */}
+        {selectedVolcano && !loading && samples.length > 0 && (
+          <ConfidenceFilter
+            selectedLevels={selectedConfidenceLevels}
+            onChange={setSelectedConfidenceLevels}
+            className="mb-6"
+          />
+        )}
 
         {/* Loading State */}
         {loading && (
@@ -517,7 +526,7 @@ const AnalyzeVolcanoPage: React.FC = () => {
                 </div>
                 <div className="h-[500px]">
                   <TASPlot 
-                    samples={samples}
+                    samples={filteredSamples}
                     colorBy="rock_type"
                   />
                 </div>
@@ -531,17 +540,17 @@ const AnalyzeVolcanoPage: React.FC = () => {
                 </div>
                 {veiLoading ? (
                   <ChartSkeleton height="500px" />
-                ) : samplesWithVEI.length > 0 ? (
+                ) : filteredSamplesWithVEI.length > 0 ? (
                   <>
                     <div className="h-[500px]">
                       <TASPlot 
-                        samples={samplesWithVEI}
+                        samples={filteredSamplesWithVEI}
                         colorBy="vei"
                       />
                     </div>
                     <div className="mt-3 text-sm text-gray-600 bg-blue-50 border-l-4 border-blue-400 p-3">
-                      <strong>VEI Mode:</strong> Showing {samplesWithVEI.length} samples (
-                      {(veiMatchRate * 100).toFixed(1)}%) matched with eruption VEI by year. 
+                      <strong>VEI Mode:</strong> Showing {filteredSamplesWithVEI.length} of {samplesWithVEI.length} samples (
+                      {samplesWithVEI.length > 0 ? ((filteredSamplesWithVEI.length / samplesWithVEI.length) * 100).toFixed(1) : 0}% after filtering) matched with eruption VEI by year. 
                       Samples are colored by Volcanic Explosivity Index (0-8).
                     </div>
                   </>
@@ -571,7 +580,7 @@ const AnalyzeVolcanoPage: React.FC = () => {
                   <h3 className="text-lg font-semibold text-gray-900">AFM Diagram</h3>
                 </div>
                 <div className="h-[500px]">
-                  <AFMPlot samples={samples} />
+                  <AFMPlot samples={filteredSamples} />
                 </div>
               </div>
             </div>
