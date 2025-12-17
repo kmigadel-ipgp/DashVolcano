@@ -1,210 +1,369 @@
-# DashVolcano
-This is a project about volcano data analytics, done in collaboration with the Earth Observatory of Singapore (see also <a href= https://researchdata.ntu.edu.sg/dataverse/dashvolcano> here </a>) and the Institut de Physique du Globe de Paris.
+# DashVolcano v3.0
 
-DashVolcano is an website, it creates a visual interface, to jointly display volcanic data from two major databases:
-(1) the Geochemistry of Rocks of the Oceans and  Continents (GEOROC, https://georoc.eu/georoc/new-start.asp) of the Digital Geochemistry Infrastructure (DIGIS), and 
-(2) the Volcanoes of the World (VOTW) of the Smithsonian’s Global Volcanism Program (GVP, https://volcano.si.edu/). 
+Modern web application for exploring volcanic geochemical data with interactive mapping and visualization. Built with FastAPI, React, TypeScript, and Deck.gl for high-performance data rendering.
 
-# 1. Set-up and Directory structure
+## 🚀 Quick Start
 
-To install DashVolcano on your computer, the DashVolcano repository should be downloaded from github to your computer. It contains the folders DashVolcano, GeorocGVPmapping, GeorocDataset and the files GVP_Eruption_Results.xlsx, GVP_Volcano_List.xlsx. The folder DashVolcano could be placed inside the folder Documents of your computer (we will provide an example for this case), or elsewhere (it can be placed anywhere you want, but some adjustement to the example may be needed). 
+### Prerequisites
 
-The resulting directory structure will thus be: 
+**Backend:**
+- Python 3.11+
+- MongoDB access (Atlas or local)
+- `uv` package manager (recommended) or `pip`
 
-DashVolcano, containing the 3 folders (DashVolcano, GeorocGVPmapping, GeorocDataset) and the 2 excel files (GVP_Eruption_Results.xlsx, GVP_Volcano_List.xlsx).
+**Frontend:**
+- Node.js 20.19+ (or 22.12+)
+- npm 10+
 
-**Example** The folder DashVolcano is placed inside Documents, inside which the 3 folders and the two files are found.
+**System:**
+- Modern browser (Chrome 90+, Firefox 88+, Safari 14+, Edge 90+)
 
-<img src="screenshots/ss1.png" width="500">
+---
 
-DashVolcano is written in python, you thus need python3 installed on your computer.
-DashVolcano was tested with: Python 3.8.10 on Ubuntu 20.04.4 LTS.
+## 📦 Installation
 
-## 1.1. Set-up: Linux
+### Step 1: Install `uv` (Optional but Recommended)
 
-It is suggested to set up a python virtual environment, to make sure the dependencies are consistent, and to avoid conflicting with possible other existing python set-ups. To do so, open a terminal window, and using the command line in the terminal window, go into the folder DashVolcano.1.0, using the command cd (change directory), the command works as follows, where pathto depends on where you created DashVolcano:
+`uv` is a fast Python package manager. For detailed installation guide, visit: https://docs.astral.sh/uv/getting-started/installation/
 
-> $ cd pathto/DashVolcano/DashVolcano
+**macOS and Linux:**
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
 
-**Example** In the previous example, the folder DashVolcano/DashVolcano was put inside the folder Documents, to go inside the folder DashVolcano, the command cd is used to go into Dashvolcano through Documents, then DashVolcano:
+Or with wget:
+```bash
+wget -qO- https://astral.sh/uv/install.sh | sh
+```
 
-<img src="screenshots/ss2.png" width="500">
+**Windows:**
+```bash
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
 
-Create the virtual environment: 
+### Step 2: Clone Repository
 
-> $ python3 -m venv venv
+```bash
+git clone https://github.com/kmigadel-ipgp/DashVolcano.git
+cd DashVolcano
+```
 
-**Example** From within the DashVolcano folder, create the virtual environment.
+---
 
-<img src="screenshots/ss6.png" width="500">
+## 🔧 Backend Setup
 
-If successful, you will see a new folder named venv inside the folder DashVolcano.1.0:
+### 1. Navigate to Backend Directory
 
-**Example** Checking that venv was created using the terminal window, using the command ls.
+```bash
+cd backend
+```
 
-<img src="screenshots/ss3.png" width="500">
+### 2. Install Dependencies
 
-**Example** Checking that venv was created.
+**Using uv (recommended):**
+```bash
+uv sync
+```
 
-<img src="screenshots/ss4.png" width="500">
+**Using pip:**
+```bash
+pip install -e .
+```
 
-Once the virtual python environment is created (this is done only once), it needs to be activated (this is needed every time the terminal window is opened again). This is the command, assuming you used the cd command to be inside the folder DashVolcano.1.0:
+### 3. Configure Environment
 
-> DashVolcano.1.0$ source venv/bin/activate
+Copy the example environment file and configure your MongoDB credentials:
 
-**Example** Activating the virtual environment: 
+```bash
+cp .env.example .env
+```
 
-<img src="screenshots/ss5.png" width="500">
+Edit `.env` with your MongoDB credentials:
 
+```bash
+# MongoDB Configuration
+MONGO_USER=your_mongodb_username
+MONGO_PASSWORD=your_mongodb_password
+MONGO_CLUSTER=your_cluster.mongodb.net
+MONGO_DB=dashvolcano
 
-You can tell whether the environment is activated by checking before your computer's name:
+# FastAPI Configuration
+API_HOST=0.0.0.0
+API_PORT=8000
+API_WORKERS=4
+DEBUG=true
 
-> (venv) yourname@yourcomputername: 
+# CORS Configuration
+CORS_ORIGINS=["http://localhost:5173","http://localhost:3000"]
+```
 
-**Example** The (venv) prefix shows the virtual environment is activated: 
+**⚠️ Security Note:** Access to the MongoDB database is required for the application to function. Please request authorized credentials if you need access.
 
-<img src="screenshots/ss7.png" width="500">
+### 4. Run Backend Server
 
-# 2. Installing Packages
+```bash
+# From the backend directory
+uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-The purpose of creating a virtual environment is so that you can then install specific versions of python packages, which will not interfere with other setups your computer may be using. Also python packages are often updated, and new versions may cause compatibility issues. Specific tested versions of packages will be installed in your virtual environment, to ensure the app runs smoothly.
+Or using Python directly:
+```bash
+python -m backend.main
+```
 
-To install all the python packages, from the DashVolcano folder with the virtual environment activated, execute the following command:
+### 5. Verify Backend is Running
 
-> python -m pip install -r requirements.txt
+- **Health Check:** http://localhost:8000/health
+- **API Documentation (Swagger):** http://localhost:8000/docs
+- **API Documentation (ReDoc):** http://localhost:8000/redoc
 
-If a message appears to suggest to upgrade pip, whether you do it or not should not impact the app.
+You should see:
+```json
+{
+  "status": "healthy",
+  "version": "3.0.0",
+  "service": "DashVolcano API"
+}
+```
 
-For the app to run, you need to have the GEOROC data ready, as explained next.
+---
 
+## 🎨 Frontend Setup
 
-# 3. Downloading the GVP and GEOROC datasets (need to be updated)
+### 1. Navigate to Frontend Directory
 
+```bash
+cd ../frontend
+```
 
-The GVP data is provided into two excel files: GVP_Eruption_Results.xlsx (Global Volcanism Program, 2013. Volcanoes of the World, v. 4.9.3 (1 Feb 2021 ). Venzke, E (ed.). Smithsonian Institution. Downloaded 19 October 2021), GVP_Volcano_List.xlsx (Global Volcanism Program, 2013. Volcanoes of the World, v. 4.10.3 (15 Oct 2021 ). Venzke, E (ed.). Smithsonian Institution. Downloaded 24 February 2021). There is no need to download further data. 
-This data was downloaded from https://volcano.si.edu/ in 2021. GVP data is regularly updated. It is possible to download more recent datasets to update those provided, but the filenames and type (xlsx), as well as their location in the folder structure, have to remain the same. It is also advised to download both volcano and eruption files around the same period, otherwise volcano names may be present in one file and not in the other, which will cause errors when running the app. To download the most recent datasets form GVP, select all the “evidence” criteria from the volcano query search (https://volcano.si.edu/search_volcano.cfm) and select “confirmed eruption” category from the eruption query search (https://volcano.si.edu/search_eruption.cfm).
+### 2. Install Dependencies
 
+```bash
+npm install
+```
 
-There are two possibilities for the GEOROC dataset:
+### 3. Configure Environment (Optional)
 
-**Method 1.**
-The folder GeorocDataset downloaded from github contains the GEOROC datasets, as of June 2021, where each folder is zipped (there are too many files to be stored as such on github), they need to be unzipped. 
-For more recent precompiled files, please download them directly from the Geochemistry of Rocks of the Oceans and  Continents (GEOROC, https://georoc.eu/georoc/new-start.asp) of the Digital Geochemistry Infrastructure (DIGIS).
+If your backend is running on a different host/port, create a `.env` file:
 
-**Method 2.** If you prefer to avoid unzipping the folders provided on github, it is possible to download directly the whole dataset from <a href = https://doi.org/10.21979/N9/BJENCK> here </a>, which will result in a single zipped file:
+```bash
+cp .env.example .env
+```
 
-<img src="screenshots/ss9.png" width="500">
+Edit `.env` if needed:
+```bash
+# API Configuration
+VITE_API_BASE_URL=http://localhost:8000/api
 
-The zipped file should be unzipped, this will give one txt file, called MANIFEST.TXT, and the folder GeorocDataset, which should replace the one obtained from github.
+# Mapbox Token (optional)
+# VITE_MAPBOX_TOKEN=pk.your_mapbox_token_here
+```
 
-**Example** This is what the GeorocDataset folder content should look like, irrespective of the method used: 
+**Note:** The default backend URL is `http://localhost:8000/api`, so this file is optional for local development.
 
-<img src="screenshots/ss8.png" width="500">
+### 4. Run Frontend Development Server
 
-The folder GeorocDataset contains 13 folders (12 folders from GEOROC + 1 folder called ManualDataset) and 1 .csv file called GEOROCaroundGVP.csv. The file GEOROCaroundGVP.csv contains the GEOROC locations which are geographically relevant to GVP volcanoes. 
+```bash
+npm run dev
+```
 
+The application will be available at **http://localhost:5173** with hot module replacement enabled.
 
-# 4. Running the app for the first time
+### 5. Build for Production (Optional)
 
-So you have downloaded the DashVolcano repository, set-up your python virtual environment and you have the GEOROC dataset. 
-To start the app for the first time, make sure you are within the DashVolcano folder, that your virtual environment is activated, precise if you want development or production mode and type the following command (you need the data to be available before you use the app for the first time, as explained above in, Downloading the GVP and GEOROC datasets):
+```bash
+npm run build
+```
 
-> export FLASK_ENV=development or export FLASK_ENV=production 
+Built files will be in the `dist/` folder.
 
-> python app.py
+---
 
-All required packages that are needed to run the app should have been installed. If a package is still missing, the app will not start, instead an error message will appear, giving the name of the package that is not found. In this case, just install the missing package, whose name is given in the error message, using the same synthax as explained in "Installing Packages" above.
+## 🚀 Running DashVolcano
 
+### Full Application (Both Backend and Frontend)
 
-# 5. Running the app
+**Terminal 1 - Backend:**
+```bash
+cd backend
+uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-Once the app is set up, only 3 steps are required. From inside the DashVolcano folder, activate the virtual environment, precise if you want development or production mode and launch the app.
+**Terminal 2 - Frontend:**
+```bash
+cd frontend
+npm run dev
+```
 
-> DashVolcano$ source venv/bin/activate
+**Access the Application:**
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:8000
+- API Documentation: http://localhost:8000/docs
 
-> DashVolcano$ export FLASK_ENV=development or export FLASK_ENV=production 
+---
 
-> DashVolcano$ python app.py
+## 📚 Documentation
 
-Once the app runs successfully, a message appears in the terminal window, something like
+- **[Frontend README](./frontend/README.md)** - Complete frontend setup and development guide
+- **[Backend README](./backend/README.md)** - Backend API setup and development guide
+- **[API Examples](./docs/API_EXAMPLES.md)** - Complete API reference with 40+ endpoint examples
+- **[User Guide](./docs/USER_GUIDE.md)** - Complete user workflows and feature documentation
+- **[Deployment Guide](./docs/DEPLOYMENT_GUIDE.md)** - Production deployment guide (nginx + pm2 + SSL)
+- **[Implementation Plan](./docs/DASHVOLCANO_V3_IMPLEMENTATION_PLAN.md)** - Complete development documentation
 
-> Dash is running on http://0.0.0.0:8050/
+---
+
+## 🎯 Key Features
+
+- **Interactive Map** - 60,000+ volcanic rock samples with Deck.gl WebGL rendering
+- **Chemical Classification** - TAS and AFM diagrams for geochemical analysis
+- **Volcano Comparison** - Side-by-side comparison of multiple volcanoes
+- **VEI Analysis** - Volcanic Explosivity Index distribution comparison
+- **Eruption Timeline** - Historical eruption patterns and frequency
+- **Advanced Filtering** - Filter by rock type, tectonic setting, country, volcano
+- **Selection Tools** - Click, lasso, and box selection for detailed analysis
+- **Data Export** - Download filtered samples as CSV
+- **Mobile Responsive** - Touch-friendly design for tablets and mobile devices
+- **Keyboard Shortcuts** - Ctrl+D for quick data downloads
 
-and some statistics are displayed, e.g., (the actual numbers may vary, depending on the dates at which the data was downloaded):
+---
 
-Basic Statistics <br>
-Number of GVP volcanoes:  1416 <br>
-Number of GVP eruptions (confirmed):  9855 <br>
-Number of volcanoes with known eruption(s):  861 <br>
-Number of GEOROC volcanoes:  906 <br>
-Number of GEOROC volcanoes with eruption data:  649 <br>
+## 🛠️ Technology Stack
 
+**Backend:**
+- FastAPI 0.109+ (Python web framework)
+- MongoDB 4.4+ (Database)
+- pymongo 4.6+ (Database driver)
+- uvicorn (ASGI server)
 
+**Frontend:**
+- React 19.2 (UI library)
+- TypeScript 5.9 (Type-safe JavaScript)
+- Vite 7.2 (Build tool)
+- Deck.gl 9.2 (WebGL mapping)
+- Plotly.js 3.3 (Interactive charts)
+- Zustand 5.0 (State management)
+- Tailwind CSS 3.4 (Styling)
 
-To lauch the app, write the url
+**Data Sources:**
+- GEOROC - Geochemistry of Rocks of the Oceans and Continents
+- PetDB - Petrological Database
+- GVP - Global Volcanism Program
 
-> http://localhost:8050/
+---
 
-in the browser of your choice (e.g, chrome, firefox, safari).
+## 🔍 Development
 
-# 5. Updating the data (need to be updated)
+### Backend Development
 
+**Run Tests:**
+```bash
+cd backend
+pytest
+```
 
-The instructions below are for more advanced usages of the app. You can run the app without looking at what comes next.
+**Code Formatting:**
+```bash
+black .
+ruff check .
+```
 
-**I would like to use more recent GEOROC datasets, is it possible?**
+### Frontend Development
 
-Yes it is possible. 
-Updated datasets can be downloaded directly from https://georoc.eu/georoc/new-start.asp, where they are grouped by tectonic settings. 
+**Run Linter:**
+```bash
+cd frontend
+npm run lint
+```
 
-Here is an example:
-In the folder GeorocDataset, there is a folder named Complex_Volcanic_Settings_comp. It contains the file ETNA_SICILY.csv, which is, say, the file that you would like to update. On the left menu of  https://georoc.eu/georoc/new-start.asp, choose Locations, then Complex Volcanic Settings,then Download complete precompiled dataset. You will obtain 7 files, whose names contain: CENTRAL-NEW_YORK_KIMBERLITES.csv, OAXACA_MEXICO.csv, ETNA_SICILY.csv, POTIGUAR_BASIN.csv, FINGER_LAKES_FIELD_NEW_YORK.csv, USTICA_ISLAND_ITALY.csv, HYBLEAN_OR_IBLEAN_PLATEAU_SICILY.csv. Each of these files will have a prefix, that serves as an identifier, and also contains a date, e.g. 2022-06-1VOFM5_ETNA_SICILY.csv. Just put 2022-06-1VOFM5_ETNA_SICILY.csv inside Complex_Volcanic_Settings_comp. The app will read the data by ignoring the prefix if there is only version of the file, if there are several files, the most recent should be chosen. 
+**Type Check:**
+```bash
+npx tsc --noEmit
+```
 
+**Build:**
+```bash
+npm run build
+```
 
-**I have my own datasets, I would like to add them, is it possible?**
+---
 
-Yes, it is also possible to add more samples with their rock composition, if the desired samples are not (yet) present in the GEOROC dataset. They need to be in the same format as GEOROC format, and put in the ManualDataset folder. The mapping files need to be updated correspondingly (more on this in "Georoc - GVP mapping files" below), so does the file "GEOROCaroundGVP.csv" (more on this in "The file GEOROCaroundGVP file" below). Examples are found in the ManualDataset folder.
+## 📊 Project Structure
 
-**I would like to display GEOROC data for a volcano which is not in the GVP database, is it possible?**
+```
+DashVolcano/
+├── backend/              # FastAPI backend
+│   ├── routers/         # API route handlers
+│   ├── models/          # Pydantic models
+│   ├── middleware/      # CORS, caching
+│   ├── tests/           # Backend tests
+│   └── main.py          # FastAPI app entry point
+├── frontend/            # React frontend
+│   ├── src/
+│   │   ├── pages/       # Page components
+│   │   ├── components/  # Reusable components
+│   │   ├── api/         # API client
+│   │   ├── store/       # State management
+│   │   └── utils/       # Utility functions
+│   └── dist/            # Built frontend (after npm run build)
+├── data/                # Static data (tectonic plates)
+├── docs/                # Documentation
+│   ├── API_EXAMPLES.md
+│   ├── USER_GUIDE.md
+│   ├── DEPLOYMENT_GUIDE.md
+│   └── phase*/          # Development phase reports
+└── README.md            # This file
+```
 
-Yes it is possible. You can do it by editing the mapping files manually, more below in the "GEOROC - GVP mapping files" section.
+---
 
+## 🐛 Troubleshooting
 
-**Georoc - GVP mapping files**
+### Backend Issues
 
-The mapping files are used by the app to link the GVP names with the GEOROC names. 
-The GeorocGVPMapping folder contains a .txt file for each .csv in the GeorocDataset folder. Each file is of the form
+**Backend won't start:**
+- Check MongoDB credentials in `.env`
+- Verify MongoDB connection: `mongo "your-connection-string" --eval "db.runCommand({ping:1})"`
+- Check port 8000 is not in use: `lsof -i :8000`
 
->GVP;GEOROC
+**API requests fail:**
+- Verify backend is running: http://localhost:8000/health
+- Check CORS configuration in `.env`
 
-for example, the file ETNA_SICILY.txt contains
+### Frontend Issues
 
->GVP;GEOROC
-Etna;ETNA
+**Frontend won't start:**
+- Clear node_modules: `rm -rf node_modules package-lock.json && npm install`
+- Check Node.js version: `node --version` (should be 20.19+)
 
-The first column contains names of GVP volcanoes, the second column contains GEOROC names. More precisely, the GVP name is the name that can be found in the column 'Volcano Name' of the GVP_Volcano_List.xlsx, the second column contains names that appear in the LOCATION or LOCATION column of a precompiled file downloaded from GEOROC. It has to be the same name as that found in between two / / for the LOCATION COLUMN, or the first name before the first comma (if any) in the LOCATION COMMENT.
+**Map not rendering:**
+- Check backend API is accessible
+- Verify browser supports WebGL: https://get.webgl.org/
 
-Here is a more complex example from the file ANATOLIA-IRAN_BELT_-_CENOZOIC_QUATERNARY.txt.
+**API requests fail:**
+- Ensure backend is running on http://localhost:8000
+- Check `.env` file if backend is on different host
 
->Samsari Volcanic Center;SAMSARI CALDERA,SAMSARI VOLCANIC CHAIN
+---
 
-Note there is no space before and after the GVP names, or the GEOROC names.
+## 📄 License
 
-These mapping files have been compiled algorithmically, with manual checks, but these checks are not exhaustive. There are more than 480 .csv files of data, the longitude and latitude ranges come with different levels of precision, and the location names may not always contain the volcano name itself. It is possible to simply append more GEOROC location names if a mapping file is not complete (and similarly to remove possibly inaccurate data).
+Same as parent project.
 
-Say you would like to see the GEOROC data for Bayah Dome, which is not in the list of GVP volcanoes, but you have spotted samples for BAYAH DOME in the GEOROC file named SUNDAR_ARC.csv. Then you can just manually edit the file SUNDA_ARC.txt (it is important to edit the .txt file corresponding to the .csv file in which you saw the data), and add the line
-Bayah Dome;BAYAH DOME
+---
 
-Of course no GVP data will be shown for this volcano, since the name "Baya Dome" is not present in the GVP list of volcanoes, but the GEOROC data will be shown.
+## 🤝 Contributing
 
-If you have added data manually in the folder ManualDataset, you need to have updated mapping files. For each new .csv file that you add inside the folder ManualDataset inside GeorocDataset, you need to create a corresponding .txt file inside the folder ManualDataset inside GeorocGVPmapping.
+DashVolcano v3.0 is an internal IPGP project. For questions or contributions, contact the development team.
 
+---
 
-**The GEOROCaroundGVP file**
+## 🎉 Status
 
-This file contains a list of GVP volcano names, and for each, it contains sample names from GEOROC that are relevant to the GVP volcanoes. It is used to display the map. If you have edited the Georoc-GVP mapping files, you may want to see an updated map.
+**Version:** 3.0.0  
+**Status:** ✅ Production Ready  
+**Last Updated:** December 10, 2025
 
-If the file is missing, the app will detect it, and recompute it (however this may take a while depending on the computational power of the computer used). This mechanism ensures that if new data is added, the file can be easily updated by simply removing it from its folder, after which the app will compute an updated version.
+All development phases complete. Application is ready for production deployment.
 
-
-
+For deployment instructions, see [DEPLOYMENT_GUIDE.md](./docs/DEPLOYMENT_GUIDE.md).

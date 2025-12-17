@@ -1,0 +1,19 @@
+{
+  "name": "dashvolcano",
+  "version": "1.0.0",
+  "description": "Modern web application for exploring volcanic geochemical data with interactive mapping and visualization. Built with FastAPI, React, TypeScript, and Deck.gl for high-performance data rendering.",
+  "main": "ecosystem.config.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "nodemailer": "^7.0.11"
+  }
+}
