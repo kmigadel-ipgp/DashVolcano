@@ -541,7 +541,7 @@ const AboutPage = () => {
               </p>
               
               <p className="mb-3 text-sm">
-                Data were downloaded from the GEOROC database on <strong>June 2023</strong>, using 
+                Data were downloaded from the GEOROC database on <strong>December 2025</strong>, using 
                 precompiled files corresponding to the following tectonic/geologic settings (with DOIs):
               </p>
               
@@ -655,6 +655,21 @@ const AboutPage = () => {
                 The <strong>Global Volcanism Program</strong> maintains comprehensive records of volcanic 
                 eruptions and volcano information worldwide.
               </p>
+
+              <p className="mb-3 text-sm text-gray-700">
+                Volcano and eruption data are retrieved programmatically using the{' '}
+                <a
+                  href="https://webservices.volcano.si.edu/geoserver/web/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-volcano-600 hover:text-volcano-700 underline"
+                >
+                  OGC Web Feature Service (WFS) 2.0.0
+                </a> endpoints provided by GVP and powered 
+                by GeoServer. This service allows direct access to authoritative volcano and eruption 
+                datasets in standard geospatial formats (CSV, GeoJSON, GML), ensuring transparent and 
+                reproducible data access.
+              </p>
               
               <div className="bg-volcano-50 border border-volcano-200 rounded p-3">
                 <p className="text-sm font-semibold mb-2">Citing GVP:</p>
@@ -671,19 +686,20 @@ const AboutPage = () => {
                   </a>
                 </p>
                 <p className="text-xs italic">
-                  Global Volcanism Program, 2023. [Database] Volcanoes of the World (v. 5.1.0; 9 Jun 2023). 
+                  Global Volcanism Program, 2025. [Database] Volcanoes of the World (v. 5.3.3; 26 Nov 2025). 
                   Distributed by Smithsonian Institution, compiled by Venzke, E.{' '}
                   <a 
-                    href="https://doi.org/10.5479/si.GVP.VOTW5-2023.5.1"
+                    href="https://doi.org/10.5479/si.GVP.VOTW5-2025.5.3"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-volcano-600 hover:underline"
                   >
-                    https://doi.org/10.5479/si.GVP.VOTW5-2023.5.1
+                    https://doi.org/10.5479/si.GVP.VOTW5-2025.5.3
                   </a>
                 </p>
               </div>
             </div>
+
 
             <p className="text-sm text-gray-600 mt-4">
               For questions, collaboration opportunities, or technical support, please contact us through 
