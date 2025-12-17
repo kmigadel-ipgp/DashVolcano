@@ -12,7 +12,7 @@ import { EmptyState } from '../components/EmptyState';
 import { ConfidenceFilter } from '../components/Filters';
 import type { Sample } from '../types';
 import type { ConfidenceLevel } from '../utils/confidence';
-import { filterSamplesByConfidence } from '../utils/confidence';
+import { filterSamplesByConfidence, calculateRockTypeDistribution } from '../utils/confidence';
 
 interface ChemicalAnalysisData {
   volcano_number: number;
@@ -375,13 +375,18 @@ const CompareVolcanoesPage: React.FC = () => {
   // Memoize expensive chart data preparations to prevent unnecessary re-renders
   const rockTypeChartData = useMemo(() => {
     return selections
-      .filter((v: VolcanoSelection) => v.data?.rock_types && Object.keys(v.data.rock_types).length > 0)
-      .map((v: VolcanoSelection, idx: number) => ({
-        volcanoName: v.name,
-        rockTypes: v.data!.rock_types,
-        color: VOLCANO_COLORS[idx]
-      }));
-  }, [selections]);
+      .filter((v: VolcanoSelection) => v.samples && v.samples.length > 0)
+      .map((v: VolcanoSelection, idx: number) => {
+        const filteredSamples = filterSamplesByConfidence(v.samples, selectedConfidenceLevels);
+        const rockTypes = calculateRockTypeDistribution(filteredSamples);
+        return {
+          volcanoName: v.name,
+          rockTypes,
+          color: VOLCANO_COLORS[idx]
+        };
+      })
+      .filter(v => Object.keys(v.rockTypes).length > 0);
+  }, [selections, selectedConfidenceLevels]);
 
   const harkerChartData = useMemo(() => {
     return selections
@@ -508,28 +513,42 @@ const CompareVolcanoesPage: React.FC = () => {
                 <div className="mt-4 text-sm text-red-600">{selection.error}</div>
               )}
 
-              {selection.data && (
-                <div className="mt-4 grid grid-cols-3 gap-3">
-                  <div className="bg-gray-50 rounded p-2">
-                    <p className="text-xs text-gray-600">Samples</p>
-                    <p className="text-lg font-bold" style={{ color: VOLCANO_COLORS[index] }}>
-                      {selection.data.samples_count}
-                    </p>
+              {selection.data && (() => {
+                const filteredSamples = filterSamplesByConfidence(selection.samples, selectedConfidenceLevels);
+                const tasCount = filteredSamples.filter(s => s.oxides?.['SIO2(WT%)'] && s.oxides?.['NA2O(WT%)'] && s.oxides?.['K2O(WT%)']).length;
+                const afmCount = filteredSamples.filter(s => s.oxides?.['FEOT(WT%)'] && s.oxides?.['MGO(WT%)'] && s.oxides?.['NA2O(WT%)'] && s.oxides?.['K2O(WT%)']).length;
+                return (
+                  <div className="mt-4 grid grid-cols-3 gap-3">
+                    <div className="bg-gray-50 rounded p-2">
+                      <p className="text-xs text-gray-600">Samples</p>
+                      <p className="text-lg font-bold" style={{ color: VOLCANO_COLORS[index] }}>
+                        {filteredSamples.length}
+                      </p>
+                      {filteredSamples.length < selection.samples.length && (
+                        <p className="text-xs text-gray-500">of {selection.samples.length}</p>
+                      )}
+                    </div>
+                    <div className="bg-gray-50 rounded p-2">
+                      <p className="text-xs text-gray-600">TAS Points</p>
+                      <p className="text-lg font-bold" style={{ color: VOLCANO_COLORS[index] }}>
+                        {tasCount}
+                      </p>
+                      {filteredSamples.length < selection.samples.length && (
+                        <p className="text-xs text-gray-500">of {selection.data.tas_data.length}</p>
+                      )}
+                    </div>
+                    <div className="bg-gray-50 rounded p-2">
+                      <p className="text-xs text-gray-600">AFM Points</p>
+                      <p className="text-lg font-bold" style={{ color: VOLCANO_COLORS[index] }}>
+                        {afmCount}
+                      </p>
+                      {filteredSamples.length < selection.samples.length && (
+                        <p className="text-xs text-gray-500">of {selection.data.afm_data.length}</p>
+                      )}
+                    </div>
                   </div>
-                  <div className="bg-gray-50 rounded p-2">
-                    <p className="text-xs text-gray-600">TAS Points</p>
-                    <p className="text-lg font-bold" style={{ color: VOLCANO_COLORS[index] }}>
-                      {selection.data.tas_data.length}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50 rounded p-2">
-                    <p className="text-xs text-gray-600">AFM Points</p>
-                    <p className="text-lg font-bold" style={{ color: VOLCANO_COLORS[index] }}>
-                      {selection.data.afm_data.length}
-                    </p>
-                  </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           ))}
         </div>
@@ -580,22 +599,31 @@ const CompareVolcanoesPage: React.FC = () => {
                   </h2>
                   <div className="grid grid-cols-3 gap-3">
                     <div className="bg-gray-50 rounded p-3">
-                      <p className="text-xs text-gray-600 mb-1">Total Samples</p>
+                      <p className="text-xs text-gray-600 mb-1">Filtered Samples</p>
                       <p className="text-xl font-bold" style={{ color: VOLCANO_COLORS[index] }}>
-                        {selection.data?.samples_count || 0}
+                        {selection.sampledSamples.length}
                       </p>
+                      {selection.sampledSamples.length < selection.samples.length && (
+                        <p className="text-xs text-gray-500">of {selection.samples.length} total</p>
+                      )}
                     </div>
                     <div className="bg-gray-50 rounded p-3">
                       <p className="text-xs text-gray-600 mb-1">TAS Data</p>
                       <p className="text-xl font-bold" style={{ color: VOLCANO_COLORS[index] }}>
-                        {selection.data?.tas_data.length || 0}
+                        {selection.sampledSamples.filter(s => s.oxides?.['SIO2(WT%)'] && s.oxides?.['NA2O(WT%)'] && s.oxides?.['K2O(WT%)']).length}
                       </p>
+                      {selection.sampledSamples.length < selection.samples.length && (
+                        <p className="text-xs text-gray-500">of {selection.data?.tas_data.length || 0} total</p>
+                      )}
                     </div>
                     <div className="bg-gray-50 rounded p-3">
                       <p className="text-xs text-gray-600 mb-1">AFM Data</p>
                       <p className="text-xl font-bold" style={{ color: VOLCANO_COLORS[index] }}>
-                        {selection.data?.afm_data.length || 0}
+                        {selection.sampledSamples.filter(s => s.oxides?.['FEOT(WT%)'] && s.oxides?.['MGO(WT%)'] && s.oxides?.['NA2O(WT%)'] && s.oxides?.['K2O(WT%)']).length}
                       </p>
+                      {selection.sampledSamples.length < selection.samples.length && (
+                        <p className="text-xs text-gray-500">of {selection.data?.afm_data.length || 0} total</p>
+                      )}
                     </div>
                   </div>
                 </div>

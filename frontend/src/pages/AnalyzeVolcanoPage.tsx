@@ -11,7 +11,7 @@ import { EmptyState } from '../components/EmptyState';
 import { ConfidenceFilter } from '../components/Filters';
 import type { Sample } from '../types';
 import type { ConfidenceLevel } from '../utils/confidence';
-import { filterSamplesByConfidence } from '../utils/confidence';
+import { filterSamplesByConfidence, calculateRockTypeDistribution } from '../utils/confidence';
 
 interface ChemicalAnalysisData {
   volcano_number: number;
@@ -351,6 +351,9 @@ const AnalyzeVolcanoPage: React.FC = () => {
   // Filter samples by confidence level
   const filteredSamples = filterSamplesByConfidence(samples, selectedConfidenceLevels);
   const filteredSamplesWithVEI = filterSamplesByConfidence(samplesWithVEI, selectedConfidenceLevels);
+  
+  // Calculate rock type distribution from filtered samples
+  const filteredRockTypes = calculateRockTypeDistribution(filteredSamples);
 
   const handleDownloadCSV = () => {
     if (filteredSamples.length === 0) return;
@@ -473,25 +476,38 @@ const AnalyzeVolcanoPage: React.FC = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-gray-50 rounded-lg p-4 transition-shadow duration-300 hover:shadow-md">
-                  <p className="text-sm text-gray-600">Total Samples</p>
-                  <p className="text-2xl font-bold text-gray-900">{chemicalData.samples_count}</p>
+                  <p className="text-sm text-gray-600">Filtered Samples</p>
+                  <p className="text-2xl font-bold text-gray-900">{filteredSamples.length}</p>
+                  {filteredSamples.length < samples.length && (
+                    <p className="text-xs text-gray-500 mt-1">of {samples.length} total</p>
+                  )}
                 </div>
                 <div className="bg-gray-50 rounded-lg p-4 transition-shadow duration-300 hover:shadow-md">
                   <p className="text-sm text-gray-600">TAS Data Points</p>
-                  <p className="text-2xl font-bold text-gray-900">{chemicalData.tas_data.length}</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {filteredSamples.filter(s => s.oxides?.['SIO2(WT%)'] && s.oxides?.['NA2O(WT%)'] && s.oxides?.['K2O(WT%)']).length}
+                  </p>
+                  {filteredSamples.length < samples.length && (
+                    <p className="text-xs text-gray-500 mt-1">of {chemicalData.tas_data.length} total</p>
+                  )}
                 </div>
                 <div className="bg-gray-50 rounded-lg p-4 transition-shadow duration-300 hover:shadow-md">
                   <p className="text-sm text-gray-600">AFM Data Points</p>
-                  <p className="text-2xl font-bold text-gray-900">{chemicalData.afm_data.length}</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {filteredSamples.filter(s => s.oxides?.['FEOT(WT%)'] && s.oxides?.['MGO(WT%)'] && s.oxides?.['NA2O(WT%)'] && s.oxides?.['K2O(WT%)']).length}
+                  </p>
+                  {filteredSamples.length < samples.length && (
+                    <p className="text-xs text-gray-500 mt-1">of {chemicalData.afm_data.length} total</p>
+                  )}
                 </div>
               </div>
 
               {/* Rock Types Distribution */}
-              {Object.keys(chemicalData.rock_types).length > 0 && (
+              {Object.keys(filteredRockTypes).length > 0 && (
                 <div className="mt-4">
                   <h3 className="text-sm font-semibold text-gray-700 mb-2">Rock Types Distribution</h3>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    {Object.entries(chemicalData.rock_types).map(([rockType, count]) => (
+                    {Object.entries(filteredRockTypes).map(([rockType, count]) => (
                       <div key={rockType} className="flex justify-between items-center bg-gray-50 rounded px-3 py-2">
                         <span className="text-xs text-gray-600 truncate">{rockType}</span>
                         <span className="text-xs font-semibold text-gray-900 ml-2">{count}</span>
@@ -503,13 +519,13 @@ const AnalyzeVolcanoPage: React.FC = () => {
             </div>
 
             {/* Rock Type Distribution */}
-            {Object.keys(chemicalData.rock_types).length > 0 && (
+            {Object.keys(filteredRockTypes).length > 0 && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Rock Type Distribution</h3>
                 <RockTypeDistributionChart
                   volcanoes={[{
                     volcanoName: chemicalData.volcano_name,
-                    rockTypes: chemicalData.rock_types,
+                    rockTypes: filteredRockTypes,
                     color: "#DC2626"
                   }]}
                 />
