@@ -24,7 +24,6 @@ interface ChemicalAnalysisData {
     geometry?: { type: 'Point'; coordinates: [number, number] };
     matching_metadata?: Record<string, unknown>;
     references?: string;
-    geographic_location?: string;
     'SIO2(WT%)': number;
     'NA2O(WT%)': number;
     'K2O(WT%)': number;
@@ -46,7 +45,6 @@ interface ChemicalAnalysisData {
     geometry?: { type: 'Point'; coordinates: [number, number] };
     matching_metadata?: Record<string, unknown>;
     references?: string;
-    geographic_location?: string;
     'FEOT(WT%)': number;
     'NA2O(WT%)': number;
     'K2O(WT%)': number;
@@ -68,7 +66,6 @@ interface ChemicalAnalysisData {
     geometry?: { type: 'Point'; coordinates: [number, number] };
     matching_metadata?: Record<string, unknown>;
     references?: string;
-    geographic_location?: string;
     'SIO2(WT%)'?: number;
     'NA2O(WT%)'?: number;
     'K2O(WT%)'?: number;
@@ -110,7 +107,6 @@ const transformAllSamples = (
       sample_id: sample.sample_id,
       sample_code: sample.sample_code,
       db: sample.db,
-      geographic_location: sample.geographic_location || volcanoName,
       material: sample.material,
       rock_type: sample.rock_type,
       tectonic_setting: sample.tectonic_setting,
@@ -150,7 +146,6 @@ const transformToSamples = (data: ChemicalAnalysisData): Sample[] => {
       sample_id: tas.sample_id,
       sample_code: tas.sample_code,
       db: tas.db,
-      geographic_location: tas.geographic_location || data.volcano_name,
       material: tas.material,
       rock_type: tas.rock_type,
       tectonic_setting: tas.tectonic_setting,
@@ -196,7 +191,6 @@ const transformToSamples = (data: ChemicalAnalysisData): Sample[] => {
         sample_id: afm.sample_id,
         sample_code: afm.sample_code,
         db: afm.db,
-        geographic_location: afm.geographic_location || data.volcano_name,
         material: afm.material,
         rock_type: afm.rock_type,
         tectonic_setting: afm.tectonic_setting,
