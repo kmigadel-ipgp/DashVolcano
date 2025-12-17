@@ -469,7 +469,7 @@ async def get_volcano_rock_types(
 ):
     """
     Get GVP major rock types for a volcano.
-    Returns the major rock types from the volcano's rocks field (maj_1, maj_2, maj_3).
+    Returns the rock type from the volcano's rock_type field (now a string).
     """
     try:
         volcano_num = int(volcano_number)
@@ -478,22 +478,19 @@ async def get_volcano_rock_types(
     
     volcano = db.volcanoes.find_one(
         {"volcano_number": volcano_num},
-        {"volcano_name": 1, "volcano_number": 1, "rocks": 1}
+        {"volcano_name": 1, "volcano_number": 1, "rock_type": 1}
     )
     
     if not volcano:
         raise HTTPException(status_code=404, detail="Volcano not found")
     
-    # Extract major rock types
+    # Extract rock type (now a string instead of object)
     rock_types = []
-    rocks = volcano.get("rocks", {})
+    rock_type = volcano.get("rock_type")
     
-    if rocks.get("maj_1"):
-        rock_types.append({"type": rocks["maj_1"], "rank": 1})
-    if rocks.get("maj_2"):
-        rock_types.append({"type": rocks["maj_2"], "rank": 2})
-    if rocks.get("maj_3"):
-        rock_types.append({"type": rocks["maj_3"], "rank": 3})
+    # If rock_type exists and is not empty, add it as primary rock type
+    if rock_type and isinstance(rock_type, str) and rock_type.strip():
+        rock_types.append({"type": rock_type.strip(), "rank": 1})
     
     return {
         "volcano_number": volcano["volcano_number"],
