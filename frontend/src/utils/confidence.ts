@@ -151,3 +151,27 @@ export const getConfidenceBadgeProps = (confidence: ConfidenceLevel) => {
     description: getConfidenceDescription(confidence),
   };
 };
+
+/**
+ * Filter samples by confidence levels
+ * Returns only samples matching the selected confidence levels
+ */
+export const filterSamplesByConfidence = <T extends { matching_metadata?: { confidence_level?: string | number | null } }>(
+  samples: T[],
+  selectedLevels: ConfidenceLevel[]
+): T[] => {
+  // If no levels selected, return empty array (explicit filtering)
+  if (selectedLevels.length === 0) {
+    return [];
+  }
+  
+  // If all levels selected, return all samples (no filtering needed)
+  if (selectedLevels.length === 4) {
+    return samples;
+  }
+  
+  return samples.filter(sample => {
+    const confidence = normalizeConfidence(sample.matching_metadata?.confidence_level);
+    return selectedLevels.includes(confidence);
+  });
+};

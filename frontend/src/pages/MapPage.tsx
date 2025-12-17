@@ -14,6 +14,7 @@ import { useKeyboardShortcuts, commonShortcuts } from '../hooks/useKeyboardShort
 import { formatBboxForAPI } from '../hooks/useBboxDraw';
 import { fetchSamples } from '../api/samples';
 import type { Volcano, Sample, SampleFilters, VolcanoFilters, BBox } from '../types';
+import type { ConfidenceLevel } from '../utils/confidence';
 
 const INITIAL_VIEWPORT = {
   longitude: 0,
@@ -47,6 +48,7 @@ const MapPage = () => {
 
   // Chart panel state
   const [chartPanelOpen, setChartPanelOpen] = useState(false);
+  const [selectedConfidenceLevels, setSelectedConfidenceLevels] = useState<ConfidenceLevel[]>(['high', 'medium', 'low', 'unknown']);
 
   // Bbox state
   const [currentBbox, setCurrentBbox] = useState<BBox | null>(null);
@@ -116,7 +118,6 @@ const MapPage = () => {
   }, [volcanoSamples, bboxSamples]);
   
   const samplesLoading = loadingVolcanoSamples || loadingBboxSamples;
-  const samplesError = null; // We'll handle errors separately for each fetch
 
   // Convert boundaries response to array
   const tectonicBoundaries = boundaries?.features || [];
@@ -585,6 +586,8 @@ const MapPage = () => {
         isOpen={chartPanelOpen}
         onToggle={() => setChartPanelOpen(prev => !prev)}
         onClose={() => setChartPanelOpen(false)}
+        selectedConfidenceLevels={selectedConfidenceLevels}
+        onConfidenceLevelsChange={setSelectedConfidenceLevels}
       />
 
       {/* Filter Button */}

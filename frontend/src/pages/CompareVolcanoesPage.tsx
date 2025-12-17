@@ -9,7 +9,10 @@ import { useKeyboardShortcuts, commonShortcuts } from '../hooks/useKeyboardShort
 import { showError } from '../utils/toast';
 import { CardSkeleton } from '../components/LoadingSkeleton';
 import { EmptyState } from '../components/EmptyState';
+import { ConfidenceFilter } from '../components/Filters';
 import type { Sample } from '../types';
+import type { ConfidenceLevel } from '../utils/confidence';
+import { filterSamplesByConfidence } from '../utils/confidence';
 
 interface ChemicalAnalysisData {
   volcano_number: number;
@@ -118,7 +121,6 @@ const VOLCANO_COLORS = ['#DC2626', '#2563EB', '#16A34A'];
  */
 const transformAllSamples = (
   allSamples: ChemicalAnalysisData['all_samples'],
-  volcanoName: string
 ): Sample[] => {
   if (!allSamples) return [];
   
@@ -246,6 +248,9 @@ const CompareVolcanoesPage: React.FC = () => {
   
   const [searchInputs, setSearchInputs] = useState<string[]>(['', '']);
   const [showSuggestions, setShowSuggestions] = useState<boolean[]>([false, false]);
+  
+  // Confidence level filter
+  const [selectedConfidenceLevels, setSelectedConfidenceLevels] = useState<ConfidenceLevel[]>(['high', 'medium', 'low', 'unknown']);
 
   // Load volcano names on mount
   useEffect(() => {
@@ -304,7 +309,7 @@ const CompareVolcanoesPage: React.FC = () => {
       const data = await response.json();
       // Use all_samples if available (includes samples with incomplete oxides)
       const samples = data.all_samples && data.all_samples.length > 0
-        ? transformAllSamples(data.all_samples, volcanoName)
+        ? transformAllSamples(data.all_samples)
         : transformToSamples(data);
 
       newSelections[index] = {
@@ -347,14 +352,15 @@ const CompareVolcanoesPage: React.FC = () => {
 
   const handleDownloadCSV = () => {
     const allSamples = selections.flatMap(s => s.samples);
-    if (allSamples.length === 0) return;
+    const filteredSamples = filterSamplesByConfidence(allSamples, selectedConfidenceLevels);
+    if (filteredSamples.length === 0) return;
     
     const volcanoNamesStr = selections
       .filter(s => s.name)
       .map(s => s.name.replaceAll(' ', '_'))
       .join('_vs_');
     
-    exportSamplesToCSV(allSamples, `compare_${volcanoNamesStr}.csv`);
+    exportSamplesToCSV(filteredSamples, `compare_${volcanoNamesStr}.csv`);
   };
 
   // Keyboard shortcuts
@@ -382,18 +388,19 @@ const CompareVolcanoesPage: React.FC = () => {
       .filter((v: VolcanoSelection) => v.data?.harker_data && v.data.harker_data.length > 0)
       .map((v: VolcanoSelection, idx: number) => ({
         volcanoName: v.name,
-        harkerData: v.data!.harker_data!,
+        harkerData: filterSamplesByConfidence(v.data!.harker_data!, selectedConfidenceLevels),
         color: VOLCANO_COLORS[idx]
       }));
-  }, [selections]);
+  }, [selections, selectedConfidenceLevels]);
 
   // Memoize sampled data for TAS/AFM plots to improve performance with large datasets
+  // Apply confidence filtering
   const sampledSelectionsData = useMemo(() => {
     return selections.map(selection => ({
       ...selection,
-      sampledSamples: selection.samples
+      sampledSamples: filterSamplesByConfidence(selection.samples, selectedConfidenceLevels)
     }));
-  }, [selections]);
+  }, [selections, selectedConfidenceLevels]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -526,6 +533,15 @@ const CompareVolcanoesPage: React.FC = () => {
             </div>
           ))}
         </div>
+
+        {/* Confidence Level Filter */}
+        {selectedCount >= 2 && !isLoading && allSamples.length > 0 && (
+          <ConfidenceFilter
+            selectedLevels={selectedConfidenceLevels}
+            onChange={setSelectedConfidenceLevels}
+            className="mb-6"
+          />
+        )}
 
         {/* Rock Type Distribution - Combined Chart for All Volcanoes */}
         {selectedCount >= 2 && !isLoading && rockTypeChartData.length > 0 && (

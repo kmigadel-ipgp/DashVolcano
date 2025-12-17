@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import { ChevronUp, ChevronDown, X } from 'lucide-react';
 import { TASPlot } from '../Charts/TASPlot';
 import { AFMPlot } from '../Charts/AFMPlot';
+import { ConfidenceFilter } from '../Filters';
+import { filterSamplesByConfidence } from '../../utils/confidence';
 import type { Sample } from '../../types';
+import type { ConfidenceLevel } from '../../utils/confidence';
 
 interface ChartPanelProps {
   /** Array of samples to display in charts */
@@ -13,6 +16,10 @@ interface ChartPanelProps {
   onToggle: () => void;
   /** Callback when panel is closed */
   onClose: () => void;
+  /** Selected confidence levels for filtering */
+  selectedConfidenceLevels: ConfidenceLevel[];
+  /** Callback when confidence levels change */
+  onConfidenceLevelsChange: (levels: ConfidenceLevel[]) => void;
 }
 
 /**
@@ -29,15 +36,20 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
   isOpen,
   onToggle,
   onClose,
+  selectedConfidenceLevels,
+  onConfidenceLevelsChange,
 }) => {
   const [activeTab, setActiveTab] = useState<'both' | 'tas' | 'afm'>('both');
 
+  // Apply confidence filtering to samples
+  const filteredSamples = filterSamplesByConfidence(samples, selectedConfidenceLevels);
+
   // Filter samples with required oxide data
-  const tasValidSamples = samples.filter(
+  const tasValidSamples = filteredSamples.filter(
     s => s.oxides?.['SIO2(WT%)'] && s.oxides?.['NA2O(WT%)'] && s.oxides?.['K2O(WT%)']
   );
   
-  const afmValidSamples = samples.filter(
+  const afmValidSamples = filteredSamples.filter(
     s => s.oxides?.['FEOT(WT%)'] && s.oxides?.['MGO(WT%)'] && s.oxides?.['NA2O(WT%)'] && s.oxides?.['K2O(WT%)']
   );
 
@@ -108,6 +120,16 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
 
       {/* Content */}
       <div className="overflow-y-auto" style={{ maxHeight: '500px' }}>
+        {/* Confidence Filter */}
+        {samples.length > 0 && (
+          <div className="px-4 pt-4 pb-2 bg-gray-50 border-b">
+            <ConfidenceFilter
+              selectedLevels={selectedConfidenceLevels}
+              onChange={onConfidenceLevelsChange}
+            />
+          </div>
+        )}
+
         {samples.length === 0 ? (
           <div className="flex items-center justify-center h-64">
             <div className="text-center text-gray-500">
