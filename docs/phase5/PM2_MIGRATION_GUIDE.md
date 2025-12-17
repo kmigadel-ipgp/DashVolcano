@@ -62,8 +62,8 @@ Edit `/root/DashVolcano/.env` and add your email addresses:
 
 ```bash
 # Email notification settings for PM2 monitoring (uses localhost SMTP)
-SENDER_EMAIL=migadel@ipgp.fr
-RECEIVER_EMAIL=migadel@ipgp.fr
+SENDER_EMAIL=your-email@ipgp.fr
+RECEIVER_EMAIL=your-email@ipgp.fr
 ```
 
 **Note**: The monitoring system uses the local SMTP server (localhost:25) which should be configured on the server. No password is required.

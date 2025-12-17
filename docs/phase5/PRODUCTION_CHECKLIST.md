@@ -184,7 +184,8 @@ sudo systemctl reload nginx
 ### Database Issues
 ```bash
 # Check MongoDB connection
-python3 -c "from pymongo import MongoClient; import certifi; client = MongoClient('mongodb+srv://kmigadel:KEqM0Ixvm8PhPOq1@dashvolcano.bnr6vvb.mongodb.net/', tls=True, tlsCAFile=certifi.where()); print(client.admin.command('ping'))"
+# Use credentials from your .env file
+python3 -c "from pymongo import MongoClient; import certifi; from backend.config import get_settings; settings = get_settings(); client = MongoClient(settings.MONGODB_URI, tls=True, tlsCAFile=certifi.where()); print(client.admin.command('ping'))"
 
 # Verify IP whitelist in MongoDB Atlas
 # Login to https://cloud.mongodb.com/
@@ -277,7 +278,7 @@ sudo systemctl reload nginx
 
 ## Support Contacts
 
-- **Server Admin**: dashvolcano@ipgp.fr
+- **Server Admin**: Contact your system administrator
 - **MongoDB Atlas**: https://cloud.mongodb.com/
 - **SSL Certificates**: certbot (auto-renewal enabled)
 

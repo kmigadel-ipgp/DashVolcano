@@ -59,8 +59,8 @@ Features:
 
 Required:
 ```bash
-SENDER_EMAIL=migadel@ipgp.fr
-RECEIVER_EMAIL=migadel@ipgp.fr
+SENDER_EMAIL=your-email@ipgp.fr
+RECEIVER_EMAIL=your-email@ipgp.fr
 ```
 
 ---

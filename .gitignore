@@ -139,3 +139,6 @@ dist
 
 # Python cache files
 *.pyc
+
+# Vite files
+.vite
