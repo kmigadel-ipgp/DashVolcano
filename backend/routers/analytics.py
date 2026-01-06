@@ -111,9 +111,12 @@ async def get_volcano_samples_with_vei(
         - match_rate: Percentage of samples with VEI (currently returns all samples)
         - method: "representative_distribution" - indicates VEI is assigned, not matched
     """
+    # Convert volcano_number to string for MongoDB query (matching_metadata.volcano.number is stored as string)
+    volcano_num_str = str(volcano_number)
+    
     # Get total sample count first
     total_samples = db.samples.count_documents({
-        "matching_metadata.volcano_number": volcano_number
+        "matching_metadata.volcano.number": volcano_num_str
     })
     
     if total_samples == 0:
@@ -139,15 +142,15 @@ async def get_volcano_samples_with_vei(
         }
     
     # Join samples with eruptions by volcano number and year
-    # Note: volcano_number is int in eruptions, string in samples.matching_metadata
+    # Note: volcano_number is int in eruptions, string in samples.matching_metadata.volcano.number
     pipeline = [
         {
             "$match": {
-                "matching_metadata.volcano_number": volcano_number,
+                "matching_metadata.volcano.number": volcano_num_str,
                 "eruption_date.year": {"$ne": None},
-                "oxides.SIO2(WT%)": {"$exists": True},
-                "oxides.NA2O(WT%)": {"$exists": True},
-                "oxides.K2O(WT%)": {"$exists": True}
+                "oxides.SIO2": {"$exists": True},
+                "oxides.NA2O": {"$exists": True},
+                "oxides.K2O": {"$exists": True}
             }
         },
         {
