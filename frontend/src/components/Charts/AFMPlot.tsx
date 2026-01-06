@@ -3,7 +3,7 @@ import Plot from 'react-plotly.js';
 import type { Sample } from '../../types';
 import { fetchAFMBoundary } from '../../api/analytics';
 import { getRockTypeColor } from '../../utils/colors';
-import { normalizeConfidence, getConfidenceLabel } from '../../utils/confidence';
+import { normalizeConfidence, getConfidenceLabel, getVolcanoName } from '../../utils/confidence';
 
 interface AFMPlotProps {
   /** Array of samples to plot */
@@ -75,16 +75,16 @@ export const AFMPlot: React.FC<AFMPlotProps> = React.memo(({
   const prepareSampleData = () => {
     return samples
       .filter(s => 
-        s.oxides?.['FEOT(WT%)'] !== undefined && 
-        s.oxides?.['MGO(WT%)'] !== undefined && 
-        s.oxides?.['NA2O(WT%)'] !== undefined && 
-        s.oxides?.['K2O(WT%)'] !== undefined
+        s.oxides?.['FEOT'] !== undefined && 
+        s.oxides?.['MGO'] !== undefined && 
+        s.oxides?.['NA2O'] !== undefined && 
+        s.oxides?.['K2O'] !== undefined
       )
       .map(s => {
-        const feot = s.oxides!['FEOT(WT%)']!;
-        const mgo = s.oxides!['MGO(WT%)']!;
-        const alkali = s.oxides!['NA2O(WT%)']! + s.oxides!['K2O(WT%)']!;
-        const confidence = normalizeConfidence(s.matching_metadata?.confidence_level);
+        const feot = s.oxides!['FEOT']!;
+        const mgo = s.oxides!['MGO']!;
+        const alkali = s.oxides!['NA2O']! + s.oxides!['K2O']!;
+        const confidence = normalizeConfidence(s.matching_metadata?.confidence_level, s.matching_metadata);
         const confidenceLabel = getConfidenceLabel(confidence);
                 
         // Convert to Cartesian coordinates for plotting
@@ -100,7 +100,7 @@ export const AFMPlot: React.FC<AFMPlotProps> = React.memo(({
           rock_type: s.rock_type || 'Unknown',
           sample_code: s.sample_code || s.sample_id,
           sample_id: s.sample_id,
-          volcano_name: s.matching_metadata?.volcano_name,
+          volcano_name: getVolcanoName(s.matching_metadata),
           confidence: confidence,
           confidenceLabel: confidenceLabel,
         };

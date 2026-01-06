@@ -35,7 +35,7 @@ async def get_samples(
     Example: bbox=-10,35,20,60 (covers Western Europe)
     """
     query = {}
-    sio2_field = "oxides.SIO2(WT%)"
+    sio2_field = "oxides.SIO2"
     
     # Rock type filter - support multiple values with OR logic
     if rock_type:
@@ -66,7 +66,7 @@ async def get_samples(
         query[sio2_field] = sio2_filter
     
     if volcano_number:
-        query["matching_metadata.volcano_number"] = volcano_number
+        query["matching_metadata.volcano.number"] = volcano_number
     
     # Bounding box filter - MongoDB geospatial query
     if bbox:
@@ -115,28 +115,39 @@ async def get_samples(
     projection = {
         "_id": 1,
         "sample_id": 1,
+        "sample_code": 1,
         "rock_type": 1,
         "db": 1,
         "geometry": 1,
         "tectonic_setting": 1,
         "material": 1,
-        "matching_metadata.volcano_number": 1,
-        "matching_metadata.volcano_name": 1,
-        "matching_metadata.distance_km": 1,
-        "matching_metadata.confidence_level": 1,  # CRITICAL: Data quality indicator
+        "matching_metadata": 1,  # Include full matching_metadata structure
         "references": 1,
         # Include key oxides for TAS/AFM plots (only what's needed)
-        "oxides.SIO2(WT%)": 1,
-        "oxides.NA2O(WT%)": 1,
-        "oxides.K2O(WT%)": 1,
-        "oxides.MGO(WT%)": 1,
-        "oxides.FE2O3(WT%)": 1,
-        "oxides.FEOT(WT%)": 1,
-        "oxides.CAO(WT%)": 1,
-        "oxides.AL2O3(WT%)": 1,
-        "oxides.TIO2(WT%)": 1,
-        "oxides.P2O5(WT%)": 1,
-        "oxides.MNO(WT%)": 1
+        # Support both structures: oxides in nested object or at root level
+        "oxides.SIO2": 1,
+        "oxides.NA2O": 1,
+        "oxides.K2O": 1,
+        "oxides.MGO": 1,
+        "oxides.FE2O3": 1,
+        "oxides.FEOT": 1,
+        "oxides.CAO": 1,
+        "oxides.AL2O3": 1,
+        "oxides.TIO2": 1,
+        "oxides.P2O5": 1,
+        "oxides.MNO": 1,
+        # Also include root-level oxide fields (some samples store oxides at root)
+        "SIO2": 1,
+        "NA2O": 1,
+        "K2O": 1,
+        "MGO": 1,
+        "FE2O3": 1,
+        "FEOT": 1,
+        "CAO": 1,
+        "AL2O3": 1,
+        "TIO2": 1,
+        "P2O5": 1,
+        "MNO": 1
     }
     
     # Build query with limit and offset
@@ -150,10 +161,24 @@ async def get_samples(
     
     samples = list(cursor)
     
-    # Convert ObjectId to string for JSON serialization
+    # Normalize oxide structure: ensure all oxides are in 'oxides' object
+    oxide_fields = ['SIO2', 'NA2O', 'K2O', 'MGO', 'FE2O3', 'FEOT', 'CAO', 'AL2O3', 'TIO2', 'P2O5', 'MNO']
     for sample in samples:
+        # Convert ObjectId to string for JSON serialization
         if "_id" in sample:
             sample["_id"] = str(sample["_id"])
+        
+        # Normalize oxides: if oxides are at root level, move them to 'oxides' object
+        if not sample.get("oxides"):
+            sample["oxides"] = {}
+        
+        for oxide in oxide_fields:
+            # If oxide exists at root level, move it to oxides object
+            if oxide in sample and sample[oxide] is not None:
+                if oxide not in sample["oxides"] or sample["oxides"][oxide] is None:
+                    sample["oxides"][oxide] = sample[oxide]
+                # Remove from root level to avoid duplication
+                del sample[oxide]
     
     # Get total count for the query (useful for pagination)
     total_count = db.samples.count_documents(query)

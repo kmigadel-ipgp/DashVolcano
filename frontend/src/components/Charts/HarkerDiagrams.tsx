@@ -1,24 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import Plot from 'react-plotly.js';
 import { normalizeConfidence, getConfidenceLabel } from '../../utils/confidence';
+import type { MatchingMetadata } from '../../types';
 
 interface HarkerDataPoint {
   sample_code: string;
-  'SIO2(WT%)': number;
+  SIO2: number;
   rock_type: string;
   material: string;
-  'TIO2(WT%)'?: number;
-  'AL2O3(WT%)'?: number;
-  'FEOT(WT%)'?: number;
-  'MGO(WT%)'?: number;
-  'CAO(WT%)'?: number;
-  'NA2O(WT%)'?: number;
-  'K2O(WT%)'?: number;
-  'P2O5(WT%)'?: number;
+  TIO2?: number;
+  AL2O3?: number;
+  FEOT?: number;
+  MGO?: number;
+  CAO?: number;
+  NA2O?: number;
+  K2O?: number;
+  P2O5?: number;
   volcano_name?: string;
-  matching_metadata?: {
-    confidence_level?: string | number;
-  };
+  matching_metadata?: MatchingMetadata;
   confidenceLabel?: string;
 }
 
@@ -38,49 +37,49 @@ interface HarkerDiagramsProps {
  */
 const HARKER_DIAGRAMS = [
   { 
-    oxide: 'TIO2(WT%)' as keyof HarkerDataPoint, 
+    oxide: 'TIO2' as keyof HarkerDataPoint, 
     yaxis: 'TiO₂ (wt%)', 
     range: [0, 4] as [number, number],
     description: 'Titanium oxide - indicator of magma differentiation'
   },
   { 
-    oxide: 'AL2O3(WT%)' as keyof HarkerDataPoint, 
+    oxide: 'AL2O3' as keyof HarkerDataPoint, 
     yaxis: 'Al₂O₃ (wt%)', 
     range: [10, 25] as [number, number],
     description: 'Aluminum oxide - major rock-forming oxide'
   },
   { 
-    oxide: 'FEOT(WT%)' as keyof HarkerDataPoint, 
+    oxide: 'FEOT' as keyof HarkerDataPoint, 
     yaxis: 'FeO<sup>T</sup> (wt%)', 
     range: [0, 15] as [number, number],
     description: 'Total iron oxide - shows Fe enrichment trends'
   },
   { 
-    oxide: 'MGO(WT%)' as keyof HarkerDataPoint, 
+    oxide: 'MGO' as keyof HarkerDataPoint, 
     yaxis: 'MgO (wt%)', 
     range: [0, 20] as [number, number],
     description: 'Magnesium oxide - decreases with differentiation'
   },
   { 
-    oxide: 'CAO(WT%)' as keyof HarkerDataPoint, 
+    oxide: 'CAO' as keyof HarkerDataPoint, 
     yaxis: 'CaO (wt%)', 
     range: [0, 15] as [number, number],
     description: 'Calcium oxide - related to plagioclase content'
   },
   { 
-    oxide: 'NA2O(WT%)' as keyof HarkerDataPoint, 
+    oxide: 'NA2O' as keyof HarkerDataPoint, 
     yaxis: 'Na₂O (wt%)', 
     range: [0, 8] as [number, number],
     description: 'Sodium oxide - increases with differentiation'
   },
   { 
-    oxide: 'K2O(WT%)' as keyof HarkerDataPoint, 
+    oxide: 'K2O' as keyof HarkerDataPoint, 
     yaxis: 'K₂O (wt%)', 
     range: [0, 6] as [number, number],
     description: 'Potassium oxide - calc-alkaline indicator'
   },
   { 
-    oxide: 'P2O5(WT%)' as keyof HarkerDataPoint, 
+    oxide: 'P2O5' as keyof HarkerDataPoint, 
     yaxis: 'P₂O₅ (wt%)', 
     range: [0, 1.5] as [number, number],
     description: 'Phosphorus pentoxide - accessory mineral indicator'
@@ -173,7 +172,7 @@ export const HarkerDiagrams: React.FC<HarkerDiagramsProps> = React.memo(({ volca
               type: 'scattergl' as const,  // WebGL for GPU acceleration - handles 100k+ points
               mode: 'markers' as const,
               name: volcano.volcanoName,
-              x: validData.map((d) => d['SIO2(WT%)']),
+              x: validData.map((d) => d['SIO2']),
               y: validData.map((d) => d[oxide] as number),
               marker: {
                 color: volcano.color,
@@ -185,7 +184,7 @@ export const HarkerDiagrams: React.FC<HarkerDiagramsProps> = React.memo(({ volca
               customdata: validData.map((d) => [
                 d.rock_type, 
                 d.material,
-                d.confidenceLabel || getConfidenceLabel(normalizeConfidence(d.matching_metadata?.confidence_level)),
+                d.confidenceLabel || getConfidenceLabel(normalizeConfidence(d.matching_metadata?.confidence_level, d.matching_metadata)),
                 d.volcano_name || volcano.volcanoName
               ]),
               hovertemplate:

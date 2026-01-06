@@ -6,8 +6,12 @@ import {
   getConfidenceColorHex, 
   getConfidenceLabel,
   getConfidenceDescription,
-  getConfidenceIcon 
+  getConfidenceIcon,
+  getVolcanoName,
+  getDistance,
+  isMatched
 } from '../../utils/confidence';
+import { MatchExplanation } from './MatchExplanation';
 
 interface SampleDetailsPanelProps {
   /** The selected sample to display */
@@ -54,14 +58,14 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
 
   // Get major oxides to display
   const majorOxides = oxides ? [
-    { name: 'SiO₂', value: oxides['SIO2(WT%)'] },
-    { name: 'Al₂O₃', value: oxides['AL2O3(WT%)'] },
-    { name: 'FeO(T)', value: oxides['FEOT(WT%)'] },
-    { name: 'MgO', value: oxides['MGO(WT%)'] },
-    { name: 'CaO', value: oxides['CAO(WT%)'] },
-    { name: 'Na₂O', value: oxides['NA2O(WT%)'] },
-    { name: 'K₂O', value: oxides['K2O(WT%)'] },
-    { name: 'TiO₂', value: oxides['TIO2(WT%)'] },
+    { name: 'SiO₂ (wt%)', value: oxides['SIO2'] },
+    { name: 'Al₂O₃ (wt%)', value: oxides['AL2O3'] },
+    { name: 'FeO(T) (wt%)', value: oxides['FEOT'] },
+    { name: 'MgO (wt%)', value: oxides['MGO'] },
+    { name: 'CaO (wt%)', value: oxides['CAO'] },
+    { name: 'Na₂O (wt%)', value: oxides['NA2O'] },
+    { name: 'K₂O (wt%)', value: oxides['K2O'] },
+    { name: 'TiO₂ (wt%)', value: oxides['TIO2'] },
   ].filter(oxide => oxide.value !== undefined) : [];
 
   return (
@@ -122,15 +126,15 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
           </div>
 
           {/* Volcano Association */}
-          {matching_metadata?.volcano_name && (
+          {isMatched(matching_metadata) && (
             <div className="flex items-start gap-2">
               <Mountain className="w-4 h-4 text-volcano-600 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-xs text-gray-500">Associated Volcano</p>
-                <p className="text-sm font-medium">{matching_metadata.volcano_name}</p>
-                {matching_metadata.distance_km !== undefined && (
+                <p className="text-sm font-medium">{getVolcanoName(matching_metadata)}</p>
+                {getDistance(matching_metadata) !== undefined && (
                   <p className="text-xs text-gray-500">
-                    Distance: {matching_metadata.distance_km.toFixed(1)} km
+                    Distance: {getDistance(matching_metadata)!.toFixed(1)} km
                   </p>
                 )}
               </div>
@@ -138,8 +142,8 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
           )}
 
           {/* Confidence Score Badge */}
-          {matching_metadata?.volcano_name && (() => {
-            const confidence = normalizeConfidence(matching_metadata.confidence_level);
+          {isMatched(matching_metadata) && (() => {
+            const confidence = normalizeConfidence(matching_metadata?.confidence_level, matching_metadata);
             const color = getConfidenceColorHex(confidence);
             const label = getConfidenceLabel(confidence);
             const description = getConfidenceDescription(confidence);
@@ -200,6 +204,13 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
             </div>
           )}
         </div>
+
+        {/* Match Explanation - Scientific Evidence */}
+        {matching_metadata && (
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <MatchExplanation metadata={matching_metadata} />
+          </div>
+        )}
 
         {/* Chemical Composition */}
         {majorOxides.length > 0 && (

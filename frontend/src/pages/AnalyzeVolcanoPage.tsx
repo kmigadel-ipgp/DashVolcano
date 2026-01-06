@@ -9,7 +9,7 @@ import { showError } from '../utils/toast';
 import { CardSkeleton, ChartSkeleton } from '../components/LoadingSkeleton';
 import { EmptyState } from '../components/EmptyState';
 import { ConfidenceFilter } from '../components/Filters';
-import type { Sample } from '../types';
+import type { Sample, MatchingMetadata } from '../types';
 import type { ConfidenceLevel } from '../utils/confidence';
 import { filterSamplesByConfidence, calculateRockTypeDistribution } from '../utils/confidence';
 
@@ -25,18 +25,18 @@ interface ChemicalAnalysisData {
     material: string;
     tectonic_setting?: string;
     geometry?: { type: 'Point'; coordinates: [number, number] };
-    matching_metadata?: Record<string, unknown>;
+    matching_metadata?: MatchingMetadata;
     references?: string;
-    'SIO2(WT%)': number;
-    'NA2O(WT%)': number;
-    'K2O(WT%)': number;
-    'FEOT(WT%)'?: number;
-    'MGO(WT%)'?: number;
-    'TIO2(WT%)'?: number;
-    'AL2O3(WT%)'?: number;
-    'CAO(WT%)'?: number;
-    'P2O5(WT%)'?: number;
-    'MNO(WT%)'?: number;
+    SIO2: number;
+    NA2O: number;
+    K2O: number;
+    FEOT?: number;
+    MGO?: number;
+    TIO2?: number;
+    AL2O3?: number;
+    CAO?: number;
+    P2O5?: number;
+    MNO?: number;
   }>;
   afm_data: Array<{
     sample_code: string;
@@ -46,18 +46,18 @@ interface ChemicalAnalysisData {
     material: string;
     tectonic_setting?: string;
     geometry?: { type: 'Point'; coordinates: [number, number] };
-    matching_metadata?: Record<string, unknown>;
+    matching_metadata?: MatchingMetadata;
     references?: string;
-    'FEOT(WT%)': number;
-    'NA2O(WT%)': number;
-    'K2O(WT%)': number;
-    'MGO(WT%)': number;
-    'SIO2(WT%)'?: number;
-    'TIO2(WT%)'?: number;
-    'AL2O3(WT%)'?: number;
-    'CAO(WT%)'?: number;
-    'P2O5(WT%)'?: number;
-    'MNO(WT%)'?: number;
+    FEOT: number;
+    NA2O: number;
+    K2O: number;
+    MGO: number;
+    SIO2?: number;
+    TIO2?: number;
+    AL2O3?: number;
+    CAO?: number;
+    P2O5?: number;
+    MNO?: number;
   }>;
   all_samples?: Array<{
     sample_code: string;
@@ -67,18 +67,18 @@ interface ChemicalAnalysisData {
     material: string;
     tectonic_setting?: string;
     geometry?: { type: 'Point'; coordinates: [number, number] };
-    matching_metadata?: Record<string, unknown>;
+    matching_metadata?: MatchingMetadata;
     references?: string;
-    'SIO2(WT%)'?: number;
-    'NA2O(WT%)'?: number;
-    'K2O(WT%)'?: number;
-    'FEOT(WT%)'?: number;
-    'MGO(WT%)'?: number;
-    'TIO2(WT%)'?: number;
-    'AL2O3(WT%)'?: number;
-    'CAO(WT%)'?: number;
-    'P2O5(WT%)'?: number;
-    'MNO(WT%)'?: number;
+    SIO2?: number;
+    NA2O?: number;
+    K2O?: number;
+    FEOT?: number;
+    MGO?: number;
+    TIO2?: number;
+    AL2O3?: number;
+    CAO?: number;
+    P2O5?: number;
+    MNO?: number;
   }>;
   rock_types: Record<string, number>;
 }
@@ -93,16 +93,16 @@ const transformAllSamples = (
   
   return allSamples.map(sample => {
     const oxides: Record<string, number> = {};
-    if (sample['SIO2(WT%)'] !== undefined) oxides['SIO2(WT%)'] = sample['SIO2(WT%)'];
-    if (sample['NA2O(WT%)'] !== undefined) oxides['NA2O(WT%)'] = sample['NA2O(WT%)'];
-    if (sample['K2O(WT%)'] !== undefined) oxides['K2O(WT%)'] = sample['K2O(WT%)'];
-    if (sample['FEOT(WT%)'] !== undefined) oxides['FEOT(WT%)'] = sample['FEOT(WT%)'];
-    if (sample['MGO(WT%)'] !== undefined) oxides['MGO(WT%)'] = sample['MGO(WT%)'];
-    if (sample['TIO2(WT%)'] !== undefined) oxides['TIO2(WT%)'] = sample['TIO2(WT%)'];
-    if (sample['AL2O3(WT%)'] !== undefined) oxides['AL2O3(WT%)'] = sample['AL2O3(WT%)'];
-    if (sample['CAO(WT%)'] !== undefined) oxides['CAO(WT%)'] = sample['CAO(WT%)'];
-    if (sample['P2O5(WT%)'] !== undefined) oxides['P2O5(WT%)'] = sample['P2O5(WT%)'];
-    if (sample['MNO(WT%)'] !== undefined) oxides['MNO(WT%)'] = sample['MNO(WT%)'];
+    if (sample['SIO2'] !== undefined) oxides['SIO2'] = sample['SIO2'];
+    if (sample['NA2O'] !== undefined) oxides['NA2O'] = sample['NA2O'];
+    if (sample['K2O'] !== undefined) oxides['K2O'] = sample['K2O'];
+    if (sample['FEOT'] !== undefined) oxides['FEOT'] = sample['FEOT'];
+    if (sample['MGO'] !== undefined) oxides['MGO'] = sample['MGO'];
+    if (sample['TIO2'] !== undefined) oxides['TIO2'] = sample['TIO2'];
+    if (sample['AL2O3'] !== undefined) oxides['AL2O3'] = sample['AL2O3'];
+    if (sample['CAO'] !== undefined) oxides['CAO'] = sample['CAO'];
+    if (sample['P2O5'] !== undefined) oxides['P2O5'] = sample['P2O5'];
+    if (sample['MNO'] !== undefined) oxides['MNO'] = sample['MNO'];
 
     return {
       _id: sample.sample_id,
@@ -130,18 +130,18 @@ const transformToSamples = (data: ChemicalAnalysisData): Sample[] => {
   // Process TAS data
   for (const tas of data.tas_data) {
     const oxides: Record<string, number> = {
-      'SIO2(WT%)': tas['SIO2(WT%)'],
-      'NA2O(WT%)': tas['NA2O(WT%)'],
-      'K2O(WT%)': tas['K2O(WT%)'],
+      'SIO2': tas['SIO2'],
+      'NA2O': tas['NA2O'],
+      'K2O': tas['K2O'],
     };
     // Add all other oxides if present
-    if (tas['FEOT(WT%)'] !== undefined) oxides['FEOT(WT%)'] = tas['FEOT(WT%)'];
-    if (tas['MGO(WT%)'] !== undefined) oxides['MGO(WT%)'] = tas['MGO(WT%)'];
-    if (tas['TIO2(WT%)'] !== undefined) oxides['TIO2(WT%)'] = tas['TIO2(WT%)'];
-    if (tas['AL2O3(WT%)'] !== undefined) oxides['AL2O3(WT%)'] = tas['AL2O3(WT%)'];
-    if (tas['CAO(WT%)'] !== undefined) oxides['CAO(WT%)'] = tas['CAO(WT%)'];
-    if (tas['P2O5(WT%)'] !== undefined) oxides['P2O5(WT%)'] = tas['P2O5(WT%)'];
-    if (tas['MNO(WT%)'] !== undefined) oxides['MNO(WT%)'] = tas['MNO(WT%)'];
+    if (tas['FEOT'] !== undefined) oxides['FEOT'] = tas['FEOT'];
+    if (tas['MGO'] !== undefined) oxides['MGO'] = tas['MGO'];
+    if (tas['TIO2'] !== undefined) oxides['TIO2'] = tas['TIO2'];
+    if (tas['AL2O3'] !== undefined) oxides['AL2O3'] = tas['AL2O3'];
+    if (tas['CAO'] !== undefined) oxides['CAO'] = tas['CAO'];
+    if (tas['P2O5'] !== undefined) oxides['P2O5'] = tas['P2O5'];
+    if (tas['MNO'] !== undefined) oxides['MNO'] = tas['MNO'];
 
     const sample: Sample = {
       _id: tas.sample_id,
@@ -163,30 +163,30 @@ const transformToSamples = (data: ChemicalAnalysisData): Sample[] => {
   for (const afm of data.afm_data) {
     const existing = sampleMap.get(afm.sample_code);
     if (existing?.oxides) {
-      existing.oxides['FEOT(WT%)'] = afm['FEOT(WT%)'];
-      existing.oxides['MGO(WT%)'] = afm['MGO(WT%)'];
-      if (!existing.oxides['NA2O(WT%)']) existing.oxides['NA2O(WT%)'] = afm['NA2O(WT%)'];
-      if (!existing.oxides['K2O(WT%)']) existing.oxides['K2O(WT%)'] = afm['K2O(WT%)'];
-      if (afm['SIO2(WT%)'] !== undefined && !existing.oxides['SIO2(WT%)']) existing.oxides['SIO2(WT%)'] = afm['SIO2(WT%)'];
-      if (afm['TIO2(WT%)'] !== undefined && !existing.oxides['TIO2(WT%)']) existing.oxides['TIO2(WT%)'] = afm['TIO2(WT%)'];
-      if (afm['AL2O3(WT%)'] !== undefined && !existing.oxides['AL2O3(WT%)']) existing.oxides['AL2O3(WT%)'] = afm['AL2O3(WT%)'];
-      if (afm['CAO(WT%)'] !== undefined && !existing.oxides['CAO(WT%)']) existing.oxides['CAO(WT%)'] = afm['CAO(WT%)'];
-      if (afm['P2O5(WT%)'] !== undefined && !existing.oxides['P2O5(WT%)']) existing.oxides['P2O5(WT%)'] = afm['P2O5(WT%)'];
-      if (afm['MNO(WT%)'] !== undefined && !existing.oxides['MNO(WT%)']) existing.oxides['MNO(WT%)'] = afm['MNO(WT%)'];
+      existing.oxides['FEOT'] = afm['FEOT'];
+      existing.oxides['MGO'] = afm['MGO'];
+      if (!existing.oxides['NA2O']) existing.oxides['NA2O'] = afm['NA2O'];
+      if (!existing.oxides['K2O']) existing.oxides['K2O'] = afm['K2O'];
+      if (afm['SIO2'] !== undefined && !existing.oxides['SIO2']) existing.oxides['SIO2'] = afm['SIO2'];
+      if (afm['TIO2'] !== undefined && !existing.oxides['TIO2']) existing.oxides['TIO2'] = afm['TIO2'];
+      if (afm['AL2O3'] !== undefined && !existing.oxides['AL2O3']) existing.oxides['AL2O3'] = afm['AL2O3'];
+      if (afm['CAO'] !== undefined && !existing.oxides['CAO']) existing.oxides['CAO'] = afm['CAO'];
+      if (afm['P2O5'] !== undefined && !existing.oxides['P2O5']) existing.oxides['P2O5'] = afm['P2O5'];
+      if (afm['MNO'] !== undefined && !existing.oxides['MNO']) existing.oxides['MNO'] = afm['MNO'];
     } else {
       // Sample only in AFM data
       const oxides: Record<string, number> = {
-        'FEOT(WT%)': afm['FEOT(WT%)'],
-        'MGO(WT%)': afm['MGO(WT%)'],
-        'NA2O(WT%)': afm['NA2O(WT%)'],
-        'K2O(WT%)': afm['K2O(WT%)'],
+        'FEOT': afm['FEOT'],
+        'MGO': afm['MGO'],
+        'NA2O': afm['NA2O'],
+        'K2O': afm['K2O'],
       };
-      if (afm['SIO2(WT%)'] !== undefined) oxides['SIO2(WT%)'] = afm['SIO2(WT%)'];
-      if (afm['TIO2(WT%)'] !== undefined) oxides['TIO2(WT%)'] = afm['TIO2(WT%)'];
-      if (afm['AL2O3(WT%)'] !== undefined) oxides['AL2O3(WT%)'] = afm['AL2O3(WT%)'];
-      if (afm['CAO(WT%)'] !== undefined) oxides['CAO(WT%)'] = afm['CAO(WT%)'];
-      if (afm['P2O5(WT%)'] !== undefined) oxides['P2O5(WT%)'] = afm['P2O5(WT%)'];
-      if (afm['MNO(WT%)'] !== undefined) oxides['MNO(WT%)'] = afm['MNO(WT%)'];
+      if (afm['SIO2'] !== undefined) oxides['SIO2'] = afm['SIO2'];
+      if (afm['TIO2'] !== undefined) oxides['TIO2'] = afm['TIO2'];
+      if (afm['AL2O3'] !== undefined) oxides['AL2O3'] = afm['AL2O3'];
+      if (afm['CAO'] !== undefined) oxides['CAO'] = afm['CAO'];
+      if (afm['P2O5'] !== undefined) oxides['P2O5'] = afm['P2O5'];
+      if (afm['MNO'] !== undefined) oxides['MNO'] = afm['MNO'];
 
       const sample: Sample = {
         _id: afm.sample_id,
@@ -485,7 +485,7 @@ const AnalyzeVolcanoPage: React.FC = () => {
                 <div className="bg-gray-50 rounded-lg p-4 transition-shadow duration-300 hover:shadow-md">
                   <p className="text-sm text-gray-600">TAS Data Points</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {filteredSamples.filter(s => s.oxides?.['SIO2(WT%)'] && s.oxides?.['NA2O(WT%)'] && s.oxides?.['K2O(WT%)']).length}
+                    {filteredSamples.filter(s => s.oxides?.['SIO2'] && s.oxides?.['NA2O'] && s.oxides?.['K2O']).length}
                   </p>
                   {filteredSamples.length < samples.length && (
                     <p className="text-xs text-gray-500 mt-1">of {chemicalData.tas_data.length} total</p>
@@ -494,7 +494,7 @@ const AnalyzeVolcanoPage: React.FC = () => {
                 <div className="bg-gray-50 rounded-lg p-4 transition-shadow duration-300 hover:shadow-md">
                   <p className="text-sm text-gray-600">AFM Data Points</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {filteredSamples.filter(s => s.oxides?.['FEOT(WT%)'] && s.oxides?.['MGO(WT%)'] && s.oxides?.['NA2O(WT%)'] && s.oxides?.['K2O(WT%)']).length}
+                    {filteredSamples.filter(s => s.oxides?.['FEOT'] && s.oxides?.['MGO'] && s.oxides?.['NA2O'] && s.oxides?.['K2O']).length}
                   </p>
                   {filteredSamples.length < samples.length && (
                     <p className="text-xs text-gray-500 mt-1">of {chemicalData.afm_data.length} total</p>

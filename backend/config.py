@@ -24,7 +24,16 @@ class Settings(BaseSettings):
     
     # CORS Configuration
     CORS_ORIGINS: List[str] = Field(
-        default=["http://localhost:5173", "http://localhost:3000"],
+        default=[
+            "http://localhost:5173",    # Vite dev server
+            "http://localhost:5174",    # Vite dev server (alternative port)
+            "http://localhost:4173",    # Vite preview (production build)
+            "http://localhost:3000",    # Alternative dev port
+            "http://127.0.0.1:5173",    # Same as above with 127.0.0.1
+            "http://127.0.0.1:5174",
+            "http://127.0.0.1:4173",
+            "http://127.0.0.1:3000"
+        ],
         description="Allowed CORS origins"
     )
     

@@ -254,7 +254,7 @@ async def get_volcano_chemical_analysis(
     }
     
     samples = list(db.samples.find({
-        "matching_metadata.volcano_number": volcano_num
+        "matching_metadata.volcano.number": volcano_number  # Use string directly, not int
     }, projection).limit(limit).batch_size(10000))
     
     if not samples:
@@ -278,22 +278,23 @@ async def get_volcano_chemical_analysis(
     rock_types = {}
     
     for sample in samples:
+        # Handle both cases: oxides in nested object or at root level
         oxides = sample.get("oxides", {})
-        
         if not oxides:
-            continue
+            # Try to get oxides from root level
+            oxides = sample
         
         # Extract oxide values
-        sio2 = oxides.get("SIO2(WT%)")
-        na2o = oxides.get("NA2O(WT%)")
-        k2o = oxides.get("K2O(WT%)")
-        feot = oxides.get("FEOT(WT%)")
-        mgo = oxides.get("MGO(WT%)")
-        tio2 = oxides.get("TIO2(WT%)")
-        al2o3 = oxides.get("AL2O3(WT%)")
-        cao = oxides.get("CAO(WT%)")
-        p2o5 = oxides.get("P2O5(WT%)")
-        mno = oxides.get("MNO(WT%)")
+        sio2 = oxides.get("SIO2")
+        na2o = oxides.get("NA2O")
+        k2o = oxides.get("K2O")
+        feot = oxides.get("FEOT")
+        mgo = oxides.get("MGO")
+        tio2 = oxides.get("TIO2")
+        al2o3 = oxides.get("AL2O3")
+        cao = oxides.get("CAO")
+        p2o5 = oxides.get("P2O5")
+        mno = oxides.get("MNO")
         
         sample_code = str(sample.get("sample_code", ""))
         rock_type = sample.get("rock_type", "Unknown")
@@ -316,25 +317,25 @@ async def get_volcano_chemical_analysis(
         }
         # Add all available oxides (even if incomplete)
         if sio2 is not None:
-            all_sample_entry["SIO2(WT%)"] = round(sio2, 2)
+            all_sample_entry["SIO2"] = round(sio2, 2)
         if na2o is not None:
-            all_sample_entry["NA2O(WT%)"] = round(na2o, 2)
+            all_sample_entry["NA2O"] = round(na2o, 2)
         if k2o is not None:
-            all_sample_entry["K2O(WT%)"] = round(k2o, 2)
+            all_sample_entry["K2O"] = round(k2o, 2)
         if feot is not None:
-            all_sample_entry["FEOT(WT%)"] = round(feot, 2)
+            all_sample_entry["FEOT"] = round(feot, 2)
         if mgo is not None:
-            all_sample_entry["MGO(WT%)"] = round(mgo, 2)
+            all_sample_entry["MGO"] = round(mgo, 2)
         if tio2 is not None:
-            all_sample_entry["TIO2(WT%)"] = round(tio2, 2)
+            all_sample_entry["TIO2"] = round(tio2, 2)
         if al2o3 is not None:
-            all_sample_entry["AL2O3(WT%)"] = round(al2o3, 2)
+            all_sample_entry["AL2O3"] = round(al2o3, 2)
         if cao is not None:
-            all_sample_entry["CAO(WT%)"] = round(cao, 2)
+            all_sample_entry["CAO"] = round(cao, 2)
         if p2o5 is not None:
-            all_sample_entry["P2O5(WT%)"] = round(p2o5, 2)
+            all_sample_entry["P2O5"] = round(p2o5, 2)
         if mno is not None:
-            all_sample_entry["MNO(WT%)"] = round(mno, 2)
+            all_sample_entry["MNO"] = round(mno, 2)
         all_samples.append(all_sample_entry)
         
         # TAS data (preserve MongoDB field names and include all metadata)
@@ -350,25 +351,25 @@ async def get_volcano_chemical_analysis(
                 "matching_metadata": sample.get("matching_metadata"),
                 "references": sample.get("references"),
                 "geographic_location": sample.get("geographic_location"),
-                "SIO2(WT%)": round(sio2, 2),
-                "NA2O(WT%)": round(na2o, 2),
-                "K2O(WT%)": round(k2o, 2)
+                "SIO2": round(sio2, 2),
+                "NA2O": round(na2o, 2),
+                "K2O": round(k2o, 2)
             }
             # Add all other oxides if available
             if feot is not None:
-                tas_entry["FEOT(WT%)"] = round(feot, 2)
+                tas_entry["FEOT"] = round(feot, 2)
             if mgo is not None:
-                tas_entry["MGO(WT%)"] = round(mgo, 2)
+                tas_entry["MGO"] = round(mgo, 2)
             if tio2 is not None:
-                tas_entry["TIO2(WT%)"] = round(tio2, 2)
+                tas_entry["TIO2"] = round(tio2, 2)
             if al2o3 is not None:
-                tas_entry["AL2O3(WT%)"] = round(al2o3, 2)
+                tas_entry["AL2O3"] = round(al2o3, 2)
             if cao is not None:
-                tas_entry["CAO(WT%)"] = round(cao, 2)
+                tas_entry["CAO"] = round(cao, 2)
             if p2o5 is not None:
-                tas_entry["P2O5(WT%)"] = round(p2o5, 2)
+                tas_entry["P2O5"] = round(p2o5, 2)
             if mno is not None:
-                tas_entry["MNO(WT%)"] = round(mno, 2)
+                tas_entry["MNO"] = round(mno, 2)
             tas_data.append(tas_entry)
         
         # AFM data (preserve MongoDB field names and include all metadata)
@@ -384,24 +385,24 @@ async def get_volcano_chemical_analysis(
                 "matching_metadata": sample.get("matching_metadata"),
                 "references": sample.get("references"),
                 "geographic_location": sample.get("geographic_location"),
-                "FEOT(WT%)": round(feot, 2),
-                "NA2O(WT%)": round(na2o, 2),
-                "K2O(WT%)": round(k2o, 2),
-                "MGO(WT%)": round(mgo, 2)
+                "FEOT": round(feot, 2),
+                "NA2O": round(na2o, 2),
+                "K2O": round(k2o, 2),
+                "MGO": round(mgo, 2)
             }
             # Add other oxides if available
             if sio2 is not None:
-                afm_entry["SIO2(WT%)"] = round(sio2, 2)
+                afm_entry["SIO2"] = round(sio2, 2)
             if tio2 is not None:
-                afm_entry["TIO2(WT%)"] = round(tio2, 2)
+                afm_entry["TIO2"] = round(tio2, 2)
             if al2o3 is not None:
-                afm_entry["AL2O3(WT%)"] = round(al2o3, 2)
+                afm_entry["AL2O3"] = round(al2o3, 2)
             if cao is not None:
-                afm_entry["CAO(WT%)"] = round(cao, 2)
+                afm_entry["CAO"] = round(cao, 2)
             if p2o5 is not None:
-                afm_entry["P2O5(WT%)"] = round(p2o5, 2)
+                afm_entry["P2O5"] = round(p2o5, 2)
             if mno is not None:
-                afm_entry["MNO(WT%)"] = round(mno, 2)
+                afm_entry["MNO"] = round(mno, 2)
             afm_data.append(afm_entry)
         
         # Harker data (preserve MongoDB field names and include all metadata)
@@ -417,28 +418,28 @@ async def get_volcano_chemical_analysis(
                 "matching_metadata": sample.get("matching_metadata"),
                 "references": sample.get("references"),
                 "geographic_location": sample.get("geographic_location"),
-                "SIO2(WT%)": round(sio2, 2)
+                "SIO2": round(sio2, 2)
             }
             
             # Add available oxides (preserve MongoDB field names)
             if tio2 is not None:
-                harker_point["TIO2(WT%)"] = round(tio2, 2)
+                harker_point["TIO2"] = round(tio2, 2)
             if al2o3 is not None:
-                harker_point["AL2O3(WT%)"] = round(al2o3, 2)
+                harker_point["AL2O3"] = round(al2o3, 2)
             if feot is not None:
-                harker_point["FEOT(WT%)"] = round(feot, 2)
+                harker_point["FEOT"] = round(feot, 2)
             if mgo is not None:
-                harker_point["MGO(WT%)"] = round(mgo, 2)
+                harker_point["MGO"] = round(mgo, 2)
             if cao is not None:
-                harker_point["CAO(WT%)"] = round(cao, 2)
+                harker_point["CAO"] = round(cao, 2)
             if na2o is not None:
-                harker_point["NA2O(WT%)"] = round(na2o, 2)
+                harker_point["NA2O"] = round(na2o, 2)
             if k2o is not None:
-                harker_point["K2O(WT%)"] = round(k2o, 2)
+                harker_point["K2O"] = round(k2o, 2)
             if p2o5 is not None:
-                harker_point["P2O5(WT%)"] = round(p2o5, 2)
+                harker_point["P2O5"] = round(p2o5, 2)
             if mno is not None:
-                harker_point["MNO(WT%)"] = round(mno, 2)
+                harker_point["MNO"] = round(mno, 2)
             
             # Only add if at least one other oxide is present
             if len(harker_point) > 9:  # More than sample_code, sample_id, db, SiO2, rock_type, material, tectonic_setting, geometry, matching_metadata
@@ -522,7 +523,7 @@ async def get_volcano_sample_timeline(
     year_pipeline = [
         {
             "$match": {
-                "matching_metadata.volcano_number": volcano_num,
+                "matching_metadata.volcano.number": volcano_num,
                 "eruption_date.year": {"$ne": None, "$exists": True, "$type": "number"}
             }
         },
@@ -548,14 +549,14 @@ async def get_volcano_sample_timeline(
     
     # Get total sample count and rock type distribution (always available)
     total_samples = db.samples.count_documents({
-        "matching_metadata.volcano_number": volcano_num
+        "matching_metadata.volcano.number": volcano_num
     })
     
     # Get rock type distribution
     rock_type_pipeline = [
         {
             "$match": {
-                "matching_metadata.volcano_number": volcano_num,
+                "matching_metadata.volcano.number": volcano_num,
                 "rock_type": {"$ne": None, "$exists": True}
             }
         },

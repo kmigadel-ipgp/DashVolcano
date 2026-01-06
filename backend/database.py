@@ -30,7 +30,7 @@ class Database:
 
         self.sort_stage = [{"$sort": {"count": -1}}]
 
-        self.filter_sio2_percentage = [{"$match": {"SIO2(WT%)": {"$gte": 0, "$lte": 100}}}]
+        self.filter_sio2_percentage = [{"$match": {"SIO2": {"$gte": 0, "$lte": 100}}}]
 
         self.add_coordinates = [
             {"$lookup": {
@@ -152,9 +152,9 @@ class Database:
         """
         oxides = [
             "SIO2", "TIO2", "AL2O3", "FEOT", "FE2O3", "MNO", "FEO",
-            "CAO", "MGO", "K2O", "NA2O", "P2O5", "LOI"
+            "CAO", "MGO", "NA2O", "K2O", "P2O5", "LOI"
         ]
-        return {f"{ox}(WT%)": f"$oxides.{ox}(WT%)" for ox in oxides}
+        return {ox: f"$oxides.{ox}" for ox in oxides}
 
     # --- Shared helper pipelines (add to the Database class) --- #
 
@@ -415,7 +415,7 @@ class Database:
          
         if rock_density:
             pipeline += [{"$match": {"material": {"$ne": "INC"}}}]
-            filtered = [r for r in rock_density if r != 'SIO2(WT%)']
+            filtered = [r for r in rock_density if r != 'SIO2']
             if filtered:
                 pipeline += [{"$match": {"rock": {"$in": filtered}}}]
 
