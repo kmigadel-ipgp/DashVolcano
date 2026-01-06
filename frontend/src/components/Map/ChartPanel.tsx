@@ -46,11 +46,11 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
 
   // Filter samples with required oxide data
   const tasValidSamples = filteredSamples.filter(
-    s => s.oxides?.['SIO2(WT%)'] && s.oxides?.['NA2O(WT%)'] && s.oxides?.['K2O(WT%)']
+    s => s.oxides?.['SIO2'] && s.oxides?.['NA2O'] && s.oxides?.['K2O']
   );
   
   const afmValidSamples = filteredSamples.filter(
-    s => s.oxides?.['FEOT(WT%)'] && s.oxides?.['MGO(WT%)'] && s.oxides?.['NA2O(WT%)'] && s.oxides?.['K2O(WT%)']
+    s => s.oxides?.['FEOT'] && s.oxides?.['MGO'] && s.oxides?.['NA2O'] && s.oxides?.['K2O']
   );
 
   if (!isOpen) {

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Plot from 'react-plotly.js';
 import type { Sample } from '../../types';
 import { getVEIColor, getRockTypeColor } from '../../utils/colors';
-import { normalizeConfidence, getConfidenceLabel } from '../../utils/confidence';
+import { normalizeConfidence, getConfidenceLabel, getVolcanoName } from '../../utils/confidence';
 
 interface TASPlotProps {
   /** Array of samples to plot */
@@ -68,21 +68,21 @@ export const TASPlot: React.FC<TASPlotProps> = React.memo(({
   // Process sample data for plotting
   const prepareSampleData = () => {
     return samples
-      .filter(s => s.oxides?.['SIO2(WT%)'] && s.oxides?.['NA2O(WT%)'] && s.oxides?.['K2O(WT%)'])
+      .filter(s => s.oxides?.['SIO2'] && s.oxides?.['NA2O'] && s.oxides?.['K2O'])
       .map(s => {
-        const confidence = normalizeConfidence(s.matching_metadata?.confidence_level);
+        const confidence = normalizeConfidence(s.matching_metadata?.confidence_level, s.matching_metadata);
         const confidenceLabel = getConfidenceLabel(confidence);
                 
         return {
-          sio2: s.oxides!['SIO2(WT%)']!,
-          alkali: s.oxides!['NA2O(WT%)']! + s.oxides!['K2O(WT%)']!,
+          sio2: s.oxides!['SIO2']!,
+          alkali: s.oxides!['NA2O']! + s.oxides!['K2O']!,
           material: s.material || 'Unknown',
           rock_type: s.rock_type || 'Unknown',
           sample_code: s.sample_code || s.sample_id,
           sample_id: s.sample_id,
           vei: s.vei,
           eruption_year: s.eruption_year,
-          volcano_name: s.matching_metadata?.volcano_name,
+          volcano_name: getVolcanoName(s.matching_metadata),
           confidence: confidence,
           confidenceLabel: confidenceLabel,
         };
