@@ -5,7 +5,7 @@ These models provide type safety and validation for all API data structures.
 """
 
 from datetime import datetime
-from typing import Optional, List, Any, Dict
+from typing import Optional, List, Any, Dict, Union
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 from enum import Enum
 
@@ -64,34 +64,99 @@ class GeologicalAge(BaseModel):
 
 class Oxides(BaseModel):
     """Chemical oxide composition (weight %)."""
-    SIO2: Optional[float] = Field(None, alias="SIO2(WT%)")
-    TIO2: Optional[float] = Field(None, alias="TIO2(WT%)")
-    AL2O3: Optional[float] = Field(None, alias="AL2O3(WT%)")
-    FEOT: Optional[float] = Field(None, alias="FEOT(WT%)")
-    FE2O3: Optional[float] = Field(None, alias="FE2O3(WT%)")
-    FEO: Optional[float] = Field(None, alias="FEO(WT%)")
-    MNO: Optional[float] = Field(None, alias="MNO(WT%)")
-    CAO: Optional[float] = Field(None, alias="CAO(WT%)")
-    MGO: Optional[float] = Field(None, alias="MGO(WT%)")
-    K2O: Optional[float] = Field(None, alias="K2O(WT%)")
-    NA2O: Optional[float] = Field(None, alias="NA2O(WT%)")
-    P2O5: Optional[float] = Field(None, alias="P2O5(WT%)")
-    LOI: Optional[float] = Field(None, alias="LOI(WT%)")
+    SIO2: Optional[float] = None
+    TIO2: Optional[float] = None
+    AL2O3: Optional[float] = None
+    FEOT: Optional[float] = None
+    FE2O3: Optional[float] = None
+    FEO: Optional[float] = None
+    MNO: Optional[float] = None
+    CAO: Optional[float] = None
+    MGO: Optional[float] = None
+    K2O: Optional[float] = None
+    NA2O: Optional[float] = None
+    P2O5: Optional[float] = None
+    LOI: Optional[float] = None
     
     model_config = ConfigDict(populate_by_name=True)
 
 
+class VolcanoInfo(BaseModel):
+    """Volcano information in matching metadata."""
+    name: str
+    number: str
+    dist_km: float
+
+
+class MatchingScores(BaseModel):
+    """Multi-dimensional matching scores."""
+    sp: float = Field(description="Spatial score (0.0-1.0)")
+    te: float = Field(description="Tectonic score (0.0-1.0)")
+    ti: float = Field(description="Temporal score (0.0-1.0)")
+    pe: float = Field(description="Petrological score (0.0-1.0)")
+    final: float = Field(description="Final weighted score (0.0-1.0)")
+
+
+class MatchingQuality(BaseModel):
+    """Quality metrics for the match."""
+    cov: float = Field(description="Coverage - proportion of dimensions evaluated (0.0-1.0)")
+    unc: float = Field(description="Uncertainty level (0.0-1.0)")
+    conf: str = Field(description="Confidence level: high, medium, low, or none")
+
+
+class LiteratureEvidence(BaseModel):
+    """Literature evidence for the match."""
+    match: bool = Field(description="Whether literature match was found")
+    type: str = Field(description="Type of match: explicit, partial, regional, or none")
+    conf: float = Field(description="Confidence in literature match (0.0-1.0)")
+    src: Optional[str] = Field(None, description="Source of match: title, abstract, or none")
+
+
+class MatchingEvidence(BaseModel):
+    """Evidence supporting the match."""
+    lit: LiteratureEvidence
+
+
+class MatchingExplanation(BaseModel):
+    """Human-readable explanation of the match."""
+    status: str = Field(description="Overall status: matched or rejected")
+    r: List[str] = Field(description="Reasons for/against match (tokens)")
+    f: List[str] = Field(default_factory=list, description="Flags indicating warnings or special cases")
+
+
+class MatchingMeta(BaseModel):
+    """Metadata about the matching process."""
+    method: str = Field(description="Matching method used")
+    ts: str = Field(description="Timestamp of matching (ISO 8601)")
+
+
 class MatchingMetadata(BaseModel):
-    """Volcano matching metadata for samples."""
-    volcano_name: Optional[str] = None
-    volcano_number: Optional[str] = None
-    distance_km: Optional[float] = None
-    confidence_level: Optional[str] = None
-    refined_score: Optional[float] = None
-    final_decision: Optional[str] = None
-    rejection_reasons: Optional[str] = None
-    match_reasons: Optional[str] = None
-    match_timestamp: Optional[str] = None
+    """
+    Complete volcano matching metadata for samples.
+    
+    This structure provides transparency about how samples were associated with volcanoes,
+    including scores, quality metrics, evidence, and human-readable explanations.
+    
+    Structure variants:
+    - With match: Contains volcano, scores, quality, evidence, expl, meta
+    - Without match: Contains quality, evidence, expl, meta (no volcano/scores)
+    
+    Legacy fields (deprecated, for backward compatibility):
+    - volcano_name, volcano_number, distance_km, confidence_level
+    """
+    # New nested structure (canonical)
+    volcano: Optional[VolcanoInfo] = Field(None, description="Associated volcano (only if matched)")
+    scores: Optional[MatchingScores] = Field(None, description="Matching scores (only if matched)")
+    quality: MatchingQuality = Field(description="Quality metrics (always present)")
+    evidence: MatchingEvidence = Field(description="Evidence supporting the match (always present)")
+    expl: MatchingExplanation = Field(description="Human-readable explanation (always present)")
+    meta: MatchingMeta = Field(description="Metadata about matching process (always present)")
+    
+    # Legacy fields (deprecated, for backward compatibility during transition)
+    volcano_name: Optional[str] = Field(None, description="DEPRECATED: Use volcano.name")
+    volcano_number: Optional[Union[int, str]] = Field(None, description="DEPRECATED: Use volcano.number")
+    distance_km: Optional[float] = Field(None, description="DEPRECATED: Use volcano.dist_km")
+    confidence_level: Optional[Union[str, int]] = Field(None, description="DEPRECATED: Use quality.conf")
 
 
 class Rocks(BaseModel):
