@@ -50,15 +50,62 @@ export interface Oxides {
   [key: string]: number | undefined;
 }
 
-// Matching metadata for samples
+// New matching metadata structure (aligned with MongoDB schema)
+export interface VolcanoInfo {
+  name: string;
+  number: string;
+  dist_km: number;
+}
+
+export interface MatchingScores {
+  sp: number;  // Spatial score
+  te: number;  // Tectonic score
+  ti: number;  // Temporal score
+  pe: number;  // Petrological score
+  final: number;  // Final weighted score
+}
+
+export interface MatchingQuality {
+  cov: number;  // Coverage (0.0-1.0)
+  unc: number;  // Uncertainty (0.0-1.0)
+  conf: string;  // Confidence: high, medium, low, or none
+}
+
+export interface LiteratureEvidence {
+  match: boolean;
+  type: string;  // explicit, partial, regional, or none
+  conf: number;  // 0.0-1.0
+  src?: string;  // title, abstract, or none
+}
+
+export interface MatchingEvidence {
+  lit: LiteratureEvidence;
+}
+
+export interface MatchingExplanation {
+  status: string;  // matched or rejected
+  r: string[];  // Reasons (tokens)
+  f: string[];  // Flags
+}
+
+export interface MatchingMeta {
+  method: string;  // Matching method
+  ts: string;  // Timestamp (ISO 8601)
+}
+
+// Complete matching metadata for samples
 export interface MatchingMetadata {
+  volcano?: VolcanoInfo;  // Only present if matched
+  scores?: MatchingScores;  // Only present if matched
+  quality: MatchingQuality;  // Always present
+  evidence: MatchingEvidence;  // Always present
+  expl: MatchingExplanation;  // Always present
+  meta: MatchingMeta;  // Always present
+  // Legacy fields for backward compatibility (deprecated)
   volcano_name?: string;
-  volcano_number?: number;
-  eruption_number?: number;
-  vei?: number;
-  start_date?: DateInfo;
+  volcano_number?: number | string;
   distance_km?: number;
-  confidence_level?: string | number; // Data quality indicator: 'high', 'medium', 'low', or numeric
+  confidence_level?: string | number;
 }
 
 // Main entity types
