@@ -9,6 +9,7 @@ import {
   getConfidenceLabel,
   getConfidenceDescription,
   getConfidenceIcon,
+  getVolcanoName,
   type ConfidenceLevel 
 } from '../../utils/confidence';
 
@@ -232,19 +233,19 @@ export const VolcanoMap: React.FC<MapProps> = ({
       getFillColor: (d: Sample) => {
         // PRIORITY 1: Highlight samples from the selected volcano with orange color
         // This ALWAYS takes precedence over confidence coloring for the FILL
-        if (selectedVolcanoName && d.matching_metadata?.volcano_name === selectedVolcanoName) {
+        if (selectedVolcanoName && getVolcanoName(d.matching_metadata) === selectedVolcanoName) {
           return [255, 140, 0, 200]; // Orange with higher opacity for selected volcano
         }
         
         // PRIORITY 2: Use confidence-based coloring for non-selected samples
         // Provides subtle data quality indication without overwhelming the visualization
-        const confidence = normalizeConfidence(d.matching_metadata?.confidence_level);
+        const confidence = normalizeConfidence(d.matching_metadata?.confidence_level, d.matching_metadata);
         return getConfidenceColor(confidence);
       },
       // NEW: Line color (stroke/border) always shows confidence level
       // This allows selected volcano samples to display data quality via border
       getLineColor: (d: Sample) => {
-        const confidence = normalizeConfidence(d.matching_metadata?.confidence_level);
+        const confidence = normalizeConfidence(d.matching_metadata?.confidence_level, d.matching_metadata);
         const color = getConfidenceColor(confidence);
         // Return RGB with full opacity for visible border
         return [color[0], color[1], color[2], 255];
@@ -255,7 +256,7 @@ export const VolcanoMap: React.FC<MapProps> = ({
       lineWidthMaxPixels: 2,
       getLineWidth: (d: Sample) => {
         // Thicker border for selected volcano samples to make confidence more visible
-        if (selectedVolcanoName && d.matching_metadata?.volcano_name === selectedVolcanoName) {
+        if (selectedVolcanoName && getVolcanoName(d.matching_metadata) === selectedVolcanoName) {
           return 2;
         }
         return 1;
@@ -278,14 +279,14 @@ export const VolcanoMap: React.FC<MapProps> = ({
       onHover: (info: any) => {
         if (info.object) {
           const sample = info.object as Sample;
-          const confidence = normalizeConfidence(sample.matching_metadata?.confidence_level);
+          const confidence = normalizeConfidence(sample.matching_metadata?.confidence_level, sample.matching_metadata);
           
           setHoverInfo({
             x: info.x,
             y: info.y,
             object: {
               type: 'sample',
-              volcano_name: sample.matching_metadata?.volcano_name,
+              volcano_name: getVolcanoName(sample.matching_metadata),
               rock_name: sample.rock_type,
               longitude: sample.geometry.coordinates[0],
               latitude: sample.geometry.coordinates[1],
