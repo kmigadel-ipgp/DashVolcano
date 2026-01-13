@@ -103,6 +103,7 @@ interface ChemicalAnalysisData {
     'MNO'?: number;
   }>;
   rock_types: Record<string, number>;
+  rock_types_wr: Record<string, number>;  // Rock types for Whole Rock (WR) samples only
 }
 
 interface VolcanoSelection {
@@ -377,8 +378,10 @@ const CompareVolcanoesPage: React.FC = () => {
     return selections
       .filter((v: VolcanoSelection) => v.samples && v.samples.length > 0)
       .map((v: VolcanoSelection, idx: number) => {
+        // Filter by confidence level AND material=WR for accurate rock type comparison
         const filteredSamples = filterSamplesByConfidence(v.samples, selectedConfidenceLevels);
-        const rockTypes = calculateRockTypeDistribution(filteredSamples);
+        const wrSamples = filteredSamples.filter(s => s.material === 'WR');
+        const rockTypes = calculateRockTypeDistribution(wrSamples);
         return {
           volcanoName: v.name,
           rockTypes,

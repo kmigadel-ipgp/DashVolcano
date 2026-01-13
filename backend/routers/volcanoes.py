@@ -276,6 +276,7 @@ async def get_volcano_chemical_analysis(
     harker_data = []
     all_samples = []  # Include ALL samples for CSV export
     rock_types = {}
+    rock_types_wr = {}  # Rock types for Whole Rock (WR) samples only
     
     for sample in samples:
         # Handle both cases: oxides in nested object or at root level
@@ -298,9 +299,14 @@ async def get_volcano_chemical_analysis(
         
         sample_code = str(sample.get("sample_code", ""))
         rock_type = sample.get("rock_type", "Unknown")
+        material = sample.get("material", "Unknown")
         
-        # Count rock types
+        # Count rock types (all samples)
         rock_types[rock_type] = rock_types.get(rock_type, 0) + 1
+        
+        # Count rock types for WR samples only
+        if material == "WR":
+            rock_types_wr[rock_type] = rock_types_wr.get(rock_type, 0) + 1
         
         # Add ALL samples to all_samples array (for complete CSV export)
         all_sample_entry = {
@@ -405,14 +411,14 @@ async def get_volcano_chemical_analysis(
                 afm_entry["MNO"] = round(mno, 2)
             afm_data.append(afm_entry)
         
-        # Harker data (preserve MongoDB field names and include all metadata)
-        if sio2 is not None and 35 <= sio2 <= 80:  # Valid SiO2 range
+        # Harker data - ONLY Whole Rock (WR) samples for accurate geochemical comparison
+        if material == "WR" and sio2 is not None and 35 <= sio2 <= 80:  # Valid SiO2 range
             harker_point = {
                 "sample_code": sample_code,
                 "sample_id": sample.get("sample_id", sample_code),
                 "db": sample.get("db", "Unknown"),
                 "rock_type": rock_type,
-                "material": sample.get("material", "Unknown"),
+                "material": material,
                 "tectonic_setting": sample.get("tectonic_setting"),
                 "geometry": sample.get("geometry"),
                 "matching_metadata": sample.get("matching_metadata"),
@@ -453,7 +459,8 @@ async def get_volcano_chemical_analysis(
         "afm_data": afm_data,
         "harker_data": harker_data,
         "all_samples": all_samples,  # All samples with any oxide data for CSV export
-        "rock_types": rock_types
+        "rock_types": rock_types,
+        "rock_types_wr": rock_types_wr  # Rock types for WR samples only (used for distribution charts)
     }
     
     # Cache the result for 5 minutes (thread-safe)

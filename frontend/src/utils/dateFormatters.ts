@@ -14,7 +14,7 @@ import type { DateInfo, GeologicalAge } from '../types';
 export function formatDate(date: DateInfo | undefined): string {
   if (!date) return 'Unknown';
   
-  const { year, month, day, uncertainty } = date;
+  const { year, month, day, uncertainty_days } = date;
   
   if (!year) return 'Unknown';
   
@@ -28,7 +28,7 @@ export function formatDate(date: DateInfo | undefined): string {
       'January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December'
     ];
-    const uncertaintyStr = uncertainty ? ` (${uncertainty})` : '';
+    const uncertaintyStr = uncertainty_days ? ` (±${uncertainty_days} days)` : '';
     return `${monthNames[month - 1]} ${day}, ${yearAbs}${era}${uncertaintyStr}`;
   }
   
@@ -38,12 +38,12 @@ export function formatDate(date: DateInfo | undefined): string {
       'January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December'
     ];
-    const uncertaintyStr = uncertainty ? ` (${uncertainty})` : '';
+    const uncertaintyStr = uncertainty_days ? ` (±${uncertainty_days} days)` : '';
     return `${monthNames[month - 1]} ${yearAbs}${era}${uncertaintyStr}`;
   }
   
   // Year only
-  const uncertaintyStr = uncertainty ? ` ${uncertainty}` : '';
+  const uncertaintyStr = uncertainty_days ? ` ±${uncertainty_days} days` : '';
   return `${yearAbs}${era}${uncertaintyStr}`;
 }
 
@@ -60,21 +60,16 @@ export function formatDate(date: DateInfo | undefined): string {
 export function formatGeologicalAge(age: GeologicalAge | undefined): string {
   if (!age) return 'Unknown';
   
-  const { min_age, max_age, age_unit = 'years' } = age;
+  const { age: ageValue, age_prefix } = age;
   
-  if (min_age !== undefined && max_age !== undefined) {
-    return `${min_age}-${max_age} ${age_unit}`;
+  if (!ageValue) return 'Unknown';
+  
+  // Format: "PREFIX AGE" (e.g., "NEO ARCHEAN", "EARLY HOLOCENE")
+  if (age_prefix) {
+    return `${age_prefix} ${ageValue}`;
   }
   
-  if (min_age !== undefined) {
-    return `~${min_age} ${age_unit}`;
-  }
-  
-  if (max_age !== undefined) {
-    return `<${max_age} ${age_unit}`;
-  }
-  
-  return 'Unknown';
+  return ageValue;
 }
 
 /**

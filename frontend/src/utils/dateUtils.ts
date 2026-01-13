@@ -60,7 +60,7 @@ export function formatDateInfo(dateInfo: DateInfo | null | undefined, includeDay
   const year = dateInfo.year;
   const month = dateInfo.month;
   const day = dateInfo.day;
-  const uncertainty = dateInfo.uncertainty;
+  const uncertainty = dateInfo.uncertainty_days;
 
   // Format year with BCE/CE
   const yearStr = year < 0 ? `${Math.abs(year)} BCE` : `${year} CE`;

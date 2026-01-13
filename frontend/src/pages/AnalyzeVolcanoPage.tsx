@@ -81,6 +81,7 @@ interface ChemicalAnalysisData {
     MNO?: number;
   }>;
   rock_types: Record<string, number>;
+  rock_types_wr: Record<string, number>;  // Rock types for Whole Rock (WR) samples only
 }
 
 /**
@@ -352,8 +353,9 @@ const AnalyzeVolcanoPage: React.FC = () => {
   const filteredSamples = filterSamplesByConfidence(samples, selectedConfidenceLevels);
   const filteredSamplesWithVEI = filterSamplesByConfidence(samplesWithVEI, selectedConfidenceLevels);
   
-  // Calculate rock type distribution from filtered samples
-  const filteredRockTypes = calculateRockTypeDistribution(filteredSamples);
+  // Calculate rock type distribution for WR samples only, filtered by confidence level
+  const wrSamples = filteredSamples.filter(s => s.material === 'WR');
+  const filteredRockTypes = calculateRockTypeDistribution(wrSamples);
 
   const handleDownloadCSV = () => {
     if (filteredSamples.length === 0) return;

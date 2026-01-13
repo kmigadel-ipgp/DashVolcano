@@ -24,13 +24,13 @@ export interface DateInfo {
   year?: number;
   month?: number;
   day?: number;
-  uncertainty?: string;
+  uncertainty_days?: number;
+  iso8601?: string;
 }
 
 export interface GeologicalAge {
-  min_age?: number;
-  max_age?: number;
-  age_unit?: string;
+  age?: string;  // e.g., "ARCHEAN", "HOLOCENE", "PLEISTOCENE"
+  age_prefix?: string;  // e.g., "NEO", "EARLY", "LATE"
 }
 
 // Chemical composition types
@@ -55,6 +55,7 @@ export interface VolcanoInfo {
   name: string;
   number: string;
   dist_km: number;
+  rock_type?: string;  // Primary rock type of volcano
 }
 
 export interface MatchingScores {
@@ -65,10 +66,22 @@ export interface MatchingScores {
   final: number;  // Final weighted score
 }
 
+export interface TectonicSettingSample {
+  r?: string;  // Regime: subduction, rift, or intraplate
+  c?: string;  // Crust type: oceanic, continental, or unknown
+  s?: string;  // Subregion/detail information
+}
+
+export interface TectonicSetting {
+  sample?: TectonicSettingSample;  // Sample tectonic data (r/c/s)
+  ui?: string;  // Display value: GVP setting if matched, else sample regime
+}
+
 export interface MatchingQuality {
   cov: number;  // Coverage (0.0-1.0)
   unc: number;  // Uncertainty (0.0-1.0)
   conf: string;  // Confidence: high, medium, low, or none
+  gap?: number;  // Score gap between best and second best match (0.0-1.0)
 }
 
 export interface LiteratureEvidence {
@@ -116,15 +129,13 @@ export interface Sample {
   db: string;
   material: string;
   rock_type?: string;
-  tectonic_setting?: string;
+  tectonic_setting?: string | TectonicSetting;  // Support both legacy string and new nested structure
   geometry: Point;
   oxides?: Oxides;
   matching_metadata?: MatchingMetadata;
   geological_age?: GeologicalAge;
+  eruption_date?: DateInfo;  // Changed from eruption_year
   references?: string;
-  // VEI data (from samples-with-vei endpoint)
-  vei?: number;
-  eruption_year?: number;
 }
 
 export interface Volcano {

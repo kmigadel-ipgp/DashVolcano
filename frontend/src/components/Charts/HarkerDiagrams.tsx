@@ -139,6 +139,17 @@ export const HarkerDiagrams: React.FC<HarkerDiagramsProps> = React.memo(({ volca
         </p>
       </div>
 
+      {/* WR Filter Notice */}
+      <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+        <div className="flex items-start gap-2">
+          <span className="text-blue-600 font-semibold text-sm">📊 Data Filter:</span>
+          <p className="text-sm text-blue-900">
+            Displaying <strong>Whole Rock (WR) samples only</strong> for accurate geochemical interpretation. 
+            Minerals, glasses, and inclusions are excluded to ensure representative bulk compositions.
+          </p>
+        </div>
+      </div>
+
       {/* Loading Skeleton */}
       {!diagramsReady && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
