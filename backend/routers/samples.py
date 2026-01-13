@@ -49,12 +49,13 @@ async def get_samples(
         query["db"] = database
     
     # Tectonic setting filter - support multiple values with OR logic
+    # Updated to use tectonic_setting.ui for new nested structure
     if tectonic_setting:
         settings = [s.strip() for s in tectonic_setting.split(',')]
         if len(settings) > 1:
-            query["tectonic_setting"] = {"$in": settings}
+            query["tectonic_setting.ui"] = {"$in": settings}
         else:
-            query["tectonic_setting"] = settings[0]
+            query["tectonic_setting.ui"] = settings[0]
     
     # SiO2 filter - only apply if samples have oxides data
     if min_sio2 is not None or max_sio2 is not None:
@@ -123,6 +124,8 @@ async def get_samples(
         "material": 1,
         "matching_metadata": 1,  # Include full matching_metadata structure
         "references": 1,
+        "geological_age": 1,  # Include temporal data for score explanations
+        "eruption_date": 1,   # Include eruption date for temporal calculations
         # Include key oxides for TAS/AFM plots (only what's needed)
         # Support both structures: oxides in nested object or at root level
         "oxides.SIO2": 1,
@@ -150,16 +153,51 @@ async def get_samples(
         "MNO": 1
     }
     
-    # Build query with limit and offset
-    # Use larger batch size (10000) to reduce network round-trips to MongoDB Atlas
-    cursor = db.samples.find(query, projection)
-    if limit is not None:
-        cursor = cursor.limit(limit)
-    if offset > 0:
-        cursor = cursor.skip(offset)
-    cursor = cursor.batch_size(10000)
+    # Use aggregation pipeline to enrich samples with volcano rock_type via lookup
+    pipeline = [
+        {"$match": query},
+        {"$skip": offset},
+    ]
     
-    samples = list(cursor)
+    if limit is not None:
+        pipeline.append({"$limit": limit})
+    
+    # Add lookup to join with volcanoes collection to get rock_type
+    pipeline.extend([
+        {
+            "$lookup": {
+                "from": "volcanoes",
+                "let": {"volcano_number": "$matching_metadata.volcano.number"},
+                "pipeline": [
+                    {
+                        "$match": {
+                            "$expr": {
+                                "$eq": [{"$toString": "$volcano_number"}, "$$volcano_number"]
+                            }
+                        }
+                    },
+                    {"$project": {"rock_type": 1, "_id": 0}}
+                ],
+                "as": "volcano_info"
+            }
+        },
+        {
+            "$addFields": {
+                "matching_metadata.volcano.rock_type": {
+                    "$cond": {
+                        "if": {"$gt": [{"$size": "$volcano_info"}, 0]},
+                        "then": {"$arrayElemAt": ["$volcano_info.rock_type", 0]},
+                        "else": None
+                    }
+                }
+            }
+        },
+        {"$project": projection},  # Apply projection
+        {"$unset": "volcano_info"}  # Remove temporary field after projection
+    ])
+    
+    # Execute aggregation pipeline
+    samples = list(db.samples.aggregate(pipeline, batchSize=10000))
     
     # Normalize oxide structure: ensure all oxides are in 'oxides' object
     oxide_fields = ['SIO2', 'NA2O', 'K2O', 'MGO', 'FE2O3', 'FEOT', 'CAO', 'AL2O3', 'TIO2', 'P2O5', 'MNO']

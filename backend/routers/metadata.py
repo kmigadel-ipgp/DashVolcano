@@ -65,7 +65,8 @@ async def get_tectonic_settings(db: Database = Depends(get_database)):
     """
     Get list of all tectonic settings (from both volcanoes and samples)
     """
-    sample_settings = db.samples.distinct("tectonic_setting")
+    # tectonic_setting can be either a string (old format) or object with ui field (new format)
+    sample_settings = db.samples.distinct("tectonic_setting.ui")
     # Combine and deduplicate
     all_settings = set(sample_settings)
     return {

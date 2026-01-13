@@ -202,7 +202,150 @@ npm run dev
 
 ---
 
-## 📚 Documentation
+## � Production Deployment with PM2
+
+PM2 is a production-ready process manager for Node.js and Python applications. It handles automatic restarts, monitoring, and log management.
+
+### Prerequisites
+
+**Install PM2 globally:**
+```bash
+npm install -g pm2
+```
+
+### Setup Steps
+
+**1. Ensure Backend Virtual Environment is Set Up:**
+```bash
+cd backend
+uv sync  # or pip install -e .
+cd ..
+```
+
+**2. Configure Environment Variables:**
+
+Make sure your backend `.env` file is configured for production:
+```bash
+cd backend
+cp .env.example .env
+# Edit .env with production MongoDB credentials and settings
+```
+
+**3. Update PM2 Configuration (if needed):**
+
+The `ecosystem.config.js` is already configured, but ensure the paths match your installation:
+```javascript
+// The configuration uses absolute paths to the virtual environment
+script: './backend/.venv/bin/uvicorn',  // Uses virtual environment's uvicorn
+cwd: '/path/to/your/DashVolcano',       // Update this path if needed
+```
+
+**4. Start Application with PM2:**
+```bash
+# From the project root directory
+pm2 start ecosystem.config.js
+```
+
+**5. Verify Services are Running:**
+```bash
+pm2 status
+```
+
+You should see both `dashvolcano-api` and `dashvolcano-frontend` running.
+
+### PM2 Management Commands
+
+**View Logs:**
+```bash
+# All logs
+pm2 logs
+
+# Specific service logs
+pm2 logs dashvolcano-api
+pm2 logs dashvolcano-frontend
+
+# Last N lines
+pm2 logs --lines 100
+```
+
+**Restart Services:**
+```bash
+# Restart all
+pm2 restart all
+
+# Restart specific service
+pm2 restart dashvolcano-api
+pm2 restart dashvolcano-frontend
+```
+
+**Stop Services:**
+```bash
+# Stop all
+pm2 stop all
+
+# Stop specific service
+pm2 stop dashvolcano-api
+```
+
+**Delete Services:**
+```bash
+# Remove all services from PM2
+pm2 delete all
+
+# Remove specific service
+pm2 delete dashvolcano-api
+```
+
+**Monitor Resources:**
+```bash
+pm2 monit
+```
+
+**Save Configuration (Auto-start on Reboot):**
+```bash
+# Save current PM2 process list
+pm2 save
+
+# Generate startup script
+pm2 startup
+
+# Follow the command output to enable auto-start
+```
+
+### Log Files
+
+Logs are stored in the `logs/` directory:
+- `logs/api-error.log` - Backend error logs
+- `logs/api-out.log` - Backend output logs
+- `logs/api-combined.log` - Combined backend logs
+- `logs/frontend-error.log` - Frontend error logs
+- `logs/frontend-out.log` - Frontend output logs
+- `logs/frontend-combined.log` - Combined frontend logs
+
+### Troubleshooting PM2 Issues
+
+**"No module named uvicorn" error:**
+- Ensure the virtual environment is properly set up: `cd backend && uv sync`
+- Verify uvicorn is installed: `./backend/.venv/bin/uvicorn --version`
+- Check the `script` path in `ecosystem.config.js` points to `./backend/.venv/bin/uvicorn`
+
+**Services keep restarting:**
+- Check logs: `pm2 logs`
+- Verify MongoDB connection in `backend/.env`
+- Ensure ports 8000 and 5173 are available
+
+**Frontend build issues:**
+- Install dependencies: `cd frontend && npm install`
+- Verify Node.js version: `node --version` (should be 20.19+)
+
+### Production Best Practices
+
+For full production deployment with Nginx reverse proxy and SSL, refer to:
+**[DEPLOYMENT_GUIDE.md](./docs/DEPLOYMENT_GUIDE.md)** - Complete production setup guide
+
+---
+
+## �📚 Documentation
 
 - **[Frontend README](./frontend/README.md)** - Complete frontend setup and development guide
 - **[Backend README](./backend/README.md)** - Backend API setup and development guide

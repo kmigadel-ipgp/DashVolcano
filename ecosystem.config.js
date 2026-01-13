@@ -2,8 +2,8 @@ module.exports = {
   apps: [
     {
       name: 'dashvolcano-api',
-      script: 'python3.10',
-      args: '-m uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000',
+      script: './backend/.venv/bin/uvicorn',
+      args: 'backend.main:app --reload --host 0.0.0.0 --port 8000',
       cwd: '/home/kmigadel/Documents/IPGP/Projects-Tasks/DashVolcano/Website/code/DashVolcano',
       instances: 1,
       exec_mode: 'fork',

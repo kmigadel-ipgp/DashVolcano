@@ -366,7 +366,46 @@ const CompareVEIPage = () => {
       {/* Comparison Insights */}
       {selections[0].data && selections[1].data && (
         <div className="mt-8 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6">
-          <h3 className="text-xl font-semibold mb-4">📊 Comparison Insights</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold">📊 Comparison Insights</h3>
+            <details className="text-xs">
+              <summary className="cursor-pointer text-blue-700 hover:text-blue-900 font-medium">How are these calculated?</summary>
+              <div className="mt-2 p-3 bg-white rounded-lg shadow-sm space-y-2 max-w-md">
+                <div>
+                  <p className="font-semibold text-gray-700">More Explosive:</p>
+                  <p className="text-gray-600">Compares average VEI across all eruptions for each volcano.</p>
+                  {(() => {
+                    const avg0 = selections[0].data ? getAverageVEI(selections[0].data.vei_counts).toFixed(2) : '0';
+                    const avg1 = selections[1].data ? getAverageVEI(selections[1].data.vei_counts).toFixed(2) : '0';
+                    return (
+                      <p className="text-xs text-gray-500 mt-1 font-mono">
+                        {selections[0].name}: avg VEI = {avg0}<br/>
+                        {selections[1].name}: avg VEI = {avg1}
+                      </p>
+                    );
+                  })()}
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-700">More Active:</p>
+                  <p className="text-gray-600">Simple count of total recorded eruptions.</p>
+                  {(() => {
+                    const total0 = selections[0].data?.total_eruptions || 0;
+                    const total1 = selections[1].data?.total_eruptions || 0;
+                    return (
+                      <p className="text-xs text-gray-500 mt-1 font-mono">
+                        {selections[0].name}: {total0} eruptions<br/>
+                        {selections[1].name}: {total1} eruptions
+                      </p>
+                    );
+                  })()}
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-700">Similarity Score:</p>
+                  <p className="text-gray-600">Weighted comparison of VEI distributions. For each VEI level (0-8), compares the percentage of eruptions, weighted by total eruptions at that level. Result is averaged across all VEI levels.</p>
+                </div>
+              </div>
+            </details>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* More Explosive */}
             <div className="bg-white rounded-lg p-4 shadow">
@@ -388,7 +427,47 @@ const CompareVEIPage = () => {
 
             {/* Similar VEI */}
             <div className="bg-white rounded-lg p-4 shadow">
-              <p className="text-sm text-gray-600 mb-1">Similarity Score</p>
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-sm text-gray-600">Similarity Score</p>
+                <div className="group relative">
+                  <span className="text-blue-500 cursor-help text-xs border border-blue-500 rounded-full w-4 h-4 inline-flex items-center justify-center relative -translate-y-px">?</span>
+                  <div className="hidden group-hover:block absolute z-50 w-80 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg -left-36 top-6">
+                    <p className="font-semibold mb-1">How it's calculated:</p>
+                    <p>Compares the percentage distribution of eruptions across VEI levels. For each VEI level, calculates how similar the proportions are, weighted by the total number of eruptions at that level.</p>
+                    {(() => {
+                      const data0 = selections[0].data;
+                      const data1 = selections[1].data;
+                      if (data0 && data1) {
+                        // Find a common VEI level with data
+                        const commonVEI = Object.keys(data0.vei_counts).find(vei => 
+                          vei !== 'unknown' && data0.vei_counts[vei] > 0 && data1.vei_counts[vei] > 0
+                        );
+                        if (commonVEI) {
+                          const count0 = data0.vei_counts[commonVEI];
+                          const count1 = data1.vei_counts[commonVEI];
+                          const pct0 = ((count0 / data0.total_eruptions) * 100).toFixed(1);
+                          const pct1 = ((count1 / data1.total_eruptions) * 100).toFixed(1);
+                          const diff = Math.abs(Number(pct0) - Number(pct1)).toFixed(1);
+                          const similarity = (100 - Number(diff)).toFixed(1);
+                          const veiLabel = Math.floor(Number(commonVEI));
+                          return (
+                            <div className="mt-2 p-2 bg-gray-800 rounded text-[10px] font-mono">
+                              <p className="text-yellow-300 font-semibold mb-1">Example with your data:</p>
+                              <p>VEI {veiLabel}: {selections[0].name} has {pct0}% ({count0}/{data0.total_eruptions})</p>
+                              <p>VEI {veiLabel}: {selections[1].name} has {pct1}% ({count1}/{data1.total_eruptions})</p>
+                              <p className="mt-1">Difference: |{pct0}% - {pct1}%| = {diff}%</p>
+                              <p>Similarity: 100% - {diff}% = {similarity}%</p>
+                              <p className="text-gray-400 mt-1">(Repeated for all VEI levels, then weighted average)</p>
+                            </div>
+                          );
+                        }
+                      }
+                      return null;
+                    })()}
+                    <p className="mt-1 text-gray-300">100% = identical distributions, 0% = completely different</p>
+                  </div>
+                </div>
+              </div>
               <p className="text-lg font-bold text-purple-600">
                 {getVEISimilarity(selections)}%
               </p>

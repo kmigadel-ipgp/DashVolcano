@@ -108,24 +108,6 @@ export const getConfidenceLabel = (confidence: ConfidenceLevel): string => {
 };
 
 /**
- * Get detailed explanation of confidence level
- * Used in tooltips and detail panels
- */
-export const getConfidenceDescription = (confidence: ConfidenceLevel): string => {
-  switch (confidence) {
-    case 'high':
-      return 'Sample location is very close to volcano, high certainty of association';
-    case 'medium':
-      return 'Sample location is moderately close to volcano, reasonable association';
-    case 'low':
-      return 'Sample location is far from volcano, uncertain association';
-    case 'unknown':
-    default:
-      return 'No confidence score available for this sample-volcano match';
-  }
-};
-
-/**
  * Get confidence icon emoji (for visual quick reference)
  */
 export const getConfidenceIcon = (confidence: ConfidenceLevel): string => {
@@ -150,19 +132,6 @@ export const formatConfidenceForCSV = (
   confidence?: string | number | null
 ): string => {
   return normalizeConfidence(confidence);
-};
-
-/**
- * Get confidence badge component props
- * Returns consistent styling for confidence badges across UI
- */
-export const getConfidenceBadgeProps = (confidence: ConfidenceLevel) => {
-  return {
-    label: getConfidenceLabel(confidence),
-    color: getConfidenceColorHex(confidence),
-    icon: getConfidenceIcon(confidence),
-    description: getConfidenceDescription(confidence),
-  };
 };
 
 /**

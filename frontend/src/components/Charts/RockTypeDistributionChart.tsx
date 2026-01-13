@@ -33,6 +33,19 @@ export const RockTypeDistributionChart: React.FC<RockTypeDistributionChartProps>
     );
   }
 
+  // WR Filter Notice
+  const WRFilterNotice = () => (
+    <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+      <div className="flex items-start gap-2">
+        <span className="text-blue-600 font-semibold text-sm">📊 Data Filter:</span>
+        <p className="text-sm text-blue-900">
+          Showing <strong>Whole Rock (WR) samples only</strong> for accurate rock type comparison. 
+          This excludes minerals, glasses, and inclusions to ensure representative data.
+        </p>
+      </div>
+    </div>
+  );
+
   // Collect all unique rock types across all volcanoes
   const allRockTypes = new Set<string>();
   volcanoes.forEach(v => {
@@ -94,6 +107,7 @@ export const RockTypeDistributionChart: React.FC<RockTypeDistributionChartProps>
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <WRFilterNotice />
       <Plot
         data={traces}
         layout={{
@@ -189,11 +203,68 @@ export const RockTypeDistributionChart: React.FC<RockTypeDistributionChartProps>
       {/* Comparison Insights */}
       {volcanoes.length >= 2 && (
         <div className="mt-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6">
-          <h3 className="text-xl font-semibold mb-4">📊 Comparison Insights</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold">📊 Comparison Insights</h3>
+            <details className="text-xs">
+              <summary className="cursor-pointer text-blue-700 hover:text-blue-900 font-medium">How are these calculated?</summary>
+              <div className="mt-2 p-3 bg-white rounded-lg shadow-sm space-y-2 max-w-md">
+                <div>
+                  <p className="font-semibold text-gray-700">Similarity Score:</p>
+                  <p className="text-gray-600">For each rock type, compares percentages between volcanoes. Differences are weighted by sample counts and averaged. Higher scores mean more similar distributions.</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-700">Most Diverse:</p>
+                  <p className="text-gray-600">Volcano with the highest number of unique rock types (WR samples only).</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-700">Common Rock Type:</p>
+                  <p className="text-gray-600">Rock type with highest combined dominance score across all selected volcanoes.</p>
+                </div>
+              </div>
+            </details>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Similarity Score */}
             <div className="bg-white rounded-lg p-4 shadow">
-              <p className="text-sm text-gray-600 mb-1">Similarity Score</p>
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-sm text-gray-600">Similarity Score</p>
+                <div className="group relative">
+                  <span className="text-blue-500 cursor-help text-xs border border-blue-500 rounded-full w-4 h-4 inline-flex items-center justify-center relative -translate-y-px">?</span>
+                  <div className="hidden group-hover:block absolute z-50 w-80 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg -left-36 top-6">
+                    <p className="font-semibold mb-1">How it's calculated:</p>
+                    <p>Compares rock type distributions between the first two volcanoes. For each rock type, calculates the difference in percentages (0-100%), weighted by the total sample count for that rock type.</p>
+                    {(() => {
+                      if (volcanoStats.length >= 2) {
+                        const v1 = volcanoStats[0];
+                        const v2 = volcanoStats[1];
+                        // Find a common rock type
+                        const commonRockType = Object.keys(v1.percentages).find(rt => v2.percentages[rt]);
+                        if (commonRockType) {
+                          const pct1 = v1.percentages[commonRockType].percentage.toFixed(1);
+                          const pct2 = v2.percentages[commonRockType].percentage.toFixed(1);
+                          const count1 = v1.percentages[commonRockType].count;
+                          const count2 = v2.percentages[commonRockType].count;
+                          const diff = Math.abs(Number(pct1) - Number(pct2)).toFixed(1);
+                          const similarity = (100 - Number(diff)).toFixed(1);
+                          return (
+                            <div className="mt-2 p-2 bg-gray-800 rounded text-[10px] font-mono">
+                              <p className="text-yellow-300 font-semibold mb-1">Example with your data:</p>
+                              <p>{commonRockType}:</p>
+                              <p>• {v1.volcanoName}: {pct1}% ({count1} samples)</p>
+                              <p>• {v2.volcanoName}: {pct2}% ({count2} samples)</p>
+                              <p className="mt-1">Difference: |{pct1}% - {pct2}%| = {diff}%</p>
+                              <p>Similarity: 100% - {diff}% = {similarity}%</p>
+                              <p className="text-gray-400 mt-1">(Repeated for all rock types, weighted by counts)</p>
+                            </div>
+                          );
+                        }
+                      }
+                      return null;
+                    })()}
+                    <p className="mt-1 text-gray-300">100% = identical distributions, 0% = completely different</p>
+                  </div>
+                </div>
+              </div>
               <p className="text-lg font-bold text-purple-600">
                 {getRockTypeSimilarity(volcanoStats)}%
               </p>

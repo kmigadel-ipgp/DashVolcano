@@ -86,6 +86,7 @@ class VolcanoInfo(BaseModel):
     name: str
     number: str
     dist_km: float
+    rock_type: Optional[str] = Field(None, description="Primary rock type of volcano")
 
 
 class MatchingScores(BaseModel):
@@ -97,11 +98,25 @@ class MatchingScores(BaseModel):
     final: float = Field(description="Final weighted score (0.0-1.0)")
 
 
+class TectonicSettingSample(BaseModel):
+    """Tectonic setting sample data (r/c/s structure)."""
+    r: Optional[str] = Field(None, description="Regime: subduction, rift, or intraplate")
+    c: Optional[str] = Field(None, description="Crust type: oceanic, continental, or unknown")
+    s: Optional[str] = Field(None, description="Subregion/detail information")
+
+
+class TectonicSetting(BaseModel):
+    """Nested tectonic setting structure."""
+    sample: Optional[TectonicSettingSample] = Field(None, description="Sample tectonic data (r/c/s)")
+    ui: Optional[str] = Field(None, description="Display value: GVP setting if matched, else sample regime")
+
+
 class MatchingQuality(BaseModel):
     """Quality metrics for the match."""
     cov: float = Field(description="Coverage - proportion of dimensions evaluated (0.0-1.0)")
     unc: float = Field(description="Uncertainty level (0.0-1.0)")
     conf: str = Field(description="Confidence level: high, medium, low, or none")
+    gap: Optional[float] = Field(None, description="Score gap between best and second best match (0.0-1.0)")
 
 
 class LiteratureEvidence(BaseModel):
@@ -178,7 +193,7 @@ class Sample(BaseModel):
     geographic_location: Optional[str] = None
     material: Optional[str] = None
     rock_type: Optional[str] = None
-    tectonic_setting: Optional[str] = None
+    tectonic_setting: Optional[Union[str, TectonicSetting]] = None
     geological_age: Optional[GeologicalAge] = None
     eruption_date: Optional[DateInfo] = None
     oxides: Optional[Oxides] = None

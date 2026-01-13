@@ -7,7 +7,6 @@ import {
   normalizeConfidence, 
   getConfidenceColor, 
   getConfidenceLabel,
-  getConfidenceDescription,
   getConfidenceIcon,
   getVolcanoName,
   type ConfidenceLevel 
@@ -294,7 +293,6 @@ export const VolcanoMap: React.FC<MapProps> = ({
               references: sample.references,
               confidence_level: confidence,
               confidence_label: getConfidenceLabel(confidence),
-              confidence_description: getConfidenceDescription(confidence),
               confidence_icon: getConfidenceIcon(confidence),
             } as any,
           });
