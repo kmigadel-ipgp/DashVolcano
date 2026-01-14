@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Plot from 'react-plotly.js';
 import type { Sample } from '../../types';
-import { getRockTypeColor } from '../../utils/colors';
+import { getVEIColor, getRockTypeColor } from '../../utils/colors';
 import { normalizeConfidence, getConfidenceLabel, getVolcanoName } from '../../utils/confidence';
 
 interface TASPlotProps {
@@ -80,6 +80,7 @@ export const TASPlot: React.FC<TASPlotProps> = React.memo(({
           rock_type: s.rock_type || 'Unknown',
           sample_code: s.sample_code || s.sample_id,
           sample_id: s.sample_id,
+          vei: s.vei,
           eruption_date: s.eruption_date,
           volcano_name: getVolcanoName(s.matching_metadata),
           confidence: confidence,
@@ -162,35 +163,60 @@ export const TASPlot: React.FC<TASPlotProps> = React.memo(({
 
   // Grouping strategy based on colorBy mode
   if (colorBy === 'vei') {
-    // VEI MODE: Disabled for now as VEI field no longer available in current data structure
-    // Show all samples with same color since we don't have VEI data
-    plotlyData.push({
-      type: 'scatter',
-      mode: 'markers',
-      x: sampleData.map(s => s.sio2),
-      y: sampleData.map(s => s.alkali),
-      name: 'Samples',
-      legendgroup: 'samples',
-      showlegend: true,
-      marker: {
-        size: 8,
-        opacity: 0.7,
-        symbol: 'circle',
-        color: '#3498db',
-      },
-      text: sampleData.map(s => {
-        const eruptionInfo = s.eruption_date?.year 
-          ? ` (Eruption: ${s.eruption_date.year}${s.eruption_date.month ? `-${s.eruption_date.month}` : ''})`
-          : '';
-        return `${s.sample_code}<br>`+
-          `Rock Type: ${s.rock_type}<br>`+
-          `Material: ${s.material}<br>`+
-          `SiO2: ${s.sio2.toFixed(2)}%<br>`+
-          `Alkali: ${s.alkali.toFixed(2)}%${eruptionInfo}${s.volcano_name ? `<br>Volcano: ${s.volcano_name}` : ''}<br>`+
-          `Confidence: ${s.confidenceLabel}`;
-      }),
-      hoverinfo: 'text',
+    // VEI MODE: Group by VEI value only, legend shows VEI 0, VEI 1, etc.
+    const samplesByVEI = sampleData.reduce((acc, sample) => {
+      const vei = sample.vei !== undefined && sample.vei !== null ? `VEI ${sample.vei}` : 'Unknown VEI';
+      if (!acc[vei]) {
+        acc[vei] = [];
+      }
+      acc[vei].push(sample);
+      return acc;
+    }, {} as Record<string, typeof sampleData>);
+
+    // Sort VEI keys to ensure correct order in legend
+    const sortedVEIKeys = Object.keys(samplesByVEI).sort((a, b) => {
+      if (a === 'Unknown VEI') return 1;
+      if (b === 'Unknown VEI') return -1;
+      const veiA = parseInt(a.replace('VEI ', ''));
+      const veiB = parseInt(b.replace('VEI ', ''));
+      return veiA - veiB;
     });
+
+    for (const veiLabel of sortedVEIKeys) {
+      const samples = samplesByVEI[veiLabel];
+      const veiValue = veiLabel === 'Unknown VEI' ? null : parseInt(veiLabel.replace('VEI ', ''));
+      const color = veiValue !== null ? getVEIColor(veiValue) : '#808080';
+
+      plotlyData.push({
+        type: 'scatter',
+        mode: 'markers',
+        x: samples.map(s => s.sio2),
+        y: samples.map(s => s.alkali),
+        name: veiLabel,
+        legendgroup: veiLabel,
+        showlegend: true,
+        marker: {
+          size: 8,
+          opacity: 0.7,
+          symbol: 'circle',
+          color: color,
+        },
+        text: samples.map(s => {
+          const eruptionInfo = s.eruption_date?.year 
+            ? ` (${s.eruption_date.year}${s.eruption_date.month ? `-${s.eruption_date.month}` : ''})`
+            : '';
+          return `${s.sample_code}<br>`+
+            `Rock Type: ${s.rock_type}<br>`+
+            `Material: ${s.material}<br>`+
+            `SiO2: ${s.sio2.toFixed(2)}%<br>`+
+            `Alkali: ${s.alkali.toFixed(2)}%<br>`+
+            `VEI: ${s.vei !== undefined ? s.vei : 'Unknown'}${eruptionInfo}${s.volcano_name ? `<br>`+
+            `Volcano: ${s.volcano_name}` : ''}<br>`+
+            `Confidence: ${s.confidenceLabel}`;
+        }),
+        hoverinfo: 'text',
+      });
+    }
   } else {
     // ROCK TYPE MODE: Group by rock_type|material (same as AFM)
     // Legend shows materials (WR, GL, MIN, INC), colors show rock types
