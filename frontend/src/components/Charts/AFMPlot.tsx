@@ -97,7 +97,7 @@ export const AFMPlot: React.FC<AFMPlotProps> = React.memo(({
           mgo,
           alkali,
           material: s.material || 'Unknown',
-          rock_type: s.rock_type || 'Unknown',
+          rock_type: s.petro?.rock_type || 'Unknown',
           sample_code: s.sample_code || s.sample_id,
           sample_id: s.sample_id,
           volcano_name: getVolcanoName(s.matching_metadata),

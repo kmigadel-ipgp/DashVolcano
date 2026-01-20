@@ -11,6 +11,26 @@ import {
   isMatched
 } from '../../utils/confidence';
 
+/**
+ * Helper to extract component score with backward compatibility
+ * Tries .final first, falls back to direct number value
+ */
+const getComponentScore = (scores: any, key: string): number | undefined => {
+  const component = scores?.[key];
+  if (component === undefined) return undefined;
+  if (typeof component === 'number') return component; // Legacy format
+  return component.final; // New format
+};
+
+/**
+ * Helper to extract component metadata (dist_km, decay, regime_score, etc.)
+ */
+const getComponentMeta = (scores: any, key: string): any => {
+  const component = scores?.[key];
+  if (typeof component === 'object') return component;
+  return {}; // Legacy format has no metadata
+};
+
 interface SampleDetailsPanelProps {
   /** The selected sample to display */
   sample: Sample | null;
@@ -45,16 +65,17 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
   
   if (!sample) return null;
 
-  const { sample_id, db, rock_type, tectonic_setting, geometry, oxides, matching_metadata, references } = sample;
+  const { sample_id, db, petro, tecto, geometry, oxides, matching_metadata, references } = sample;
+  const rock_type = petro?.rock_type;
   const [longitude, latitude] = geometry.coordinates;
 
   // Extract tectonic setting display value (support both legacy string and new nested structure)
-  const tectonicSettingDisplay = typeof tectonic_setting === 'string' 
-    ? tectonic_setting 
-    : tectonic_setting?.ui || 'Unknown';
+  const tectonicSettingDisplay = typeof tecto === 'object' 
+    ? tecto?.ui || 'Unknown'
+    : tecto || 'Unknown';
   
-  const tectonicSettingSample = typeof tectonic_setting === 'object' && tectonic_setting !== null
-    ? tectonic_setting.sample
+  const tectonicSettingSample = typeof sample.tecto === 'object' && sample.tecto !== null
+    ? sample.tecto
     : undefined;
 
   // Format coordinates to 4 decimal places
@@ -170,12 +191,12 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
             const label = getConfidenceLabel(confidence);
             const icon = getConfidenceIcon(confidence);
 
-            // Determine which components are available
+            // Determine which components are available using helper
             const components = [
-              { key: 'sp', label: 'Spatial', value: scores.sp, weight: 0.4 },
-              { key: 'te', label: 'Tectonic', value: scores.te, weight: 0.2 },
-              { key: 'pe', label: 'Petrological', value: scores.pe, weight: 0.3 },
-              { key: 'ti', label: 'Temporal', value: scores.ti, weight: 0.1 },
+              { key: 'sp', label: 'Spatial', value: getComponentScore(scores, 'sp'), weight: 0.4 },
+              { key: 'te', label: 'Tectonic', value: getComponentScore(scores, 'te'), weight: 0.2 },
+              { key: 'pe', label: 'Petrological', value: getComponentScore(scores, 'pe'), weight: 0.3 },
+              { key: 'ti', label: 'Temporal', value: getComponentScore(scores, 'ti'), weight: 0.1 },
             ].filter(c => c.value !== undefined);
 
             const formulaParts = components.map(c => 
@@ -202,6 +223,16 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                     {showMatchScoreExplanation && (
                       <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-gray-600 leading-relaxed">
                         <p className="font-semibold mb-2">How is this calculated?</p>
+                        
+                        <p className="mb-2">
+                          This match score combines four independent geological dimensions: 
+                          Spatial, Tectonic, Petrological, and Temporal.
+                        </p>
+                        
+                        <p className="mb-2">
+                          Each dimension produces a score between 0 and 1. 
+                          The final score is a weighted average of the available dimensions.
+                        </p>
                         
                         {/* Component Scores with Weights and Explanations */}
                         <div className="space-y-2 mb-2">
@@ -230,405 +261,168 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                               </div>
                               
                               {/* Spatial Score Explanation */}
-                              {c.key === 'sp' && showSpatialExplanation && (
-                                <div className="mt-1 pl-2 text-xs bg-white p-2 rounded border border-blue-200">
-                                  <p className="font-semibold mb-1">Spatial Score Calculation:</p>
-                                  <p className="mb-1">Uses exponential decay based on distance:</p>
-                                  <p className="font-mono text-blue-600">
-                                    score = exp(-distance_km / decay_constant)
-                                  </p>
-                                  
-                                  {/* Dynamic Example */}
-                                  {(() => {
-                                    const distance = getDistance(matching_metadata);
-                                    const decayConstant = 30; // km
-                                    if (distance !== undefined) {
-                                      const calculatedScore = Math.exp(-distance / decayConstant);
-                                      return (
-                                        <div className="bg-blue-50 p-2 rounded border border-blue-300 mt-2 space-y-1">
-                                          <p className="font-semibold text-gray-700">For this sample:</p>
-                                          <p>
-                                            Distance = <span className="font-mono text-blue-600">{distance.toFixed(1)} km</span>
-                                          </p>
-                                          <p className="font-mono text-sm">
-                                            score = exp(-{distance.toFixed(1)} / {decayConstant})
-                                          </p>
-                                          <p className="font-mono text-sm">
-                                            = exp({(-distance / decayConstant).toFixed(3)})
-                                          </p>
-                                          <p className="font-mono text-sm font-semibold text-blue-700">
-                                            = {calculatedScore.toFixed(3)} = {(calculatedScore * 100).toFixed(1)}%
-                                          </p>
-                                        </div>
-                                      );
-                                    }
-                                    return (
+                              {c.key === 'sp' && showSpatialExplanation && (() => {
+                                const spMeta = getComponentMeta(scores, 'sp');
+                                const distance = spMeta.dist_km ?? getDistance(matching_metadata);
+                                const decay = spMeta.decay ?? 50;
+                                const finalScore = c.value!;
+                                
+                                return (
+                                  <div className="mt-1 pl-2 text-xs bg-white p-2 rounded border border-blue-200">
+                                    <p className="font-semibold mb-1">Spatial Score Calculation:</p>
+                                    <p className="mb-1">Uses exponential decay based on distance:</p>
+                                    <p className="font-mono text-blue-600 mb-2">
+                                      score = exp(-distance_km / decay_constant)
+                                    </p>
+                                    
+                                    {distance !== undefined ? (
+                                      <div className="bg-blue-50 p-2 rounded border border-blue-300 space-y-1">
+                                        <p className="font-semibold text-gray-700">For this sample:</p>
+                                        <p className="font-mono text-sm">
+                                          Distance = <span className="text-blue-700">{distance.toFixed(2)} km</span>
+                                        </p>
+                                        <p className="font-mono text-sm">
+                                          Decay constant = <span className="text-blue-700">{decay} km</span>
+                                        </p>
+                                        <p className="font-mono text-sm font-semibold text-blue-700">
+                                          score = exp(-{distance.toFixed(2)} / {decay}) = {(finalScore * 100).toFixed(1)}%
+                                        </p>
+                                      </div>
+                                    ) : (
                                       <p className="mt-1 text-gray-500 italic">
                                         Distance data not available
                                       </p>
-                                    );
-                                  })()}
-                                </div>
-                              )}
+                                    )}
+                                  </div>
+                                );
+                              })()}
                               
                               {/* Tectonic Score Explanation */}
-                              {c.key === 'te' && showTectonicExplanation && (
-                                <div className="mt-1 pl-2 text-xs bg-white p-2 rounded border border-blue-200">
-                                  <p className="font-semibold mb-1">Tectonic Score Calculation:</p>
-                                  <p className="mb-1">Based on regime compatibility matrix:</p>
-                                  <ul className="list-disc ml-4 space-y-0.5">
-                                    <li><strong>Regime match:</strong> subduction-subduction = 1.0, rift-intraplate = 0.7, incompatible = 0.0</li>
-                                    <li><strong>Crust modifier:</strong> same crust = ×1.0, different = ×0.75, unknown = ×0.85</li>
-                                  </ul>
-                                  
-                                  {/* Dynamic Example */}
-                                  {(() => {
-                                    // Normalize volcano tectonic setting (matching backend logic)
-                                    const normalizeTectonicSetting = (rawTectonic: string | undefined): {regime: string, crust: string, subtype: string} | null => {
-                                      if (!rawTectonic || rawTectonic === 'unknown' || rawTectonic === 'nan') {
-                                        return {regime: 'unknown', crust: 'unknown', subtype: 'unknown'};
-                                      }
-                                      
-                                      let s = rawTectonic.toLowerCase().trim();
-                                      
-                                      // Handle GEOROC "nan / <actual_setting>" prefix
-                                      if (s.startsWith('nan / ')) {
-                                        s = s.substring(6);
-                                      }
-                                      
-                                      // Split GEOROC "DOMAIN / DETAIL" structure
-                                      let domain = s;
-                                      let detail = '';
-                                      if (s.includes(' / ')) {
-                                        const parts = s.split(' / ', 2);
-                                        domain = parts[0].trim();
-                                        detail = parts[1].trim();
-                                      }
-                                      
-                                      // --- REGIME DETECTION (precedence-based) ---
-                                      let regime = 'unknown';
-                                      
-                                      // 1. Strong domain-based mapping (highest priority)
-                                      if (['convergent margin', 'volcanic arc', 'forearc', 'back-arc basin', 'subduction zone'].includes(domain)) {
-                                        regime = 'subduction';
-                                      } else if (['rift volcanics', 'continental rift', 'rift valley', 'spreading center', 'divergent margin', 'transform fault', 'fracture zone'].includes(domain)) {
-                                        regime = 'rift';
-                                      } else if (['intraplate volcanics', 'ocean island', 'seamount', 'oceanic plateau', 'continental flood basalt', 'ocean-basin flood basalt'].includes(domain)) {
-                                        regime = 'intraplate';
-                                      }
-                                      // 2. Keyword-based inference
-                                      else if (/subduction|trench|forearc|back-arc|backarc|volcanic arc|island arc|continental arc|convergent/.test(s)) {
-                                        regime = 'subduction';
-                                      } else if (/rift|spreading|ridge|divergent|triple junction/.test(s)) {
-                                        regime = 'rift';
-                                      } else if (/traps|igneous province|large igneous|flood basalt|hotspot|hot spot|seamount|ocean island|plume|craton|shield|intraplate|abyssal|ocean basin|ophiolite|old oceanic/.test(s)) {
-                                        regime = 'intraplate';
-                                      }
-                                      // 3. Named features (last resort)
-                                      else {
-                                        const namedArcs = ['andean arc', 'sunda arc', 'izu-bonin arc', 'mariana arc', 'kamchatka arc', 'aleutian arc', 'kermadec arc', 'tonga arc', 'cascades', 'lesser antilles', 'scotia arc', 'ryukyu arc', 'honshu arc', 'kurile arc', 'luzon arc', 'banda arc', 'new hebrides arc', 'vanuatu arc', 'bismarck arc', 'aegean arc', 'aeolian arc', 'calabrian arc'];
-                                        const namedLIPs = ['deccan', 'siberian', 'parana', 'karoo', 'etendeka', 'ontong java', 'kerguelen', 'caribbean-colombian plateau', 'emeishan', 'ethiopian plateau', 'north atlantic igneous'];
-                                        const knownHotspots = ['iceland', 'azores', 'canary', 'cape verde', 'ascension', 'galapagos', 'hawaiian', 'reunion', 'mascarene', 'comoros', 'society islands', 'samoan', 'marquesas', 'austral-cook'];
+                              {c.key === 'te' && showTectonicExplanation && (() => {
+                                const teMeta = getComponentMeta(scores, 'te');
+                                const regimeScore = teMeta.regime_score;
+                                const crustModifier = teMeta.crust_modifier;
+                                const finalScore = c.value!;
+                                const note = teMeta.note;
+                                
+                                return (
+                                  <div className="mt-1 pl-2 text-xs bg-white p-2 rounded border border-blue-200">
+                                    <p className="font-semibold mb-1">Tectonic Score Calculation:</p>
+                                    <p className="mb-1">Uses geodynamically correct regime compatibility matrix:</p>
+                                    <p className="font-mono text-blue-600 mb-2">
+                                      score = regime_score × crust_modifier
+                                    </p>
+                                    
+                                    {/* Regime Compatibility Matrix */}
+                                    <div className="bg-gray-50 p-2 rounded border border-gray-300 mb-2">
+                                      <p className="font-semibold text-gray-700 mb-1">Regime Compatibility Matrix:</p>
+                                      <div className="grid grid-cols-4 gap-1 text-[10px] font-mono">
+                                        <div className="font-semibold"></div>
+                                        <div className="font-semibold text-center">Subduc.</div>
+                                        <div className="font-semibold text-center">Rift</div>
+                                        <div className="font-semibold text-center">Intraplat.</div>
                                         
-                                        if (namedArcs.some(arc => s.includes(arc))) regime = 'subduction';
-                                        else if (namedLIPs.some(lip => s.includes(lip))) regime = 'intraplate';
-                                        else if (knownHotspots.some(hs => s.includes(hs))) regime = 'intraplate';
-                                      }
-                                      
-                                      // --- CRUST DETECTION ---
-                                      let crust = 'unknown';
-                                      
-                                      // 1. Explicit thickness markers
-                                      if (/< 15 km|<15 km/.test(s)) {
-                                        crust = 'oceanic';
-                                      } else if (/> 25 km|>25 km/.test(s)) {
-                                        crust = 'continental';
-                                      } else if (/15-25 km|15-25/.test(s)) {
-                                        crust = 'intermediate';
-                                      }
-                                      // 2. Strong geological indicators
-                                      else if (/craton|shield|archean|continental/.test(s)) {
-                                        crust = 'continental';
-                                      } else if (/abyssal|ocean basin|seamount|oceanic|ophiolite/.test(s)) {
-                                        crust = 'oceanic';
-                                      }
-                                      
-                                      if (regime === 'unknown') {
-                                        return {regime: 'unknown', crust: 'unknown', subtype: 'unknown'};
-                                      }
-                                      
-                                      return {regime, crust, subtype: domain};
-                                    };
-                                    
-                                    // Sample tectonic data (already normalized by backend)
-                                    const sampleTectonicRaw = tectonicSettingDisplay;
-                                    const sampleRegime = tectonicSettingSample?.r; // r = regime
-                                    const sampleCrust = tectonicSettingSample?.c || 'unknown'; // c = crust
-                                    
-                                    // Volcano tectonic data - check tectonic_setting.volcano or tectonic_setting.volcano.ui
-                                    let volcanoTectonicRaw: string | undefined;
-                                    if (typeof tectonic_setting === 'object' && tectonic_setting !== null) {
-                                      // Check for volcano field in tectonic_setting
-                                      if (typeof (tectonic_setting as any).volcano === 'string') {
-                                        volcanoTectonicRaw = (tectonic_setting as any).volcano;
-                                      } else if (typeof (tectonic_setting as any).volcano === 'object' && (tectonic_setting as any).volcano?.ui) {
-                                        volcanoTectonicRaw = (tectonic_setting as any).volcano.ui;
-                                      }
-                                    }
-                                    
-                                    // Fallback to matching_metadata
-                                    if (!volcanoTectonicRaw) {
-                                      volcanoTectonicRaw = tectonic_setting?.ui;
-                                    }
-                                    
-                                    // Check if we have the required data
-                                    if (!sampleRegime) {
-                                      return (
-                                        <div className="mt-2 text-gray-500 italic space-y-1">
-                                          <p>Sample tectonic regime not available</p>
-                                          <p className="text-[10px]">tectonicSettingSample: {JSON.stringify(tectonicSettingSample)}</p>
-                                          <p className="text-[10px]">Full tectonic_setting: {JSON.stringify(tectonic_setting)}</p>
-                                        </div>
-                                      );
-                                    }
-                                    
-                                    if (!volcanoTectonicRaw) {
-                                      return (
-                                        <div className="mt-2 text-gray-500 italic space-y-1">
-                                          <p>Volcano tectonic setting not available in API response</p>
-                                          <p className="text-[10px]">tectonic_setting object: {JSON.stringify(tectonic_setting)}</p>
-                                          <p className="text-[10px]">volcano object: {JSON.stringify(matching_metadata?.volcano)}</p>
-                                          <p className="text-xs text-amber-600 mt-1">⚠️ The API needs to include volcano tectonic setting data</p>
-                                        </div>
-                                      );
-                                    }
-                                    
-                                    // Normalize volcano tectonic setting
-                                    const volcanoNorm = normalizeTectonicSetting(volcanoTectonicRaw);
-                                    
-                                    if (!volcanoNorm || volcanoNorm.regime === 'unknown') {
-                                      return (
-                                        <p className="mt-2 text-gray-500 italic">
-                                          Unable to normalize volcano tectonic data
-                                        </p>
-                                      );
-                                    }
-                                    
-                                    const volcanoRegime = volcanoNorm.regime;
-                                    const volcanoCrust = volcanoNorm.crust;
-                                    
-                                    // Regime compatibility lookup
-                                    const regimeCompatibilityMap: {[key: string]: {[key: string]: number}} = {
-                                      'subduction': {'subduction': 1.0, 'rift': 0.0, 'intraplate': 0.0},
-                                      'rift': {'subduction': 0.0, 'rift': 1.0, 'intraplate': 0.7},
-                                      'intraplate': {'subduction': 0.0, 'rift': 0.7, 'intraplate': 1.0}
-                                    };
-                                    
-                                    const regimeScore = regimeCompatibilityMap[sampleRegime]?.[volcanoRegime] ?? 0;
-                                    
-                                    // Crust modifier
-                                    let crustModifier = 0.85;
-                                    if (sampleCrust === 'unknown' || volcanoCrust === 'unknown') {
-                                      crustModifier = 0.85;
-                                    } else if (sampleCrust === volcanoCrust) {
-                                      crustModifier = 1.0;
-                                    } else {
-                                      crustModifier = 0.75;
-                                    }
-                                    
-                                    const finalScore = regimeScore * crustModifier;
-                                    
-                                    return (
-                                      <div className="bg-blue-50 p-2 rounded border border-blue-300 mt-2 space-y-1">
-                                        <p className="font-semibold text-gray-700">For this sample:</p>
-                                        <p className="text-[10px] text-gray-500">
-                                          Raw: "{sampleTectonicRaw}"
-                                        </p>
-                                        <p>
-                                          Sample (normalized): <span className="font-mono text-blue-600">{sampleRegime}</span> / 
-                                          <span className="font-mono text-blue-600">{sampleCrust}</span>
-                                        </p>
-                                        <p className="text-[10px] text-gray-500">
-                                          Volcano raw: "{volcanoTectonicRaw}"
-                                        </p>
-                                        <p>
-                                          Volcano (normalized): <span className="font-mono text-green-600">{volcanoRegime}</span> / 
-                                          <span className="font-mono text-green-600">{volcanoCrust}</span>
-                                        </p>
-                                        <p className="font-mono text-sm">
-                                          regime_compatibility = {regimeScore.toFixed(2)}
-                                        </p>
-                                        <p className="font-mono text-sm">
-                                          crust_modifier = {crustModifier.toFixed(2)}
-                                        </p>
-                                        <p className="font-mono text-sm font-semibold text-blue-700">
-                                          score = {regimeScore.toFixed(2)} × {crustModifier.toFixed(2)} = {finalScore.toFixed(3)} = {(finalScore * 100).toFixed(1)}%
-                                        </p>
+                                        <div className="font-semibold">Subduction</div>
+                                        <div className="text-center bg-green-100">1.0</div>
+                                        <div className="text-center bg-red-100">0.0</div>
+                                        <div className="text-center bg-red-100">0.0</div>
+                                        
+                                        <div className="font-semibold">Rift</div>
+                                        <div className="text-center bg-red-100">0.0</div>
+                                        <div className="text-center bg-green-100">1.0</div>
+                                        <div className="text-center bg-yellow-100">0.7*</div>
+                                        
+                                        <div className="font-semibold">Intraplate</div>
+                                        <div className="text-center bg-red-100">0.0</div>
+                                        <div className="text-center bg-yellow-100">0.7*</div>
+                                        <div className="text-center bg-green-100">1.0</div>
                                       </div>
-                                    );
-                                  })()}
-                                </div>
-                              )}
-                              
-                              {/* Petrological Score Explanation */}
-                              {c.key === 'pe' && showPetrologicalExplanation && (
-                                <div className="mt-1 pl-2 text-xs bg-white p-2 rounded border border-blue-200">
-                                  <p className="font-semibold mb-1">Petrological Score Calculation:</p>
-                                  <p className="mb-1">Based on rock type compatibility:</p>
-                                  <ul className="list-disc ml-4 space-y-0.5">
-                                    <li><strong>Direct match:</strong> same rock type = 1.0</li>
-                                    <li><strong>Family match:</strong> same family (e.g., BASALTIC) = 0.7</li>
-                                    <li><strong>No match:</strong> = 0.0</li>
-                                  </ul>
-                                  
-                                  {/* Dynamic Example */}
-                                  {(() => {
-                                    if (!rock_type) {
-                                      return (
-                                        <p className="mt-2 text-gray-500 italic">
-                                          Rock type data not available
-                                        </p>
-                                      );
-                                    }
+                                      <p className="text-[10px] text-gray-600 mt-1">
+                                        * 0.7 for plume–ridge systems (Iceland, Azores, Afar)
+                                      </p>
+                                      <p className="text-[10px] text-gray-600 mt-1">
+                                        • Unknown regime: 0.5 (partial confidence based on crust only)
+                                      </p>
+                                    </div>
                                     
-                                    // Function to normalize rock type (from Python backend logic)
-                                    const normalizeRockType = (rock: string): string | null => {
-                                      if (!rock) return null;
-                                      let normalized = rock.toUpperCase().trim();
-                                      
-                                      // Handle special cases
-                                      if (['NO DATA (CHECKED)', 'NO DATA', 'UNKNOWN', 'NAN'].includes(normalized)) {
-                                        return null;
-                                      }
-                                      
-                                      // Preserve hyphen for TEPHRI-PHONOLITE
-                                      if (normalized.includes('TEPHRI') && normalized.includes('PHONOLITE')) {
-                                        // Keep as-is
-                                      } else {
-                                        normalized = normalized.replace(/-/g, '');
-                                      }
-                                      
-                                      // Map specific variations to canonical forms
-                                      const mapping: {[key: string]: string} = {
-                                        'PICROBASALT': 'BASALT',
-                                        'BASALTIC ANDESITE': 'BASALTIC ANDESITE',
-                                        'TRACHYBASALT': 'TRACHYBASALT',
-                                        'TEPHRITE BASANITE': 'TEPHRITE/BASANITE',
-                                        'TEPHRITE/BASANITE': 'TEPHRITE/BASANITE',
-                                        'TEPHRIPHONE': 'TEPHRI-PHONOLITE',
-                                        'TEPHRIPHANOLITE': 'TEPHRI-PHONOLITE',
-                                        'PHONOTEPHRITE': 'PHONOTEPHRITE',
-                                        'TRACHYDACITE': 'TRACHYTE/TRACHYDACITE',
-                                      };
-                                      
-                                      return mapping[normalized] || normalized;
-                                    };
+                                    {/* Crust Modifier */}
+                                    <div className="bg-gray-50 p-2 rounded border border-gray-300 mb-2">
+                                      <p className="font-semibold text-gray-700 mb-1">Crust Type Modifier:</p>
+                                      <ul className="text-[10px] space-y-0.5 ml-3">
+                                        <li>• <strong>Same crust type</strong> (oceanic–oceanic or continental–continental): <span className="font-mono">1.0</span></li>
+                                        <li>• <strong>Unknown crust</strong> (one or both): <span className="font-mono">0.85</span></li>
+                                        <li>• <strong>Different crust</strong> (oceanic vs continental): <span className="font-mono">0.75</span></li>
+                                      </ul>
+                                    </div>
                                     
-                                    // Rock families (from Python backend)
-                                    const rockFamilies: {[key: string]: string[]} = {
-                                      'BASALTIC': ['BASALT', 'PICROBASALT', 'BASALTIC ANDESITE', 'TRACHYBASALT', 'BASALTIC TRACHYANDESITE'],
-                                      'ANDESITIC': ['ANDESITE', 'DACITE', 'TRACHYANDESITE', 'TRACHYTE/TRACHYDACITE'],
-                                      'FELSIC': ['RHYOLITE', 'PHONOLITE', 'PHONO-TEPHRITE', 'TEPHRI-PHONOLITE', 'TRACHYTE/TRACHYDACITE'],
-                                      'FOIDITE': ['FOIDITE'],
-                                      'BASANITE': ['TEPHRITE/BASANITE', 'TRACHYBASALT', 'TEPHRITE', 'BASANITE']
-                                    };
-                                    
-                                    // Get volcano rock type from matching_metadata
-                                    const volcanoRockTypeRaw = matching_metadata?.volcano?.rock_type;
-                                    
-                                    if (!volcanoRockTypeRaw) {
-                                      return (
-                                        <p className="mt-2 text-gray-500 italic">
-                                          Volcano rock type not available
-                                        </p>
-                                      );
-                                    }
-                                    
-                                    // Normalize sample rock type
-                                    const normalizedSample = normalizeRockType(rock_type);
-                                    if (!normalizedSample) {
-                                      return (
-                                        <p className="mt-2 text-gray-500 italic">
-                                          Sample rock type invalid
-                                        </p>
-                                      );
-                                    }
-                                    
-                                    // Split volcano rock type by "/" and normalize each part
-                                    const volcanoParts = volcanoRockTypeRaw.split('/').map(p => p.trim());
-                                    const normalizedVolcanoTypes = volcanoParts
-                                      .map(part => normalizeRockType(part))
-                                      .filter(t => t !== null) as string[];
-                                    
-                                    if (normalizedVolcanoTypes.length === 0) {
-                                      return (
-                                        <p className="mt-2 text-gray-500 italic">
-                                          Volcano rock type invalid
-                                        </p>
-                                      );
-                                    }
-                                    
-                                    // Calculate score and match type
-                                    let bestScore = 0;
-                                    let matchType = 'no match';
-                                    let matchedFamily = '';
-                                    
-                                    for (const normalizedVolcano of normalizedVolcanoTypes) {
-                                      // Direct match
-                                      if (normalizedSample === normalizedVolcano) {
-                                        bestScore = 1.0;
-                                        matchType = 'direct match';
-                                        break;
-                                      }
-                                      
-                                      // Family match
-                                      for (const [family, rocks] of Object.entries(rockFamilies)) {
-                                        if (rocks.includes(normalizedSample) && rocks.includes(normalizedVolcano)) {
-                                          if (bestScore < 0.7) {
-                                            bestScore = 0.7;
-                                            matchType = 'family match';
-                                            matchedFamily = family;
-                                          }
-                                          break;
-                                        }
-                                      }
-                                    }
-                                    
-                                    return (
-                                      <div className="bg-blue-50 p-2 rounded border border-blue-300 mt-2 space-y-1">
+                                    {regimeScore !== undefined && crustModifier !== undefined ? (
+                                      <div className="bg-blue-50 p-2 rounded border border-blue-300 space-y-1">
                                         <p className="font-semibold text-gray-700">For this sample:</p>
-                                        <p>
-                                          Sample rock: <span className="font-mono text-blue-600">{rock_type}</span>
-                                          {normalizedSample !== rock_type.toUpperCase() && (
-                                            <span className="text-gray-500 text-[10px]"> (normalized: {normalizedSample})</span>
-                                          )}
-                                        </p>
-                                        <p>
-                                          Volcano rock: <span className="font-mono text-green-600">{volcanoRockTypeRaw}</span>
-                                          {normalizedVolcanoTypes.length > 1 && (
-                                            <span className="text-gray-500 text-[10px]"> (multiple types)</span>
+                                        <p className="font-mono text-sm">
+                                          Regime compatibility = <span className="text-blue-700">{regimeScore.toFixed(2)}</span>
+                                          {note === 'partial_regime_unknown' && (
+                                            <span className="text-amber-600 text-[10px]"> (regime unknown, partial score)</span>
                                           )}
                                         </p>
                                         <p className="font-mono text-sm">
-                                          Match type: {matchType}
-                                          {matchedFamily && <span className="text-gray-600"> ({matchedFamily} family)</span>}
+                                          Crust modifier = <span className="text-blue-700">{crustModifier.toFixed(2)}</span>
+                                          {crustModifier === 1.0 && <span className="text-gray-500 text-[10px]"> (same crust type)</span>}
+                                          {crustModifier === 0.85 && <span className="text-gray-500 text-[10px]"> (unknown crust)</span>}
+                                          {crustModifier === 0.75 && <span className="text-gray-500 text-[10px]"> (different crust type)</span>}
                                         </p>
                                         <p className="font-mono text-sm font-semibold text-blue-700">
-                                          score = {bestScore.toFixed(1)} = {(bestScore * 100).toFixed(0)}%
+                                          score = {regimeScore.toFixed(2)} × {crustModifier.toFixed(2)} = {(finalScore * 100).toFixed(1)}%
                                         </p>
                                         
-                                        {/* Show rock families for reference */}
-                                        {matchedFamily && (
-                                          <div className="mt-2 pt-2 border-t border-blue-200">
-                                            <p className="text-[10px] text-gray-600 font-semibold">{matchedFamily} family includes:</p>
-                                            <p className="text-[10px] text-gray-500">{rockFamilies[matchedFamily].join(', ')}</p>
-                                          </div>
+                                        {regimeScore === 0.0 && (
+                                          <p className="text-red-600 text-[10px] mt-1">
+                                            ⚠️ Incompatible tectonic regimes (geodynamically inconsistent)
+                                          </p>
                                         )}
                                       </div>
-                                    );
-                                  })()}
-                                </div>
-                              )}
+                                    ) : (
+                                      <p className="mt-1 text-gray-500 italic">
+                                        Tectonic matching data not available
+                                      </p>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                              
+                              {/* Petrological Score Explanation */}
+                              {c.key === 'pe' && showPetrologicalExplanation && (() => {
+                                const peMeta = getComponentMeta(scores, 'pe');
+                                const matchType = peMeta.match_type;
+                                const finalScore = c.value!;
+                                
+                                return (
+                                  <div className="mt-1 pl-2 text-xs bg-white p-2 rounded border border-blue-200">
+                                    <p className="font-semibold mb-1">Petrological Score Calculation:</p>
+                                    <p className="mb-1">Based on rock type compatibility:</p>
+                                    <ul className="list-disc ml-4 space-y-0.5 mb-2">
+                                      <li><strong>Direct match:</strong> same rock type = 1.0</li>
+                                      <li><strong>Family match:</strong> same family (e.g., BASALTIC) = 0.7</li>
+                                      <li><strong>No match:</strong> = 0.0</li>
+                                    </ul>
+                                    
+                                    {matchType ? (
+                                      <div className="bg-blue-50 p-2 rounded border border-blue-300 space-y-1">
+                                        <p className="font-semibold text-gray-700">For this sample:</p>
+                                        <p className="font-mono text-sm">
+                                          Match type = <span className="text-blue-700">{matchType}</span>
+                                        </p>
+                                        <p className="font-mono text-sm font-semibold text-blue-700">
+                                          score = {(finalScore * 100).toFixed(1)}%
+                                        </p>
+                                      </div>
+                                    ) : (
+                                      <p className="mt-1 text-gray-500 italic">
+                                        Rock type matching data not available
+                                      </p>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                               
                               {/* Temporal Score Explanation */}
                               {c.key === 'ti' && showTemporalExplanation && (
@@ -802,7 +596,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                                       
                                       // Apply precision modifier
                                       const modifier = 1.0 + (precision - 0.5) * 0.3;
-                                      let finalScore = baseScore * modifier;
+                                      const finalScore = baseScore * modifier;
                                       
                                       // Textual age class scores are capped at 0.8 to avoid overconfidence
                                       const cappedScore = Math.min(finalScore, 0.8);
@@ -883,7 +677,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
 
                         {/* Formula */}
                         <div className="font-mono bg-white p-2 rounded mb-2 border border-gray-200">
-                          <div className="mb-1">Overall Score = </div>
+                          <div className="mb-1 text-gray-700">Overall Score = </div>
                           <div className="pl-2 text-blue-600 text-[11px]">
                             [{formulaParts.join(' + ')}] / ({formulaSum})
                           </div>
@@ -893,8 +687,8 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                         </div>
 
                         {components.length < 4 && (
-                          <p className="text-amber-600 mt-1 italic">
-                            ⚠️ Some dimensions are missing, so they're excluded from the calculation.
+                          <p className="text-amber-600 mt-1 italic text-[11px]">
+                            ⚠️ Missing dimensions are excluded from the denominator.
                           </p>
                         )}
                       </div>

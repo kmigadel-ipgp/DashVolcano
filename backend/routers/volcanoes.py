@@ -42,11 +42,12 @@ async def get_volcanoes_summary(
     
     if tectonic_setting:
         # Support comma-separated values for multiple tectonic settings
+        # Filter using tectonic_setting.ui field
         settings = [s.strip() for s in tectonic_setting.split(',')]
         if len(settings) == 1:
-            query["tectonic_setting"] = settings[0]
+            query["tectonic_setting.ui"] = settings[0]
         else:
-            query["tectonic_setting"] = {"$in": settings}
+            query["tectonic_setting.ui"] = {"$in": settings}
     
     if volcano_name:
         # Partial match with case-insensitive search
@@ -57,6 +58,7 @@ async def get_volcanoes_summary(
         "volcano_number": 1,
         "volcano_name": 1,
         "country": 1,
+        "petro": 1,
         "tectonic_setting": 1,
         "region": 1,
         "primary_volcano_type": 1,
@@ -243,9 +245,9 @@ async def get_volcano_chemical_analysis(
         "sample_code": 1,
         "sample_id": 1,
         "db": 1,
-        "rock_type": 1,
+        "petro": 1,
         "material": 1,
-        "tectonic_setting": 1,
+        "tecto": 1,
         "geometry": 1,
         "matching_metadata": 1,
         "references": 1,
@@ -298,7 +300,9 @@ async def get_volcano_chemical_analysis(
         mno = oxides.get("MNO")
         
         sample_code = str(sample.get("sample_code", ""))
-        rock_type = sample.get("rock_type", "Unknown")
+        # Extract rock_type from petro field
+        petro = sample.get("petro", {})
+        rock_type = petro.get("rock_type", "Unknown") if isinstance(petro, dict) else "Unknown"
         material = sample.get("material", "Unknown")
         
         # Count rock types (all samples)
@@ -313,9 +317,9 @@ async def get_volcano_chemical_analysis(
             "sample_code": sample_code,
             "sample_id": sample.get("sample_id", sample_code),
             "db": sample.get("db", "Unknown"),
-            "rock_type": rock_type,
+            "petro": sample.get("petro"),
             "material": sample.get("material", "Unknown"),
-            "tectonic_setting": sample.get("tectonic_setting"),
+            "tecto": sample.get("tecto"),
             "geometry": sample.get("geometry"),
             "matching_metadata": sample.get("matching_metadata"),
             "references": sample.get("references"),
@@ -350,9 +354,9 @@ async def get_volcano_chemical_analysis(
                 "sample_code": sample_code,
                 "sample_id": sample.get("sample_id", sample_code),
                 "db": sample.get("db", "Unknown"),
-                "rock_type": rock_type,
+                "petro": sample.get("petro"),
                 "material": sample.get("material", "Unknown"),
-                "tectonic_setting": sample.get("tectonic_setting"),
+                "tecto": sample.get("tecto"),
                 "geometry": sample.get("geometry"),
                 "matching_metadata": sample.get("matching_metadata"),
                 "references": sample.get("references"),
@@ -384,9 +388,9 @@ async def get_volcano_chemical_analysis(
                 "sample_code": sample_code,
                 "sample_id": sample.get("sample_id", sample_code),
                 "db": sample.get("db", "Unknown"),
-                "rock_type": rock_type,
+                "petro": sample.get("petro"),
                 "material": sample.get("material", "Unknown"),
-                "tectonic_setting": sample.get("tectonic_setting"),
+                "tecto": sample.get("tecto"),
                 "geometry": sample.get("geometry"),
                 "matching_metadata": sample.get("matching_metadata"),
                 "references": sample.get("references"),
@@ -417,9 +421,9 @@ async def get_volcano_chemical_analysis(
                 "sample_code": sample_code,
                 "sample_id": sample.get("sample_id", sample_code),
                 "db": sample.get("db", "Unknown"),
-                "rock_type": rock_type,
+                "petro": sample.get("petro"),
                 "material": material,
-                "tectonic_setting": sample.get("tectonic_setting"),
+                "tecto": sample.get("tecto"),
                 "geometry": sample.get("geometry"),
                 "matching_metadata": sample.get("matching_metadata"),
                 "references": sample.get("references"),
@@ -448,7 +452,7 @@ async def get_volcano_chemical_analysis(
                 harker_point["MNO"] = round(mno, 2)
             
             # Only add if at least one other oxide is present
-            if len(harker_point) > 9:  # More than sample_code, sample_id, db, SiO2, rock_type, material, tectonic_setting, geometry, matching_metadata
+            if len(harker_point) > 9:  # More than sample_code, sample_id, db, SiO2, rock_type, material, tecto, geometry, matching_metadata
                 harker_data.append(harker_point)
     
     result = {
@@ -486,15 +490,16 @@ async def get_volcano_rock_types(
     
     volcano = db.volcanoes.find_one(
         {"volcano_number": volcano_num},
-        {"volcano_name": 1, "volcano_number": 1, "rock_type": 1}
+        {"volcano_name": 1, "volcano_number": 1, "petro": 1}
     )
     
     if not volcano:
         raise HTTPException(status_code=404, detail="Volcano not found")
     
-    # Extract rock type (now a string instead of object)
+    # Extract rock type from petro field
     rock_types = []
-    rock_type = volcano.get("rock_type")
+    petro = volcano.get("petro", {})
+    rock_type = petro.get("rock_type") if isinstance(petro, dict) else None
     
     # If rock_type exists and is not empty, add it as primary rock type
     if rock_type and isinstance(rock_type, str) and rock_type.strip():

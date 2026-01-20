@@ -38,24 +38,25 @@ async def get_samples(
     sio2_field = "oxides.SIO2"
     
     # Rock type filter - support multiple values with OR logic
+    # Updated to use petro.rock_type for new nested structure
     if rock_type:
         rock_types = [rt.strip() for rt in rock_type.split(',')]
         if len(rock_types) > 1:
-            query["rock_type"] = {"$in": rock_types}
+            query["petro.rock_type"] = {"$in": rock_types}
         else:
-            query["rock_type"] = rock_types[0]
+            query["petro.rock_type"] = rock_types[0]
     
     if database:
         query["db"] = database
     
     # Tectonic setting filter - support multiple values with OR logic
-    # Updated to use tectonic_setting.ui for new nested structure
+    # Updated to use tecto.ui for new nested structure
     if tectonic_setting:
         settings = [s.strip() for s in tectonic_setting.split(',')]
         if len(settings) > 1:
-            query["tectonic_setting.ui"] = {"$in": settings}
+            query["tecto.volcano_ui"] = {"$in": settings}
         else:
-            query["tectonic_setting.ui"] = settings[0]
+            query["tecto.volcano_ui"] = settings[0]
     
     # SiO2 filter - only apply if samples have oxides data
     if min_sio2 is not None or max_sio2 is not None:
@@ -117,14 +118,14 @@ async def get_samples(
         "_id": 1,
         "sample_id": 1,
         "sample_code": 1,
-        "rock_type": 1,
+        "petro": 1,
         "db": 1,
         "geometry": 1,
-        "tectonic_setting": 1,
+        "tecto": 1,
         "material": 1,
         "matching_metadata": 1,  # Include full matching_metadata structure
         "references": 1,
-        "geological_age": 1,  # Include temporal data for score explanations
+        "geo_age": 1,  # Include temporal data for score explanations
         "eruption_date": 1,   # Include eruption date for temporal calculations
         # Include key oxides for TAS/AFM plots (only what's needed)
         # Support both structures: oxides in nested object or at root level
@@ -176,17 +177,17 @@ async def get_samples(
                             }
                         }
                     },
-                    {"$project": {"rock_type": 1, "_id": 0}}
+                    {"$project": {"petro": 1, "_id": 0}}
                 ],
                 "as": "volcano_info"
             }
         },
         {
             "$addFields": {
-                "matching_metadata.volcano.rock_type": {
+                "matching_metadata.volcano.petro": {
                     "$cond": {
                         "if": {"$gt": [{"$size": "$volcano_info"}, 0]},
-                        "then": {"$arrayElemAt": ["$volcano_info.rock_type", 0]},
+                        "then": {"$arrayElemAt": ["$volcano_info.petro", 0]},
                         "else": None
                     }
                 }
@@ -268,7 +269,7 @@ async def get_samples_geojson(
     query = {}
     
     if rock_type:
-        query["rock_type"] = rock_type
+        query["petro.rock_type"] = rock_type
     if database:
         query["db"] = database
     
@@ -287,7 +288,7 @@ async def get_samples_geojson(
                 "geometry": sample["geometry"],
                 "properties": {
                     "sample_id": sample.get("sample_id"),
-                    "rock_type": sample.get("rock_type"),
+                    "rock_type": sample.get("petro", {}).get("rock_type") if isinstance(sample.get("petro"), dict) else None,
                     "db": sample.get("db"),
                 }
             })

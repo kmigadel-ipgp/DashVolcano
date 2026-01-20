@@ -10,7 +10,7 @@ import { showError } from '../utils/toast';
 import { CardSkeleton } from '../components/LoadingSkeleton';
 import { EmptyState } from '../components/EmptyState';
 import { ConfidenceFilter } from '../components/Filters';
-import type { Sample, MatchingMetadata } from '../types';
+import type { Sample, MatchingMetadata, TectonicSettingSample, Petro } from '../types';
 import type { ConfidenceLevel } from '../utils/confidence';
 import { filterSamplesByConfidence, calculateRockTypeDistribution } from '../utils/confidence';
 
@@ -22,9 +22,9 @@ interface ChemicalAnalysisData {
     sample_code: string;
     sample_id: string;
     db: string;
-    rock_type: string;
+    petro?: Petro;
     material: string;
-    tectonic_setting?: string;
+    tecto?: TectonicSettingSample;
     geometry?: { type: 'Point'; coordinates: [number, number] };
     matching_metadata?: MatchingMetadata;
     references?: string;
@@ -43,9 +43,9 @@ interface ChemicalAnalysisData {
     sample_code: string;
     sample_id: string;
     db: string;
-    rock_type: string;
+    petro?: Petro;
     material: string;
-    tectonic_setting?: string;
+    tecto?: TectonicSettingSample;
     geometry?: { type: 'Point'; coordinates: [number, number] };
     matching_metadata?: MatchingMetadata;
     references?: string;
@@ -65,9 +65,9 @@ interface ChemicalAnalysisData {
     sample_id: string;
     db: string;
     SIO2: number;
-    rock_type: string;
+    petro?: Petro;
     material: string;
-    tectonic_setting?: string;
+    tecto?: TectonicSettingSample;
     geometry?: { type: 'Point'; coordinates: [number, number] };
     matching_metadata?: MatchingMetadata;
     references?: string;
@@ -85,9 +85,9 @@ interface ChemicalAnalysisData {
     sample_code: string;
     sample_id: string;
     db: string;
-    rock_type: string;
+    petro?: Petro;
     material: string;
-    tectonic_setting?: string;
+    tecto?: TectonicSettingSample;
     geometry?: { type: 'Point'; coordinates: [number, number] };
     matching_metadata?: MatchingMetadata;
     references?: string;
@@ -144,8 +144,8 @@ const transformAllSamples = (
       sample_code: sample.sample_code,
       db: sample.db,
       material: sample.material,
-      rock_type: sample.rock_type,
-      tectonic_setting: sample.tectonic_setting,
+      petro: sample.petro,
+      tecto: sample.tecto,
       geometry: sample.geometry || { type: 'Point', coordinates: [0, 0] },
       matching_metadata: sample.matching_metadata,
       references: sample.references,
@@ -181,8 +181,8 @@ const transformToSamples = (data: ChemicalAnalysisData): Sample[] => {
       sample_code: tas.sample_code,
       db: tas.db,
       material: tas.material,
-      rock_type: tas.rock_type,
-      tectonic_setting: tas.tectonic_setting,
+      petro: tas.petro,
+      tecto: tas.tecto,
       geometry: tas.geometry || { type: 'Point', coordinates: [0, 0] },
       matching_metadata: tas.matching_metadata,
       references: tas.references,
@@ -224,8 +224,8 @@ const transformToSamples = (data: ChemicalAnalysisData): Sample[] => {
         sample_code: afm.sample_code,
         db: afm.db,
         material: afm.material,
-        rock_type: afm.rock_type,
-        tectonic_setting: afm.tectonic_setting,
+        petro: afm.petro,
+        tecto: afm.tecto,
         geometry: afm.geometry || { type: 'Point', coordinates: [0, 0] },
         matching_metadata: afm.matching_metadata,
         references: afm.references,

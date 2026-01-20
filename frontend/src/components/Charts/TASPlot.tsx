@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Plot from 'react-plotly.js';
 import type { Sample } from '../../types';
-import { getVEIColor, getRockTypeColor } from '../../utils/colors';
+import { getRockTypeColor, getVEIColor } from '../../utils/colors';
 import { normalizeConfidence, getConfidenceLabel, getVolcanoName } from '../../utils/confidence';
 
 interface TASPlotProps {
@@ -72,12 +72,12 @@ export const TASPlot: React.FC<TASPlotProps> = React.memo(({
       .map(s => {
         const confidence = normalizeConfidence(s.matching_metadata?.confidence_level, s.matching_metadata);
         const confidenceLabel = getConfidenceLabel(confidence);
-                
+                     
         return {
           sio2: s.oxides!['SIO2']!,
           alkali: s.oxides!['NA2O']! + s.oxides!['K2O']!,
           material: s.material || 'Unknown',
-          rock_type: s.rock_type || 'Unknown',
+          rock_type: s.petro?.rock_type || 'Unknown',
           sample_code: s.sample_code || s.sample_id,
           sample_id: s.sample_id,
           vei: s.vei,
@@ -161,64 +161,9 @@ export const TASPlot: React.FC<TASPlotProps> = React.memo(({
     hoverinfo: 'name',
   });
 
-  // Grouping strategy based on colorBy mode
-  if (colorBy === 'vei') {
-    // VEI MODE: Group by VEI value only, legend shows VEI 0, VEI 1, etc.
-    const samplesByVEI = sampleData.reduce((acc, sample) => {
-      const vei = sample.vei !== undefined && sample.vei !== null ? `VEI ${sample.vei}` : 'Unknown VEI';
-      if (!acc[vei]) {
-        acc[vei] = [];
-      }
-      acc[vei].push(sample);
-      return acc;
-    }, {} as Record<string, typeof sampleData>);
-
-    // Sort VEI keys to ensure correct order in legend
-    const sortedVEIKeys = Object.keys(samplesByVEI).sort((a, b) => {
-      if (a === 'Unknown VEI') return 1;
-      if (b === 'Unknown VEI') return -1;
-      const veiA = parseInt(a.replace('VEI ', ''));
-      const veiB = parseInt(b.replace('VEI ', ''));
-      return veiA - veiB;
-    });
-
-    for (const veiLabel of sortedVEIKeys) {
-      const samples = samplesByVEI[veiLabel];
-      const veiValue = veiLabel === 'Unknown VEI' ? null : parseInt(veiLabel.replace('VEI ', ''));
-      const color = veiValue !== null ? getVEIColor(veiValue) : '#808080';
-
-      plotlyData.push({
-        type: 'scatter',
-        mode: 'markers',
-        x: samples.map(s => s.sio2),
-        y: samples.map(s => s.alkali),
-        name: veiLabel,
-        legendgroup: veiLabel,
-        showlegend: true,
-        marker: {
-          size: 8,
-          opacity: 0.7,
-          symbol: 'circle',
-          color: color,
-        },
-        text: samples.map(s => {
-          const eruptionInfo = s.eruption_date?.year 
-            ? ` (${s.eruption_date.year}${s.eruption_date.month ? `-${s.eruption_date.month}` : ''})`
-            : '';
-          return `${s.sample_code}<br>`+
-            `Rock Type: ${s.rock_type}<br>`+
-            `Material: ${s.material}<br>`+
-            `SiO2: ${s.sio2.toFixed(2)}%<br>`+
-            `Alkali: ${s.alkali.toFixed(2)}%<br>`+
-            `VEI: ${s.vei !== undefined ? s.vei : 'Unknown'}${eruptionInfo}${s.volcano_name ? `<br>`+
-            `Volcano: ${s.volcano_name}` : ''}<br>`+
-            `Confidence: ${s.confidenceLabel}`;
-        }),
-        hoverinfo: 'text',
-      });
-    }
-  } else {
-    // ROCK TYPE MODE: Group by rock_type|material (same as AFM)
+  // Grouping strategy: Group by rock_type|material or vei|material
+  if (colorBy === 'rock_type') {
+    // ROCK TYPE MODE: Group by rock_type|material
     // Legend shows materials (WR, GL, MIN, INC), colors show rock types
     const uniqueRockTypes = Array.from(new Set(sampleData.map(s => s.rock_type)));
     const rockTypeColors: Record<string, string> = {};
@@ -265,6 +210,66 @@ export const TASPlot: React.FC<TASPlotProps> = React.memo(({
         text: samples.map(s => 
           `${s.sample_code}<br>`+
           `Rock Type: ${s.rock_type}<br>`+
+          `Material: ${s.material}<br>`+
+          `SiO2: ${s.sio2.toFixed(2)}%<br>`+
+          `Alkali: ${s.alkali.toFixed(2)}%${s.volcano_name ? `<br>`+
+          `Volcano: ${s.volcano_name}` : ''}<br>`+
+          `Confidence: ${s.confidenceLabel}`
+        ),
+        hoverinfo: 'text',
+      });
+    }
+  } else if (colorBy === 'vei') {
+    // VEI MODE: Group by vei|material
+    // Legend shows materials (WR, GL, MIN, INC), colors show VEI
+    const uniqueVEIs = Array.from(new Set(sampleData.map(s => s.vei).filter(v => v !== undefined))) as number[];
+    const veiColors: Record<string, string> = {};
+    
+    for (const vei of uniqueVEIs) {
+      veiColors[vei.toString()] = getVEIColor(vei);
+    }
+    // Add color for unknown VEI
+    veiColors['Unknown'] = '#808080';
+
+    const samplesByVEIAndMaterial = sampleData.reduce((acc, sample) => {
+      const veiKey = sample.vei !== undefined ? sample.vei.toString() : 'Unknown';
+      const key = `${veiKey}|${sample.material}`;
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(sample);
+      return acc;
+    }, {} as Record<string, typeof sampleData>);
+
+    const materialLegendShown = new Set<string>();
+
+    for (const [key, samples] of Object.entries(samplesByVEIAndMaterial)) {
+      const [veiKey, material] = key.split('|');
+      const shape = materialShapes[material] || materialShapes['Unknown'];
+      const color = veiColors[veiKey] || '#808080';
+      const showLegend = !materialLegendShown.has(material);
+      
+      if (showLegend) {
+        materialLegendShown.add(material);
+      }
+      
+      plotlyData.push({
+        type: 'scatter',
+        mode: 'markers',
+        x: samples.map(s => s.sio2),
+        y: samples.map(s => s.alkali),
+        name: material,
+        legendgroup: material,
+        showlegend: showLegend,
+        marker: {
+          size: 8,
+          opacity: 0.7,
+          symbol: shape,
+          color: color,
+        },
+        text: samples.map(s => 
+          `${s.sample_code}<br>`+
+          `VEI: ${s.vei !== undefined ? s.vei : 'Unknown'}<br>`+
           `Material: ${s.material}<br>`+
           `SiO2: ${s.sio2.toFixed(2)}%<br>`+
           `Alkali: ${s.alkali.toFixed(2)}%${s.volcano_name ? `<br>`+

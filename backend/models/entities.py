@@ -81,34 +81,67 @@ class Oxides(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class SpatialScore(BaseModel):
+    """Spatial score with distance information."""
+    dist_km: float = Field(description="Distance in kilometers")
+    decay: float = Field(description="Decay parameter used for scoring")
+    final: float = Field(description="Final spatial score (0.0-1.0)")
+
+
+class TectonicScore(BaseModel):
+    """Tectonic score with regime and crust modifiers."""
+    regime_score: float = Field(description="Base regime match score (0.0-1.0)")
+    crust_modifier: float = Field(description="Crust type modifier (0.0-1.0)")
+    final: float = Field(description="Final tectonic score (0.0-1.0)")
+
+
+class TemporalScore(BaseModel):
+    """Temporal score with precision and modifiers."""
+    base: float = Field(description="Base temporal score (0.0-1.0)")
+    precision: float = Field(description="Precision factor")
+    modifier: float = Field(description="Modifier applied")
+    final: float = Field(description="Final temporal score (0.0-1.0)")
+
+
+class PetrologicalScore(BaseModel):
+    """Petrological score with match type."""
+    match_type: str = Field(description="Type of match: exact, family, or generic")
+    final: float = Field(description="Final petrological score (0.0-1.0)")
+
+
 class VolcanoInfo(BaseModel):
     """Volcano information in matching metadata."""
     name: str
     number: str
-    dist_km: float
-    rock_type: Optional[str] = Field(None, description="Primary rock type of volcano")
 
 
 class MatchingScores(BaseModel):
-    """Multi-dimensional matching scores."""
-    sp: float = Field(description="Spatial score (0.0-1.0)")
-    te: float = Field(description="Tectonic score (0.0-1.0)")
-    ti: float = Field(description="Temporal score (0.0-1.0)")
-    pe: float = Field(description="Petrological score (0.0-1.0)")
+    """Multi-dimensional matching scores with detailed breakdowns."""
+    sp: SpatialScore = Field(description="Spatial score with distance details")
+    te: TectonicScore = Field(description="Tectonic score with regime/crust breakdown")
+    ti: TemporalScore = Field(description="Temporal score with precision details")
+    pe: PetrologicalScore = Field(description="Petrological score with match type")
     final: float = Field(description="Final weighted score (0.0-1.0)")
 
 
-class TectonicSettingSample(BaseModel):
-    """Tectonic setting sample data (r/c/s structure)."""
+class TectonicSettingData(BaseModel):
+    """Tectonic setting data (r/c structure)."""
     r: Optional[str] = Field(None, description="Regime: subduction, rift, or intraplate")
     c: Optional[str] = Field(None, description="Crust type: oceanic, continental, or unknown")
-    s: Optional[str] = Field(None, description="Subregion/detail information")
 
 
 class TectonicSetting(BaseModel):
     """Nested tectonic setting structure."""
-    sample: Optional[TectonicSettingSample] = Field(None, description="Sample tectonic data (r/c/s)")
-    ui: Optional[str] = Field(None, description="Display value: GVP setting if matched, else sample regime")
+    sample: Optional[TectonicSettingData] = Field(None, description="Sample tectonic data (r/c)")
+    volcano: Optional[TectonicSettingData] = Field(None, description="Volcano tectonic data (r/c) - only in volcano documents")
+    ui: str = Field(description="Display value: original from GVP/GEOROC/PETDB")
+
+
+class Petro(BaseModel):
+    """Petrological classification information."""
+    rock_type: str = Field(description="Specific rock type (e.g., BASALT, BASALTIC TRACHYANDESITE)")
+    rock_family: str = Field(description="Rock family (e.g., BASALTIC, ANDESITIC)")
+    ui: Optional[str] = Field(None, description="Original UI value (only in volcano documents)")
 
 
 class MatchingQuality(BaseModel):
@@ -130,13 +163,6 @@ class LiteratureEvidence(BaseModel):
 class MatchingEvidence(BaseModel):
     """Evidence supporting the match."""
     lit: LiteratureEvidence
-
-
-class MatchingExplanation(BaseModel):
-    """Human-readable explanation of the match."""
-    status: str = Field(description="Overall status: matched or rejected")
-    r: List[str] = Field(description="Reasons for/against match (tokens)")
-    f: List[str] = Field(default_factory=list, description="Flags indicating warnings or special cases")
 
 
 class MatchingMeta(BaseModel):
@@ -164,13 +190,12 @@ class MatchingMetadata(BaseModel):
     scores: Optional[MatchingScores] = Field(None, description="Matching scores (only if matched)")
     quality: MatchingQuality = Field(description="Quality metrics (always present)")
     evidence: MatchingEvidence = Field(description="Evidence supporting the match (always present)")
-    expl: MatchingExplanation = Field(description="Human-readable explanation (always present)")
     meta: MatchingMeta = Field(description="Metadata about matching process (always present)")
     
     # Legacy fields (deprecated, for backward compatibility during transition)
     volcano_name: Optional[str] = Field(None, description="DEPRECATED: Use volcano.name")
     volcano_number: Optional[Union[int, str]] = Field(None, description="DEPRECATED: Use volcano.number")
-    distance_km: Optional[float] = Field(None, description="DEPRECATED: Use volcano.dist_km")
+    distance_km: Optional[float] = Field(None, description="DEPRECATED: Use scores.sp.dist_km")
     confidence_level: Optional[Union[str, int]] = Field(None, description="DEPRECATED: Use quality.conf")
 
 
@@ -193,10 +218,11 @@ class Sample(BaseModel):
     geographic_location: Optional[str] = None
     material: Optional[str] = None
     rock_type: Optional[str] = None
-    tectonic_setting: Optional[Union[str, TectonicSetting]] = None
+    tectonic_setting: Optional[TectonicSetting] = None
     geological_age: Optional[GeologicalAge] = None
     eruption_date: Optional[DateInfo] = None
     oxides: Optional[Oxides] = None
+    petro: Optional[Petro] = None
     matching_metadata: Optional[MatchingMetadata] = None
     geometry: Geometry
     bbox: List[float]
@@ -214,9 +240,11 @@ class Volcano(BaseModel):
     region: Optional[str] = None
     subregion: Optional[str] = None
     elevation: Optional[int] = None
-    tectonic_setting: Optional[str] = None
+    tectonic_setting: Optional[TectonicSetting] = None
     evidence_category: Optional[str] = None
+    last_known_eruption: Optional[float] = None
     rocks: Optional[Rocks] = None
+    petro: Optional[Petro] = None
     geometry: Geometry
     bbox: List[float]
     

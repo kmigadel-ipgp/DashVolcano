@@ -20,6 +20,7 @@ export const exportSamplesToCSV = (samples: Sample[], filename?: string): void =
     'Database',
     'Material',
     'Rock Type',
+    'Rock Family',
     'Tectonic Setting',
     'Latitude',
     'Longitude',
@@ -59,8 +60,9 @@ export const exportSamplesToCSV = (samples: Sample[], filename?: string): void =
       sample.sample_id || '',
       sample.db || '',
       sample.material || '',
-      sample.rock_type || '',
-      sample.tectonic_setting || '',
+      sample.petro?.rock_type || '',
+      sample.petro?.rock_family || '',
+      sample.tecto?.ui || '',
       latitude.toFixed(6),
       longitude.toFixed(6),
       // Use new structure: volcano.name, volcano.number, volcano.dist_km
@@ -71,11 +73,11 @@ export const exportSamplesToCSV = (samples: Sample[], filename?: string): void =
       metadata?.quality?.conf || formatConfidenceForCSV(metadata?.confidence_level) || '',
       metadata?.quality?.cov !== undefined ? metadata.quality.cov.toFixed(3) : '',
       metadata?.quality?.unc !== undefined ? metadata.quality.unc.toFixed(3) : '',
-      // Individual matching scores
-      metadata?.scores?.sp !== undefined ? metadata.scores.sp.toFixed(3) : '',
-      metadata?.scores?.te !== undefined ? metadata.scores.te.toFixed(3) : '',
-      metadata?.scores?.ti !== undefined ? metadata.scores.ti.toFixed(3) : '',
-      metadata?.scores?.pe !== undefined ? metadata.scores.pe.toFixed(3) : '',
+      // Individual matching scores - access nested .final field
+      metadata?.scores?.sp?.final !== undefined ? metadata.scores.sp.final.toFixed(3) : '',
+      metadata?.scores?.te?.final !== undefined ? metadata.scores.te.final.toFixed(3) : '',
+      metadata?.scores?.ti?.final !== undefined ? metadata.scores.ti.final.toFixed(3) : '',
+      metadata?.scores?.pe?.final !== undefined ? metadata.scores.pe.final.toFixed(3) : '',
       metadata?.scores?.final !== undefined ? metadata.scores.final.toFixed(3) : '',
       sample.references || '',
       // Oxides (values in wt%)

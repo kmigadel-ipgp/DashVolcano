@@ -330,6 +330,10 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
               </label>
               {loadingMetadata ? (
                 <div className="text-sm text-gray-500 py-2">Loading...</div>
+              ) : rockTypes.length === 0 ? (
+                <div className="text-sm text-red-500 py-2">
+                  No rock types available. Check console for errors.
+                </div>
               ) : (
                 <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-2">
                   {rockTypes.map((type) => (

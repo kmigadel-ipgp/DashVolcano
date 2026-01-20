@@ -188,7 +188,7 @@ async def get_volcano_samples_with_vei(
                 "_id": 0,
                 "sample_id": "$sample_code",
                 "sample_code": 1,
-                "rock_type": 1,
+                "petro": 1,
                 "material": 1,
                 "geometry": 1,
                 "oxides": 1,  # Preserve original MongoDB oxide field names like SIO2(WT%)

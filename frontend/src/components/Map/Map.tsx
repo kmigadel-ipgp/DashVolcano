@@ -286,10 +286,10 @@ export const VolcanoMap: React.FC<MapProps> = ({
             object: {
               type: 'sample',
               volcano_name: getVolcanoName(sample.matching_metadata),
-              rock_name: sample.rock_type,
+              rock_name: sample.petro?.rock_type,
               longitude: sample.geometry.coordinates[0],
               latitude: sample.geometry.coordinates[1],
-              tectonic_setting: sample.tectonic_setting,
+              tectonic_setting: typeof sample.tecto === 'object' ? sample.tecto?.ui : sample.tecto,
               references: sample.references,
               confidence_level: confidence,
               confidence_label: getConfidenceLabel(confidence),
