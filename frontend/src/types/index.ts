@@ -138,6 +138,7 @@ export interface Sample {
   matching_metadata?: MatchingMetadata;
   geological_age?: GeologicalAge;
   eruption_date?: DateInfo;  // Changed from eruption_year
+  vei?: number;  // Volcanic Explosivity Index
   references?: string;
 }
 

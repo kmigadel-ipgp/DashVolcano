@@ -73,11 +73,11 @@ export const exportSamplesToCSV = (samples: Sample[], filename?: string): void =
       metadata?.quality?.conf || formatConfidenceForCSV(metadata?.confidence_level) || '',
       metadata?.quality?.cov !== undefined ? metadata.quality.cov.toFixed(3) : '',
       metadata?.quality?.unc !== undefined ? metadata.quality.unc.toFixed(3) : '',
-      // Individual matching scores - access nested .final field
-      metadata?.scores?.sp?.final !== undefined ? metadata.scores.sp.final.toFixed(3) : '',
-      metadata?.scores?.te?.final !== undefined ? metadata.scores.te.final.toFixed(3) : '',
-      metadata?.scores?.ti?.final !== undefined ? metadata.scores.ti.final.toFixed(3) : '',
-      metadata?.scores?.pe?.final !== undefined ? metadata.scores.pe.final.toFixed(3) : '',
+      // Individual matching scores
+      metadata?.scores?.sp !== undefined ? metadata.scores.sp.toFixed(3) : '',
+      metadata?.scores?.te !== undefined ? metadata.scores.te.toFixed(3) : '',
+      metadata?.scores?.ti !== undefined ? metadata.scores.ti.toFixed(3) : '',
+      metadata?.scores?.pe !== undefined ? metadata.scores.pe.toFixed(3) : '',
       metadata?.scores?.final !== undefined ? metadata.scores.final.toFixed(3) : '',
       sample.references || '',
       // Oxides (values in wt%)
