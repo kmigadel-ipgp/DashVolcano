@@ -73,10 +73,6 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
   const tectonicSettingDisplay = typeof tecto === 'object' 
     ? tecto?.ui || 'Unknown'
     : tecto || 'Unknown';
-  
-  const tectonicSettingSample = typeof sample.tecto === 'object' && sample.tecto !== null
-    ? sample.tecto
-    : undefined;
 
   // Format coordinates to 4 decimal places
   const formatCoordinate = (coord: number, isLat: boolean) => {
