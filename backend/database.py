@@ -191,17 +191,38 @@ class Database:
     def _match_tectonic_setting(self, tectonic_setting: list) -> list:
         """
         Return a list of pipeline stages to match documents by tectonic setting.
+        
+        For samples: Use tecto.ui field
+        For volcanoes: Use tectonic_setting.ui field
 
         Parameters:
             tectonic_setting (list): List of tectonic settings to match.
 
         Returns:
-            (list): A list containing a single `$match` stage if tectonic_setting is provided,
+            (list): A list of pipeline stages if tectonic_setting is provided,
                 otherwise an empty list (no filter applied).
         """
         if tectonic_setting:
-            return [{"$match": {"tectonic_setting": {"$in": tectonic_setting}}}]
+            return [{"$match": {"tectonic_setting.ui": {"$in": tectonic_setting}}}]
         return []
+    
+    def _match_tectonic_setting_for_samples(self, tectonic_setting: list) -> list:
+        """
+        Return pipeline stages to filter samples by their tectonic setting.
+        
+        Filters samples directly by their tecto.ui field.
+        
+        Parameters:
+            tectonic_setting (list): List of tectonic settings (from sample tecto.ui)
+            
+        Returns:
+            (list): Pipeline stages for match, or empty list if no filter.
+        """
+        if not tectonic_setting:
+            return []
+        
+        # Filter samples directly by tecto.ui field
+        return [{"$match": {"tecto.ui": {"$in": tectonic_setting}}}]
 
     def _match_countries(self, countries: list) -> list:
         """
@@ -400,6 +421,7 @@ class Database:
             volcano_names (list[str], optional): A list of volcano names to filter by.
             selected_db (list[str], optional): List of source database identifiers (e.g., ["GEOROC", "PetDB"]).
             tectonic_setting (list[str], optional): List of tectonic settings to include (e.g., ["Subduction Zone"]).
+                                                   Filters by the volcano's tectonic_setting.ui field.
             rock_density (list[str], optional): List of rock types or densities to include (e.g., ["Basalt", "Andesite"]).
                                             Special handling excludes "INC" (incomplete) and optionally filters by `rock`.
 
@@ -410,7 +432,8 @@ class Database:
         pipeline = []
 
         pipeline += self._match_db(selected_db)
-        pipeline += self._match_tectonic_setting(tectonic_setting)
+        # Use the samples-specific tectonic setting filter that joins with volcanoes
+        pipeline += self._match_tectonic_setting_for_samples(tectonic_setting)
         pipeline += self._match_volcano_names(volcano_names)
          
         if rock_density:
@@ -553,7 +576,7 @@ class Database:
         pipeline = []
 
         pipeline += self.match_wr_stage
-        pipeline += self._match_tectonic_setting(tectonic_setting)
+        pipeline += self._match_tectonic_setting_for_samples(tectonic_setting)
         pipeline += self.add_coordinates
         pipeline += self.group_rock_location_stage
         pipeline += self.sort_stage

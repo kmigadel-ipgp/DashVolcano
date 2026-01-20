@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import Plot from 'react-plotly.js';
 import { normalizeConfidence, getConfidenceLabel } from '../../utils/confidence';
-import type { MatchingMetadata } from '../../types';
+import type { MatchingMetadata, Petro } from '../../types';
 
 interface HarkerDataPoint {
   sample_code: string;
   SIO2: number;
-  rock_type: string;
+  petro?: Petro;
   material: string;
   TIO2?: number;
   AL2O3?: number;
@@ -193,7 +193,7 @@ export const HarkerDiagrams: React.FC<HarkerDiagramsProps> = React.memo(({ volca
               },
               text: validData.map((d) => d.sample_code),
               customdata: validData.map((d) => [
-                d.rock_type, 
+                d.petro?.rock_type || 'Unknown', 
                 d.material,
                 d.confidenceLabel || getConfidenceLabel(normalizeConfidence(d.matching_metadata?.confidence_level, d.matching_metadata)),
                 d.volcano_name || volcano.volcanoName

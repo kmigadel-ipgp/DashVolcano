@@ -1,5 +1,7 @@
 import React from 'react';
 import Plot from 'react-plotly.js';
+import { InlineMath, BlockMath } from 'react-katex';
+import 'katex/dist/katex.min.css';
 
 interface RockTypeData {
   volcanoName: string;
@@ -165,29 +167,72 @@ export const RockTypeDistributionChart: React.FC<RockTypeDistributionChartProps>
                   {v.volcanoName}
                 </th>
               ))}
+              {volcanoStats.length === 2 && (
+                <th className="text-right py-2 px-3 font-semibold text-gray-700">
+                  Absolute Diff.
+                  <span className="block text-[10px] font-normal text-gray-500">
+                    <InlineMath math="|v1_r - v2_r|" />
+                  </span>
+                </th>
+              )}
+              {volcanoStats.length === 2 && (
+                <th className="text-right py-2 px-3 font-semibold text-gray-700">
+                  Similarity
+                  <span className="block text-[10px] font-normal text-gray-500">
+                    <InlineMath math="1 - |v1_r - v2_r|" />
+                  </span>
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
-            {sortedRockTypes.map((rockType, idx) => (
-              <tr key={rockType} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                <td className="py-2 px-3 font-medium text-gray-900">{rockType}</td>
-                {volcanoStats.map(v => {
-                  const stats = v.percentages[rockType];
-                  return (
-                    <td key={v.volcanoName} className="text-right py-2 px-3 text-gray-700">
-                      {stats ? (
-                        <>
-                          <span className="font-semibold">{stats.percentage.toFixed(1)}%</span>
-                          <span className="text-gray-500 text-xs ml-1">({stats.count})</span>
-                        </>
-                      ) : (
-                        <span className="text-gray-400">—</span>
-                      )}
+            {sortedRockTypes.map((rockType, idx) => {
+              const pct1 = volcanoStats[0].percentages[rockType]?.percentage || 0;
+              const pct2 = volcanoStats.length === 2 ? (volcanoStats[1].percentages[rockType]?.percentage || 0) : 0;
+              const absDiff = volcanoStats.length === 2 ? Math.abs(pct1 - pct2) : 0;
+              const similarity = volcanoStats.length === 2 ? (100 - absDiff) : 0;
+              
+              return (
+                <tr key={rockType} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                  <td className="py-2 px-3 font-medium text-gray-900">{rockType}</td>
+                  {volcanoStats.map(v => {
+                    const stats = v.percentages[rockType];
+                    return (
+                      <td key={v.volcanoName} className="text-right py-2 px-3 text-gray-700">
+                        {stats ? (
+                          <>
+                            <span className="font-semibold">{stats.percentage.toFixed(1)}%</span>
+                            <span className="text-gray-500 text-xs ml-1">({stats.count})</span>
+                          </>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                  {volcanoStats.length === 2 && (
+                    <td className="text-right py-2 px-3">
+                      <span className={`font-semibold ${absDiff < 10 ? 'text-green-600' : absDiff < 30 ? 'text-amber-600' : 'text-red-600'}`}>
+                        {absDiff.toFixed(1)}%
+                      </span>
+                      <span className="text-gray-600 text-xs ml-1 block">
+                        (w<sub>r</sub> = {(volcanoStats[0].percentages[rockType]?.count || 0) + (volcanoStats[1].percentages[rockType]?.count || 0)})
+                      </span>
                     </td>
-                  );
-                })}
-              </tr>
-            ))}
+                  )}
+                  {volcanoStats.length === 2 && (
+                    <td className="text-right py-2 px-3">
+                      <span className={`font-semibold ${similarity > 90 ? 'text-green-600' : similarity > 30 ? 'text-amber-600' : 'text-red-600'}`}>
+                        {similarity.toFixed(0)}%
+                      </span>
+                      <span className="text-gray-600 text-xs ml-1 block">
+                        (w<sub>r</sub> = {(volcanoStats[0].percentages[rockType]?.count || 0) + (volcanoStats[1].percentages[rockType]?.count || 0)})
+                      </span>
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
             <tr className="bg-gray-100 border-t-2 border-gray-300 font-semibold">
               <td className="py-2 px-3 text-gray-900">Total Samples</td>
               {volcanoStats.map(v => (
@@ -195,6 +240,34 @@ export const RockTypeDistributionChart: React.FC<RockTypeDistributionChartProps>
                   {v.total}
                 </td>
               ))}
+              {volcanoStats.length === 2 && (() => {
+                // Calculate weighted average of absolute differences
+                let weightedSum = 0;
+                let totalWeight = 0;
+                sortedRockTypes.forEach(rockType => {
+                  const pct1 = volcanoStats[0].percentages[rockType]?.percentage || 0;
+                  const pct2 = volcanoStats[1].percentages[rockType]?.percentage || 0;
+                  const absDiff = Math.abs(pct1 - pct2);
+                  const weight = (volcanoStats[0].percentages[rockType]?.count || 0) + (volcanoStats[1].percentages[rockType]?.count || 0);
+                  weightedSum += absDiff * weight;
+                  totalWeight += weight;
+                });
+                const weightedAvgAbsDiff = totalWeight > 0 ? weightedSum / totalWeight : 0;
+                const weightedAvgSimilarity = 1 - (weightedAvgAbsDiff / 100);
+                
+                return (
+                  <>
+                    <td className="text-right py-2 px-3 text-gray-900">
+                      {weightedAvgAbsDiff.toFixed(1)}%
+                      <span className="block text-[10px] font-normal text-gray-500">weighted avg.</span>
+                    </td>
+                    <td className="text-right py-2 px-3 text-gray-600 italic text-xs">
+                      {(weightedAvgSimilarity * 100).toFixed(1)}%
+                      <span className="block text-[10px] font-normal text-gray-500">weighted avg.</span>
+                    </td>
+                  </>
+                );
+              })()}
             </tr>
           </tbody>
         </table>
@@ -210,7 +283,19 @@ export const RockTypeDistributionChart: React.FC<RockTypeDistributionChartProps>
               <div className="mt-2 p-3 bg-white rounded-lg shadow-sm space-y-2 max-w-md">
                 <div>
                   <p className="font-semibold text-gray-700">Similarity Score:</p>
-                  <p className="text-gray-600">For each rock type, compares percentages between volcanoes. Differences are weighted by sample counts and averaged. Higher scores mean more similar distributions.</p>
+                  <p className="text-gray-600">Weighted average of rock type similarities. For each rock type <InlineMath math="r" />, compute local similarity <InlineMath math="(1 - |v1_r - v2_r|)" /> where <InlineMath math="v1_r" /> and <InlineMath math="v2_r" /> are the fractions in each volcano. Weight by total sample count <InlineMath math="(w_r = n1_r + n2_r)" />. Rock types with more samples have more influence.</p>
+                  <div className="mt-2 p-2 bg-gray-800 rounded">
+                    <p className="text-xs font-semibold text-yellow-300 mb-2">
+                      Formula (weighted percentage)
+                    </p>
+                    <div className="text-yellow-300 flex justify-center">
+                      <BlockMath math="\text{Similarity} = \frac{\sum_r [(100 - |v1_r - v2_r|) \times w_r]}{\sum_r w_r}" />
+                    </div>
+                    <div className="mt-2 text-[10px] text-gray-300 space-y-1">
+                      <div><InlineMath math="v1_r, v2_r" /> = % of rock type <InlineMath math="r" /> in each volcano</div>
+                      <div><InlineMath math="w_r = n1_r + n2_r" /> (total samples of type <InlineMath math="r" />)</div>
+                    </div>
+                  </div>
                 </div>
                 <div>
                   <p className="font-semibold text-gray-700">Most Diverse:</p>
@@ -231,37 +316,48 @@ export const RockTypeDistributionChart: React.FC<RockTypeDistributionChartProps>
                 <div className="group relative">
                   <span className="text-blue-500 cursor-help text-xs border border-blue-500 rounded-full w-4 h-4 inline-flex items-center justify-center relative -translate-y-px">?</span>
                   <div className="hidden group-hover:block absolute z-50 w-80 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg -left-36 top-6">
-                    <p className="font-semibold mb-1">How it's calculated:</p>
-                    <p>Compares rock type distributions between the first two volcanoes. For each rock type, calculates the difference in percentages (0-100%), weighted by the total sample count for that rock type.</p>
+                    <p className="font-semibold mb-2">Similarity Score Formula:</p>
+                    <div className="my-2 p-2 bg-gray-800 rounded">
+                      <div className="text-yellow-300 flex justify-center">
+                        <BlockMath math="\text{Similarity} = \frac{\sum_r [(1 - |v1_r - v2_r|) \times w_r]}{\sum_r w_r}" />
+                      </div>
+                    </div>
+                    <p className="text-gray-300 text-[10px] mb-2 leading-relaxed">
+                      <strong>Legend:</strong>
+                      <br />
+                      <span className="ml-2"><InlineMath math="v1_r, v2_r" /> = fraction of rock type <InlineMath math="r" /> in each volcano (0–1)</span>
+                      <br />
+                      <span className="ml-2"><InlineMath math="w_r = n1_r + n2_r" /> (total samples of type <InlineMath math="r" />)</span>
+                    </p>
                     {(() => {
                       if (volcanoStats.length >= 2) {
                         const v1 = volcanoStats[0];
                         const v2 = volcanoStats[1];
-                        // Find a common rock type
                         const commonRockType = Object.keys(v1.percentages).find(rt => v2.percentages[rt]);
                         if (commonRockType) {
                           const pct1 = v1.percentages[commonRockType].percentage.toFixed(1);
                           const pct2 = v2.percentages[commonRockType].percentage.toFixed(1);
                           const count1 = v1.percentages[commonRockType].count;
                           const count2 = v2.percentages[commonRockType].count;
-                          const diff = Math.abs(Number(pct1) - Number(pct2)).toFixed(1);
-                          const similarity = (100 - Number(diff)).toFixed(1);
+                          const v1r = (v1.percentages[commonRockType].percentage / 100).toFixed(3);
+                          const v2r = (v2.percentages[commonRockType].percentage / 100).toFixed(3);
+                          const diff = Math.abs(Number(v1r) - Number(v2r)).toFixed(3);
+                          const similarity = (1 - Number(diff)).toFixed(3);
+                          const weight = count1 + count2;
                           return (
-                            <div className="mt-2 p-2 bg-gray-800 rounded text-[10px] font-mono">
-                              <p className="text-yellow-300 font-semibold mb-1">Example with your data:</p>
-                              <p>{commonRockType}:</p>
-                              <p>• {v1.volcanoName}: {pct1}% ({count1} samples)</p>
-                              <p>• {v2.volcanoName}: {pct2}% ({count2} samples)</p>
-                              <p className="mt-1">Difference: |{pct1}% - {pct2}%| = {diff}%</p>
-                              <p>Similarity: 100% - {diff}% = {similarity}%</p>
-                              <p className="text-gray-400 mt-1">(Repeated for all rock types, weighted by counts)</p>
+                            <div className="mt-2 p-2 bg-gray-800 rounded text-[10px] leading-relaxed">
+                              <p className="text-yellow-300 font-semibold mb-1">Example: {commonRockType}</p>
+                              <p>• {v1.volcanoName}: {pct1}% → <InlineMath math={`v1_r = ${v1r}`} /></p>
+                              <p>• {v2.volcanoName}: {pct2}% → <InlineMath math={`v2_r = ${v2r}`} /></p>
+                              <p className="mt-1">Similarity: <InlineMath math={`1 - |${v1r} - ${v2r}| = ${similarity}`} /></p>
+                              <p>Weight: <InlineMath math={`w_r = ${count1} + ${count2} = ${weight}`} /></p>
                             </div>
                           );
                         }
                       }
                       return null;
                     })()}
-                    <p className="mt-1 text-gray-300">100% = identical distributions, 0% = completely different</p>
+                    <p className="mt-2 text-gray-300 text-[10px]">100% = identical, 0% = completely different</p>
                   </div>
                 </div>
               </div>

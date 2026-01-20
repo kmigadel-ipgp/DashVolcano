@@ -26,7 +26,7 @@ export const SummaryStats: React.FC<SummaryStatsProps> = ({
   const [isExpanded, setIsExpanded] = useState(true);
   // Calculate unique values
   const uniqueRockTypes = new Set(
-    samples.filter(s => s.rock_type).map(s => s.rock_type)
+    samples.filter(s => s.petro?.rock_type).map(s => s.petro?.rock_type)
   ).size;
 
   const uniqueCountries = new Set(
@@ -34,7 +34,7 @@ export const SummaryStats: React.FC<SummaryStatsProps> = ({
   ).size;
 
   const uniqueTectonicSettings = new Set([
-    ...samples.filter(s => s.tectonic_setting).map(s => s.tectonic_setting),
+    ...samples.filter(s => s.tecto).map(s => typeof s.tecto === 'object' ? s.tecto?.ui : s.tecto),
     ...volcanoes.filter(v => v.tectonic_setting).map(v => v.tectonic_setting),
   ]).size;
 

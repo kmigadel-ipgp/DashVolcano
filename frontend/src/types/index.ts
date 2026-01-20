@@ -55,7 +55,8 @@ export interface VolcanoInfo {
   name: string;
   number: string;
   dist_km: number;
-  rock_type?: string;  // Primary rock type of volcano
+  rock_type?: string;  // Primary rock type of volcano (legacy)
+  petro?: Petro;  // New petrology structure
 }
 
 export interface MatchingScores {
@@ -69,12 +70,21 @@ export interface MatchingScores {
 export interface TectonicSettingSample {
   r?: string;  // Regime: subduction, rift, or intraplate
   c?: string;  // Crust type: oceanic, continental, or unknown
-  s?: string;  // Subregion/detail information
+  ui?: string;  // Display value: GEOROC/PetDB setting
+  volcano_ui?: string;  // GVP volcano tectonic setting
 }
 
-export interface TectonicSetting {
-  sample?: TectonicSettingSample;  // Sample tectonic data (r/c/s)
-  ui?: string;  // Display value: GVP setting if matched, else sample regime
+export interface TectonicSettingVolcano {
+  r?: string;  // Regime: subduction, rift, or intraplate
+  c?: string;  // Crust type: oceanic, continental, or unknown
+  ui?: string;  // Display value: GVP setting
+}
+
+// Petrology/Rock type information
+export interface Petro {
+  rock_type?: string;  // Rock type classification
+  rock_family?: string;  // Rock family grouping
+  ui?: string;  // Display value (for volcanoes)
 }
 
 export interface MatchingQuality {
@@ -95,12 +105,6 @@ export interface MatchingEvidence {
   lit: LiteratureEvidence;
 }
 
-export interface MatchingExplanation {
-  status: string;  // matched or rejected
-  r: string[];  // Reasons (tokens)
-  f: string[];  // Flags
-}
-
 export interface MatchingMeta {
   method: string;  // Matching method
   ts: string;  // Timestamp (ISO 8601)
@@ -112,7 +116,6 @@ export interface MatchingMetadata {
   scores?: MatchingScores;  // Only present if matched
   quality: MatchingQuality;  // Always present
   evidence: MatchingEvidence;  // Always present
-  expl: MatchingExplanation;  // Always present
   meta: MatchingMeta;  // Always present
   // Legacy fields for backward compatibility (deprecated)
   volcano_name?: string;
@@ -128,8 +131,8 @@ export interface Sample {
   sample_code?: string; // Display-friendly sample identifier
   db: string;
   material: string;
-  rock_type?: string;
-  tectonic_setting?: string | TectonicSetting;  // Support both legacy string and new nested structure
+  petro?: Petro;  // Petrology information (rock_type, rock_family)
+  tecto?: TectonicSettingSample;  // New nested tectonic setting structure
   geometry: Point;
   oxides?: Oxides;
   matching_metadata?: MatchingMetadata;
@@ -147,7 +150,8 @@ export interface Volcano {
   country?: string;
   region?: string;
   subregion?: string;
-  tectonic_setting?: string;
+  petro?: Petro;  // Petrology information (rock_type, rock_family, ui)
+  tectonic_setting?: TectonicSettingVolcano;  // New nested tectonic setting structure
   geometry: Point;
   rocks?: string[];
   elevation_m?: number;

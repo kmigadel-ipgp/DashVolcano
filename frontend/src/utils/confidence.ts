@@ -165,13 +165,13 @@ export const filterSamplesByConfidence = <T extends { matching_metadata?: Matchi
  * Calculate rock type distribution from samples
  * Used to compute rock type counts after applying confidence filtering
  */
-export const calculateRockTypeDistribution = <T extends { rock_type?: string }>(
+export const calculateRockTypeDistribution = <T extends { petro?: { rock_type?: string } }>(
   samples: T[]
 ): Record<string, number> => {
   const distribution: Record<string, number> = {};
   
   for (const sample of samples) {
-    const rockType = sample.rock_type;
+    const rockType = sample.petro?.rock_type;
     if (rockType) {
       distribution[rockType] = (distribution[rockType] || 0) + 1;
     }
@@ -208,66 +208,4 @@ export const getDistance = (metadata?: MatchingMetadata): number | undefined => 
  */
 export const isMatched = (metadata?: MatchingMetadata): boolean => {
   return !!(metadata?.volcano || metadata?.volcano_name);
-};
-
-/**
- * Get human-readable explanation from matching metadata
- * Translates tokens into readable messages
- */
-export const getMatchExplanation = (metadata?: MatchingMetadata): string[] => {
-  if (!metadata?.expl?.r) return [];
-  
-  const translations: Record<string, string> = {
-    // Spatial
-    'space:very_close': '📍 Very close (<5 km)',
-    'space:near': '📍 Near (5-25 km)',
-    'space:moderate': '📍 Moderate distance (25-50 km)',
-    'space:far': '📍 Far (>50 km)',
-    'space:no_data': '📍 No spatial data',
-    
-    // Tectonic
-    'tecto:match': '🌍 Tectonic setting matches',
-    'tecto:likely': '🌍 Tectonic setting likely matches',
-    'tecto:partial': '🌍 Tectonic setting partially matches',
-    'tecto:mismatch': '🌍 Tectonic mismatch',
-    'tecto:no_data': '🌍 No tectonic data',
-    
-    // Temporal
-    'time:strong': '📅 Date strongly matches',
-    'time:partial': '📅 Date partially matches',
-    'time:marginal': '📅 Date marginally matches',
-    'time:pre_holocene': '📅 Pre-Holocene eruption',
-    'time:no_data': '📅 No date data',
-    
-    // Petrological
-    'petro:match': '🪨 Rock type strongly matches',
-    'petro:compatible': '🪨 Rock type compatible',
-    'petro:weak': '🪨 Rock type differs',
-    'petro:no_data': '🪨 No rock type data',
-    
-    // Literature
-    'lit:explicit': '📚 Explicitly mentioned in literature',
-    'lit:partial': '📚 Partially mentioned in literature',
-    'lit:regional': '📚 Region mentioned in literature',
-    'lit:none': '📚 No literature mention'
-  };
-  
-  return metadata.expl.r.map(token => translations[token] || token);
-};
-
-/**
- * Get warning flags from matching metadata
- */
-export const getMatchFlags = (metadata?: MatchingMetadata): string[] => {
-  if (!metadata?.expl?.f) return [];
-  
-  const flagTranslations: Record<string, string> = {
-    'space:high_uncertainty': '⚠️ High spatial uncertainty',
-    'time:low_precision': '⚠️ Low temporal precision',
-    'time:wide_interval': '⚠️ Wide time interval',
-    'time:zero_bp': '⚠️ Dated to 0 BP',
-    'score:competing_candidates': '⚠️ Multiple volcanoes possible'
-  };
-  
-  return metadata.expl.f.map(token => flagTranslations[token] || token);
 };
