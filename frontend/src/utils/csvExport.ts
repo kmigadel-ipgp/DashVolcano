@@ -62,22 +62,23 @@ export const exportSamplesToCSV = (samples: Sample[], filename?: string): void =
       sample.material || '',
       sample.petro?.rock_type || '',
       sample.petro?.rock_family || '',
-      sample.tecto?.ui || '',
+      sample.tecto?.volcano_ui || sample.tecto?.ui || '',
       latitude.toFixed(6),
       longitude.toFixed(6),
-      // Use new structure: volcano.name, volcano.number, volcano.dist_km
-      metadata?.volcano?.name || metadata?.volcano_name || '',
-      metadata?.volcano?.number || metadata?.volcano_number || '',
-      metadata?.volcano?.dist_km !== undefined ? metadata.volcano.dist_km.toFixed(2) : (metadata?.distance_km !== undefined ? metadata.distance_km.toFixed(2) : ''),
+      // Volcano information
+      metadata?.volcano?.name || '',
+      metadata?.volcano?.number || '',
+      // Distance is now in scores.sp.dist_km
+      metadata?.scores?.sp?.dist_km !== undefined ? metadata.scores.sp.dist_km.toFixed(2) : '',
       // Confidence and quality metrics
-      metadata?.quality?.conf || formatConfidenceForCSV(metadata?.confidence_level) || '',
+      metadata?.quality?.conf || '',
       metadata?.quality?.cov !== undefined ? metadata.quality.cov.toFixed(3) : '',
       metadata?.quality?.unc !== undefined ? metadata.quality.unc.toFixed(3) : '',
-      // Individual matching scores
-      metadata?.scores?.sp !== undefined ? metadata.scores.sp.toFixed(3) : '',
-      metadata?.scores?.te !== undefined ? metadata.scores.te.toFixed(3) : '',
-      metadata?.scores?.ti !== undefined ? metadata.scores.ti.toFixed(3) : '',
-      metadata?.scores?.pe !== undefined ? metadata.scores.pe.toFixed(3) : '',
+      // Individual matching scores - now nested under .final
+      metadata?.scores?.sp?.final !== undefined ? metadata.scores.sp.final.toFixed(3) : '',
+      metadata?.scores?.te?.final !== undefined ? metadata.scores.te.final.toFixed(3) : '',
+      metadata?.scores?.ti?.final !== undefined ? metadata.scores.ti.final.toFixed(3) : '',
+      metadata?.scores?.pe?.final !== undefined ? metadata.scores.pe.final.toFixed(3) : '',
       metadata?.scores?.final !== undefined ? metadata.scores.final.toFixed(3) : '',
       sample.references || '',
       // Oxides (values in wt%)
