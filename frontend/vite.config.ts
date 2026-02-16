@@ -5,9 +5,14 @@ import path from 'node:path'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  define: {
+    'global': 'globalThis',
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      'buffer': path.resolve(__dirname, './src/polyfills/buffer.js'),
+      'buffer/': path.resolve(__dirname, './src/polyfills/buffer.js'),
     },
   },
   server: {

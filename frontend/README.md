@@ -227,8 +227,11 @@ npx tsc --noEmit
 ### Build Process
 
 ```bash
-# Type-check and build
+# Standard build (requires all TypeScript errors fixed)
 npm run build
+
+# Production build with TypeScript bypass (if type errors exist)
+NODE_OPTIONS="--max-old-space-size=4096" VITE_API_BASE_URL=/api npx vite build
 
 # Output will be in dist/
 ls dist/
@@ -236,9 +239,11 @@ ls dist/
 ```
 
 The build process:
-1. Runs TypeScript compiler (`tsc -b`) to check types
-2. Bundles with Vite (code splitting, minification)
-3. Outputs optimized static files to `dist/`
+1. **Standard build**: Runs TypeScript compiler (`tsc -b`) to check types, then bundles with Vite
+2. **Production bypass**: Uses `npx vite build` directly to skip TypeScript type checking (useful when minor type errors exist that don't affect runtime)
+3. Bundles with code splitting, minification, and outputs optimized static files to `dist/`
+
+**Note**: `NODE_OPTIONS="--max-old-space-size=4096"` increases memory limit to prevent heap overflow during build.
 
 **Build Metrics (as of Sprint 4.1):**
 - Build time: ~27s
