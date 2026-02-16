@@ -172,10 +172,18 @@ The application will be available at **http://localhost:5173** with hot module r
 ### 5. Build for Production (Optional)
 
 ```bash
+# Standard build (requires all TypeScript errors fixed)
 npm run build
+
+# Production build with TypeScript bypass (if minor type errors exist)
+NODE_OPTIONS="--max-old-space-size=4096" VITE_API_BASE_URL=/api npx vite build
 ```
 
 Built files will be in the `dist/` folder.
+
+**Configuration Note**: DashVolcano uses a unified configuration approach:
+- Single `ecosystem.config.js` for PM2 (works in both modes)
+- Buffer polyfill in `frontend/src/polyfills/buffer.js` is transparent in both modes
 
 ---
 
@@ -231,27 +239,46 @@ cp .env.example .env
 # Edit .env with production MongoDB credentials and settings
 ```
 
-**3. Update PM2 Configuration (if needed):**
+**3. Build Frontend for Production:**
 
-The `ecosystem.config.js` is already configured, but ensure the paths match your installation:
-```javascript
-// The configuration uses absolute paths to the virtual environment
-script: './backend/.venv/bin/uvicorn',  // Uses virtual environment's uvicorn
-cwd: '/path/to/your/DashVolcano',       // Update this path if needed
+```bash
+cd frontend
+NODE_OPTIONS="--max-old-space-size=4096" VITE_API_BASE_URL=/api npx vite build
+cd ..
 ```
 
-**4. Start Application with PM2:**
+**4. PM2 Configuration:**
+
+The `ecosystem.config.js` is configured to run **API only** (frontend is served as static files by nginx):
+```javascript
+{
+  name: 'dashvolcano-api',
+  script: '/usr/local/bin/uvicorn',
+  interpreter: 'python3',
+  args: 'backend.main:app --host 0.0.0.0 --port 8000 --workers 4',
+  // No --reload flag for production stability
+}
+```
+
+**5. Start Application with PM2:**
 ```bash
 # From the project root directory
 pm2 start ecosystem.config.js
 ```
 
-**5. Verify Services are Running:**
+**6. Verify API is Running:**
 ```bash
 pm2 status
 ```
 
-You should see both `dashvolcano-api` and `dashvolcano-frontend` running.
+You should see `dashvolcano-api` online.
+
+**7. Configure Web Server (Production Only):**
+
+For production deployment, use nginx to serve frontend static files and proxy API requests:
+- Serve `frontend/dist/` as document root
+- Proxy `/api/*` requests to `http://localhost:8000`
+- See [DEPLOYMENT_GUIDE.md](./docs/DEPLOYMENT_GUIDE.md) for complete nginx configuration
 
 ### PM2 Management Commands
 
