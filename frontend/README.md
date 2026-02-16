@@ -169,7 +169,7 @@ frontend/
 npm run dev
 
 # Build for production
-npm run build
+npx vite build
 
 # Preview production build
 npm run preview
@@ -227,10 +227,7 @@ npx tsc --noEmit
 ### Build Process
 
 ```bash
-# Standard build (requires all TypeScript errors fixed)
-npm run build
-
-# Production build with TypeScript bypass (if type errors exist)
+# Production build
 NODE_OPTIONS="--max-old-space-size=4096" VITE_API_BASE_URL=/api npx vite build
 
 # Output will be in dist/
@@ -239,9 +236,9 @@ ls dist/
 ```
 
 The build process:
-1. **Standard build**: Runs TypeScript compiler (`tsc -b`) to check types, then bundles with Vite
-2. **Production bypass**: Uses `npx vite build` directly to skip TypeScript type checking (useful when minor type errors exist that don't affect runtime)
-3. Bundles with code splitting, minification, and outputs optimized static files to `dist/`
+1. Uses `npx vite build` directly to build without TypeScript type checking
+2. Bundles with code splitting, minification, and outputs optimized static files to `dist/`
+3. `NODE_OPTIONS="--max-old-space-size=4096"` increases memory limit to prevent heap overflow
 
 **Note**: `NODE_OPTIONS="--max-old-space-size=4096"` increases memory limit to prevent heap overflow during build.
 
@@ -264,11 +261,12 @@ See the [Deployment Guide](../docs/DEPLOYMENT_GUIDE.md) for full production setu
 **Quick Deployment Checklist:**
 1. ✅ Backend API is running and accessible
 2. ✅ Set `VITE_API_BASE_URL` if backend is on different host
-3. ✅ Run `npm run build`
+3. ✅ Run `npx vite build` to build frontend
 4. ✅ Serve `dist/` folder with nginx or other static file server
 5. ✅ Configure reverse proxy for `/api/` routes to backend
 6. ✅ Enable gzip compression for static assets
 7. ✅ Set up SSL/TLS certificate
+8. ✅ Use `pm2 start ecosystem.production.config.js` for process management
 
 ## 🐛 Troubleshooting
 

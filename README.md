@@ -172,10 +172,7 @@ The application will be available at **http://localhost:5173** with hot module r
 ### 5. Build for Production (Optional)
 
 ```bash
-# Standard build (requires all TypeScript errors fixed)
-npm run build
-
-# Production build with TypeScript bypass (if minor type errors exist)
+# Production build
 NODE_OPTIONS="--max-old-space-size=4096" VITE_API_BASE_URL=/api npx vite build
 ```
 
@@ -247,9 +244,15 @@ NODE_OPTIONS="--max-old-space-size=4096" VITE_API_BASE_URL=/api npx vite build
 cd ..
 ```
 
+**Note:** Use `npx vite build` directly instead of `npm run build` to avoid TypeScript type-checking delays.
+
 **4. PM2 Configuration:**
 
-The `ecosystem.config.js` is configured to run **API only** (frontend is served as static files by nginx):
+Two PM2 configuration files are available:
+- `ecosystem.development.config.js` - Development mode (API with --reload + Frontend with npm run dev)
+- `ecosystem.production.config.js` - Production mode (API with workers, no frontend)
+
+Production config runs **API only** (frontend is served as static files by nginx):
 ```javascript
 {
   name: 'dashvolcano-api',
@@ -262,8 +265,11 @@ The `ecosystem.config.js` is configured to run **API only** (frontend is served 
 
 **5. Start Application with PM2:**
 ```bash
-# From the project root directory
-pm2 start ecosystem.config.js
+# Development (starts both API and Frontend)
+pm2 start ecosystem.development.config.js
+
+# Production (API only - frontend served by nginx)
+pm2 start ecosystem.production.config.js
 ```
 
 **6. Verify API is Running:**
