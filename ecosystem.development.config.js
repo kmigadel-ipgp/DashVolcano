@@ -4,7 +4,7 @@ module.exports = {
       name: 'dashvolcano-api',
       script: './backend/.venv/bin/uvicorn',
       args: 'backend.main:app --reload --host 0.0.0.0 --port 8000',
-      cwd: '/home/kmigadel/Documents/IPGP/Projects-Tasks/DashVolcano/Website/code/DashVolcano',
+      cwd: '/home/kmigadel/Documents/IPGP/research_projects/active/DashVolcano/code/DashVolcano',
       instances: 1,
       exec_mode: 'fork',
       interpreter: 'none',
@@ -12,7 +12,7 @@ module.exports = {
       watch: false,
       max_memory_restart: '1G',
       env: {
-        PYTHONPATH: '/home/kmigadel/Documents/IPGP/Projects-Tasks/DashVolcano/Website/code/DashVolcano',
+        PYTHONPATH: '/home/kmigadel/Documents/IPGP/research_projects/active/DashVolcano/code/DashVolcano',
         ENVIRONMENT: 'development'
       },
       error_file: './logs/api-error.log',
@@ -27,7 +27,7 @@ module.exports = {
     },
     {
       name: 'dashvolcano-frontend',
-      cwd: '/home/kmigadel/Documents/IPGP/Projects-Tasks/DashVolcano/Website/code/DashVolcano/frontend',
+      cwd: '/home/kmigadel/Documents/IPGP/research_projects/active/DashVolcano/code/DashVolcano/frontend',
       script: 'npm',
       args: 'run dev',
       interpreter: 'none',
