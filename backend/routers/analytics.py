@@ -23,20 +23,21 @@ async def get_tas_polygons():
     """
     # TAS polygon definitions (from analytic_plots.py)
     polygons = [
-        {"name": "picro-basalt", "coordinates": [[41, 0], [41, 3], [45, 3], [45, 0], [41, 0]]},
-        {"name": "basalt", "coordinates": [[45, 0], [45, 5], [52, 5], [52, 0], [45, 0]]},
-        {"name": "basaltic andesite", "coordinates": [[52, 0], [52, 5], [57, 5.9], [57, 0], [52, 0]]},
-        {"name": "andesite", "coordinates": [[57, 0], [57, 5.9], [63, 7], [63, 0], [57, 0]]},
-        {"name": "dacite", "coordinates": [[63, 0], [63, 7], [69, 8], [77, 8], [77, 0], [69, 0], [63, 0]]},
-        {"name": "tephrite", "coordinates": [[41, 3], [41, 7], [45, 9.4], [49.4, 7.3], [45, 5], [45, 3], [41, 3]]},
-        {"name": "trachybasalt", "coordinates": [[45, 5], [49.4, 7.3], [52, 5], [45, 5]]},
-        {"name": "phono-tephrite", "coordinates": [[45, 9.4], [48.4, 11.5], [53, 9.3], [49.4, 7.3], [45, 9.4]]},
-        {"name": "basaltic trachyandesite", "coordinates": [[49.4, 7.3], [53, 9.3], [57, 5.9], [52, 5], [49.4, 7.3]]},
-        {"name": "tephri-phonolite", "coordinates": [[53, 9.3], [48.4, 11.5], [52.5, 14], [57.6, 11.7], [53, 9.3]]},
-        {"name": "trachyandesite", "coordinates": [[53, 9.3], [57.6, 11.7], [63, 7], [57, 5.9], [53, 9.3]]},
-        {"name": "rhyolite", "coordinates": [[69, 8], [69, 13], [77, 13], [77, 0], [77, 8], [69, 8]]},
-        {"name": "trachyte, trachydacite", "coordinates": [[57.6, 11.7], [65, 15.7], [69, 13], [69, 8], [63, 7], [57.6, 11.7]]},
-        {"name": "phonolyte", "coordinates": [[50, 15.13], [65, 15.7], [57.6, 11.7], [50, 15.13]]}
+        {"name": "picro-basalt",            "coordinates": [[41,0],[41,3],[45,3],[45,0],[41,0]]},
+        {"name": "basalt",                  "coordinates": [[45,0],[45,5],[52,5],[52,0],[45,0]]},
+        {"name": "basaltic andesite",       "coordinates": [[52,0],[52,5],[57,5.9],[57,0],[52,0]]},
+        {"name": "andesite",                "coordinates": [[57,0],[57,5.9],[63,7],[63,0],[57,0]]},
+        {"name": "dacite",                  "coordinates": [[63,0],[63,7],[69,8],[77,0],[63,0]]},
+        {"name": "tephrite",                "coordinates": [[41,3],[41,7],[45,9.4],[49.4,7.3],[45,5],[45,3],[41,3]]},
+        {"name": "trachybasalt",            "coordinates": [[45,5],[49.4,7.3],[52,5],[45,5]]},
+        {"name": "phono-tephrite",          "coordinates": [[45,9.4],[48.4,11.5],[53,9.3],[49.4,7.3],[45,9.4]]},
+        {"name": "basaltic trachyandesite", "coordinates": [[49.4,7.3],[53,9.3],[57,5.9],[52,5],[49.4,7.3]]},
+        {"name": "tephri-phonolite",        "coordinates": [[53,9.3],[48.4,11.5],[52.5,14],[57.6,11.7],[53,9.3]]},
+        {"name": "trachyandesite",          "coordinates": [[53,9.3],[57.6,11.7],[63,7],[57,5.9],[53,9.3]]},
+        {"name": "rhyolite",                "coordinates": [[69,8],[69,13],[77,13],[77,0],[69,8]]},
+        {"name": "trachyte,trachydacite",   "coordinates": [[57.6,11.7],[65,15.7],[69,13],[69,8],[63,7],[57.6,11.7]]},
+        {"name": "phonolyte",               "coordinates": [[50,15.13],[65,15.7],[57.6,11.7],[50,15.13]]},
+        {"name": "foidite",                 "coordinates": [[41,0],[30,0],[30,15.13],[52.5,14],[48.4,11.5],[45,9.4],[41,7],[41,3],[41,0]]}
     ]
     
     # Alkali/Subalkalic dividing line

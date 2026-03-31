@@ -4,11 +4,11 @@ Caching middleware for API responses.
 Adds Cache-Control headers to responses based on endpoint patterns.
 """
 
+from datetime import datetime, timezone
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from typing import Callable
 import hashlib
-import time
 
 
 class CacheControlMiddleware(BaseHTTPMiddleware):
@@ -26,6 +26,7 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
     
     # Cache durations in seconds
     CACHE_DURATIONS = {
+        "/api/analytics/tas-polygons": 0,  # Always fetch latest polygon definitions
         "/api/metadata": 3600,  # 1 hour
         "/api/samples/geojson": 600,  # 10 minutes
         "/api/volcanoes/geojson": 600,  # 10 minutes
@@ -50,7 +51,10 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
             cache_duration = self._get_cache_duration(request.url.path)
             
             # Add Cache-Control header
-            response.headers["Cache-Control"] = f"public, max-age={cache_duration}"
+            if cache_duration == 0:
+                response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+            else:
+                response.headers["Cache-Control"] = f"public, max-age={cache_duration}"
             
             # Add ETag for conditional requests (based on response body hash)
             # Note: This is a simple implementation. For production, consider
@@ -64,8 +68,7 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
             
             # Add Last-Modified (current time for simplicity)
             # In production, this should be the actual modification time
-            from datetime import datetime
-            last_modified = datetime.utcnow().strftime('%a, %d %b %Y %H:%M:%S GMT')
+            last_modified = datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S GMT')
             response.headers["Last-Modified"] = last_modified
         
         return response
@@ -74,7 +77,7 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
         """Get cache duration for a given path."""
         # Check for exact matches or prefix matches
         for pattern, duration in self.CACHE_DURATIONS.items():
-            if path.startswith(pattern):
+            if path == pattern or path.startswith(pattern):
                 return duration
         
         return self.DEFAULT_CACHE_DURATION
