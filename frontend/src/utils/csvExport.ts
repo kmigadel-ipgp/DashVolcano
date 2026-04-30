@@ -1,6 +1,5 @@
 import type { Sample } from '../types';
 import { showSuccess, showError } from './toast';
-import { formatConfidenceForCSV } from './confidence';
 
 /**
  * Exports an array of samples to a CSV file and triggers a browser download
@@ -68,17 +67,15 @@ export const exportSamplesToCSV = (samples: Sample[], filename?: string): void =
       // Volcano information
       metadata?.volcano?.name || '',
       metadata?.volcano?.number || '',
-      // Distance is now in scores.sp.dist_km
-      metadata?.scores?.sp?.dist_km !== undefined ? metadata.scores.sp.dist_km.toFixed(2) : '',
+      metadata?.volcano?.dist_km !== undefined ? metadata.volcano.dist_km.toFixed(2) : '',
       // Confidence and quality metrics
       metadata?.quality?.conf || '',
       metadata?.quality?.cov !== undefined ? metadata.quality.cov.toFixed(3) : '',
       metadata?.quality?.unc !== undefined ? metadata.quality.unc.toFixed(3) : '',
-      // Individual matching scores - now nested under .final
-      metadata?.scores?.sp?.final !== undefined ? metadata.scores.sp.final.toFixed(3) : '',
-      metadata?.scores?.te?.final !== undefined ? metadata.scores.te.final.toFixed(3) : '',
-      metadata?.scores?.ti?.final !== undefined ? metadata.scores.ti.final.toFixed(3) : '',
-      metadata?.scores?.pe?.final !== undefined ? metadata.scores.pe.final.toFixed(3) : '',
+      metadata?.scores?.sp !== undefined ? metadata.scores.sp.toFixed(3) : '',
+      metadata?.scores?.te !== undefined ? metadata.scores.te.toFixed(3) : '',
+      metadata?.scores?.ti !== undefined ? metadata.scores.ti.toFixed(3) : '',
+      metadata?.scores?.pe !== undefined ? metadata.scores.pe.toFixed(3) : '',
       metadata?.scores?.final !== undefined ? metadata.scores.final.toFixed(3) : '',
       sample.references || '',
       // Oxides (values in wt%)

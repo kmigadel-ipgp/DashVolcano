@@ -18,6 +18,29 @@ from backend.main import app
 client = TestClient(app)
 
 
+def normalize_confidence(sample):
+    metadata = sample.get("matching_metadata") or {}
+    quality = metadata.get("quality") or {}
+    primary = str(quality.get("conf") or "").lower().strip()
+    if primary == "high":
+        return "high"
+    if primary == "medium":
+        return "medium"
+    if primary == "low":
+        return "low"
+    if primary == "none":
+        return "unknown"
+
+    legacy = str(metadata.get("confidence_level") or "").lower().strip()
+    if legacy in {"high", "1"}:
+        return "high"
+    if legacy in {"medium", "2"}:
+        return "medium"
+    if legacy in {"low", "3"}:
+        return "low"
+    return "unknown"
+
+
 class TestTASPolygonsEndpoint:
     """Test TAS diagram polygon definitions endpoint."""
     
@@ -252,6 +275,73 @@ class TestVEIDistributionEndpoint:
         response = client.get("/api/volcanoes/999999999/vei-distribution")
         assert response.status_code == 404
         assert "detail" in response.json()
+
+
+class TestRockTypeDistributionEndpoint:
+    """Test aggregated rock type distribution endpoint."""
+
+    def test_distribution_endpoint_structure(self):
+        response = client.get("/api/analytics/rock-type-distribution", params={"volcano_number": "273030"})
+        assert response.status_code == 200
+
+        data = response.json()
+        assert "sample_count" in data
+        assert "rock_types" in data
+        assert data["material"] == "WR"
+        assert isinstance(data["rock_types"], dict)
+        assert data["sample_count"] == sum(data["rock_types"].values())
+
+    def test_distribution_matches_chemical_analysis_wr_counts(self):
+        distribution_response = client.get(
+            "/api/analytics/rock-type-distribution",
+            params={"volcano_number": "273030"},
+        )
+        chemical_response = client.get("/api/volcanoes/273030/chemical-analysis")
+
+        assert distribution_response.status_code == 200
+        assert chemical_response.status_code == 200
+
+        distribution = distribution_response.json()
+        chemical = chemical_response.json()
+
+        assert distribution["rock_types"] == chemical["rock_types_wr"]
+        assert distribution["sample_count"] == sum(chemical["rock_types_wr"].values())
+
+    def test_distribution_confidence_filter_matches_manual_wr_filter(self):
+        response = client.get(
+            "/api/analytics/rock-type-distribution",
+            params={"volcano_number": "273030", "confidence_levels": "high,medium"},
+        )
+        chemical_response = client.get("/api/volcanoes/273030/chemical-analysis")
+
+        assert response.status_code == 200
+        assert chemical_response.status_code == 200
+
+        distribution = response.json()
+        manual_counts = {}
+
+        for sample in chemical_response.json().get("all_samples", []):
+            if sample.get("material") != "WR":
+                continue
+            if normalize_confidence(sample) not in {"high", "medium"}:
+                continue
+
+            rock_type = (sample.get("petro") or {}).get("rock_type")
+            if not rock_type:
+                continue
+            manual_counts[rock_type] = manual_counts.get(rock_type, 0) + 1
+
+        assert distribution["rock_types"] == manual_counts
+        assert distribution["sample_count"] == sum(manual_counts.values())
+
+    def test_distribution_rejects_invalid_confidence_level(self):
+        response = client.get(
+            "/api/analytics/rock-type-distribution",
+            params={"volcano_number": "273030", "confidence_levels": "high,invalid"},
+        )
+
+        assert response.status_code == 400
+        assert "confidence_levels" in response.json()["detail"]
 
 
 class TestChemicalAnalysisEndpoint:

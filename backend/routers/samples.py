@@ -7,6 +7,7 @@ from bson import ObjectId
 from typing import Optional, List
 
 from backend.dependencies import get_database
+from backend.services.sample_filters import build_sample_match_query
 
 router = APIRouter()
 
@@ -34,83 +35,15 @@ async def get_samples(
     Bounding box format: min_lon,min_lat,max_lon,max_lat
     Example: bbox=-10,35,20,60 (covers Western Europe)
     """
-    query = {}
-    sio2_field = "oxides.SIO2"
-    
-    # Rock type filter - support multiple values with OR logic
-    # Updated to use petro.rock_type for new nested structure
-    if rock_type:
-        rock_types = [rt.strip() for rt in rock_type.split(',')]
-        if len(rock_types) > 1:
-            query["petro.rock_type"] = {"$in": rock_types}
-        else:
-            query["petro.rock_type"] = rock_types[0]
-    
-    if database:
-        query["db"] = database
-    
-    # Tectonic setting filter - support multiple values with OR logic
-    # Updated to use tecto.ui for new nested structure
-    if tectonic_setting:
-        settings = [s.strip() for s in tectonic_setting.split(',')]
-        if len(settings) > 1:
-            query["tecto.volcano_ui"] = {"$in": settings}
-        else:
-            query["tecto.volcano_ui"] = settings[0]
-    
-    # SiO2 filter - only apply if samples have oxides data
-    if min_sio2 is not None or max_sio2 is not None:
-        sio2_filter = {"$exists": True, "$ne": None}
-        if min_sio2 is not None:
-            sio2_filter["$gte"] = min_sio2
-        if max_sio2 is not None:
-            sio2_filter["$lte"] = max_sio2
-        query[sio2_field] = sio2_filter
-    
-    if volcano_number:
-        query["matching_metadata.volcano.number"] = volcano_number
-    
-    # Bounding box filter - MongoDB geospatial query
-    if bbox:
-        try:
-            coords = [float(x) for x in bbox.split(',')]
-            if len(coords) != 4:
-                raise HTTPException(status_code=400, detail="bbox must have 4 values: min_lon,min_lat,max_lon,max_lat")
-            
-            min_lon, min_lat, max_lon, max_lat = coords
-            
-            # Validate coordinate ranges
-            if not (-180 <= min_lon <= 180 and -180 <= max_lon <= 180):
-                raise HTTPException(status_code=400, detail="Longitude must be between -180 and 180")
-            if not (-90 <= min_lat <= 90 and -90 <= max_lat <= 90):
-                raise HTTPException(status_code=400, detail="Latitude must be between -90 and 90")
-            if min_lon >= max_lon:
-                raise HTTPException(status_code=400, detail="min_lon must be less than max_lon")
-            if min_lat >= max_lat:
-                raise HTTPException(status_code=400, detail="min_lat must be less than max_lat")
-            
-            # MongoDB geospatial query using $geoIntersects with $geometry (Polygon)
-            # $geoIntersects uses the 2dsphere index efficiently (unlike $geoWithin)
-            # Note: MongoDB uses [longitude, latitude] order
-            query["geometry"] = {
-                "$geoIntersects": {
-                    "$geometry": {
-                        "type": "Polygon",
-                        "coordinates": [[
-                            [min_lon, min_lat],  # Southwest corner
-                            [max_lon, min_lat],  # Southeast corner
-                            [max_lon, max_lat],  # Northeast corner
-                            [min_lon, max_lat],  # Northwest corner
-                            [min_lon, min_lat]   # Close the polygon
-                        ]]
-                    }
-                }
-            }
-        except ValueError as e:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Invalid bbox format. Use: min_lon,min_lat,max_lon,max_lat. Error: {str(e)}"
-            )
+    query = build_sample_match_query(
+        rock_type=rock_type,
+        database=database,
+        tectonic_setting=tectonic_setting,
+        min_sio2=min_sio2,
+        max_sio2=max_sio2,
+        volcano_number=volcano_number,
+        bbox=bbox,
+    )
     
     # Project only necessary fields for performance
     # Minimize data transfer by excluding large nested objects unless specifically needed
