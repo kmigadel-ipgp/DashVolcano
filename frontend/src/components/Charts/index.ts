@@ -8,3 +8,4 @@
 
 export { TASPlot } from './TASPlot';
 export { AFMPlot } from './AFMPlot';
+export { RockTypeRadarChart } from './RockTypeRadarChart';

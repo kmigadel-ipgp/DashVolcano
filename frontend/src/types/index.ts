@@ -259,6 +259,35 @@ export interface SampleFilters {
   offset?: number;
 }
 
+export interface RockTypeDistributionResponse {
+  sample_count: number;
+  rock_types: Record<string, number>;
+  material?: string | null;
+  confidence_levels?: Array<'high' | 'medium' | 'low' | 'unknown'> | null;
+}
+
+export interface RockTypeDistributionFilters {
+  database?: string;
+  rock_type?: string | string[];
+  tectonic_setting?: string | string[];
+  min_sio2?: number;
+  max_sio2?: number;
+  volcano_number?: number | string;
+  bbox?: string;
+  material?: string;
+  confidence_levels?: Array<'high' | 'medium' | 'low' | 'unknown'>;
+}
+
+export type RockTypeComparisonMode = 'none' | 'global' | 'volcano' | 'bbox';
+
+export interface RockTypeRadarSeries {
+  label: string;
+  rockTypes: Record<string, number>;
+  sampleCount: number;
+  color: string;
+  sourceType: 'primary' | 'global' | 'volcano' | 'bbox';
+}
+
 export interface VolcanoFilters {
   country?: string;
   region?: string;

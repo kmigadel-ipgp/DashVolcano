@@ -5,7 +5,16 @@ import type {
   TectonicPlatesResponse,
   TectonicBoundariesResponse,
   MetadataResponse,
+  RockTypeDistributionFilters,
+  RockTypeDistributionResponse,
 } from '../types';
+
+const joinFilterValue = (value?: string | string[]) => {
+  if (Array.isArray(value)) {
+    return value.join(',');
+  }
+  return value;
+};
 
 /**
  * Fetch TAS diagram polygon definitions
@@ -67,6 +76,27 @@ export const fetchRockTypes = async (): Promise<string[]> => {
 export const fetchDatabases = async (): Promise<string[]> => {
   const response = await apiClient.get<MetadataResponse>('/metadata/databases');
   return response.data.data as string[];
+};
+
+/**
+ * Fetch an aggregated rock-type distribution for radar comparisons.
+ */
+export const fetchRockTypeDistribution = async (
+  filters?: RockTypeDistributionFilters
+): Promise<RockTypeDistributionResponse> => {
+  const params = filters
+    ? {
+        ...filters,
+        rock_type: joinFilterValue(filters.rock_type),
+        tectonic_setting: joinFilterValue(filters.tectonic_setting),
+        confidence_levels: filters.confidence_levels?.join(','),
+      }
+    : undefined;
+
+  const response = await apiClient.get<RockTypeDistributionResponse>('/analytics/rock-type-distribution', {
+    params,
+  });
+  return response.data;
 };
 
 /**

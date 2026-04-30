@@ -9,8 +9,71 @@ from pymongo.database import Database
 from typing import List, Dict, Any, Optional
 
 from backend.dependencies import get_database
+from backend.models.responses import RockTypeDistributionResponse
+from backend.services.sample_filters import (
+    build_confidence_filter_stages,
+    build_sample_match_query,
+    parse_confidence_levels,
+)
 
 router = APIRouter()
+
+
+@router.get("/rock-type-distribution", response_model=RockTypeDistributionResponse)
+async def get_rock_type_distribution(
+    db: Database = Depends(get_database),
+    rock_type: Optional[str] = Query(None, description="Filter by rock type (comma-separated for multiple)"),
+    database: Optional[str] = Query(None, description="Filter by database (GEOROC, PetDB, GVP)"),
+    tectonic_setting: Optional[str] = Query(None, description="Filter by tectonic setting (comma-separated for multiple)"),
+    min_sio2: Optional[float] = Query(None, description="Minimum SiO2 content (%)"),
+    max_sio2: Optional[float] = Query(None, description="Maximum SiO2 content (%)"),
+    volcano_number: Optional[str] = Query(None, description="Filter by volcano number"),
+    bbox: Optional[str] = Query(
+        None,
+        description="Bounding box as 'min_lon,min_lat,max_lon,max_lat'",
+        pattern=r"^-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?$",
+    ),
+    material: Optional[str] = Query("WR", description="Material filter (defaults to WR for whole-rock comparison)"),
+    confidence_levels: Optional[str] = Query(
+        None,
+        description="Confidence levels to include (comma-separated: high,medium,low,unknown)",
+    ),
+):
+    """Return a rock type distribution for the filtered sample set."""
+
+    selected_confidence_levels = parse_confidence_levels(confidence_levels)
+    query = build_sample_match_query(
+        rock_type=rock_type,
+        database=database,
+        tectonic_setting=tectonic_setting,
+        min_sio2=min_sio2,
+        max_sio2=max_sio2,
+        volcano_number=volcano_number,
+        bbox=bbox,
+        material=material,
+    )
+
+    pipeline: List[Dict[str, Any]] = [{"$match": query}]
+    pipeline.extend(build_confidence_filter_stages(selected_confidence_levels))
+    pipeline.extend([
+        {"$match": {"petro.rock_type": {"$exists": True, "$nin": [None, ""]}}},
+        {"$group": {"_id": "$petro.rock_type", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1, "_id": 1}},
+    ])
+
+    rock_type_rows = list(db.samples.aggregate(pipeline, batchSize=10000))
+    rock_types = {
+        row["_id"]: row["count"]
+        for row in rock_type_rows
+        if row.get("_id")
+    }
+
+    return {
+        "sample_count": sum(rock_types.values()),
+        "rock_types": rock_types,
+        "material": material,
+        "confidence_levels": selected_confidence_levels,
+    }
 
 
 @router.get("/tas-polygons")

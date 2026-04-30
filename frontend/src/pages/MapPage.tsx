@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
+import type { AxiosError } from 'axios';
 import { Filter as FilterIcon } from 'lucide-react';
 import { VolcanoMap, LayerControls, ViewportControls, SampleDetailsPanel, SummaryStats, ChartPanel, SelectionOverlay } from '../components/Map';
 import { BboxSearchWidget } from '../components/Map/BboxSearchWidget';
@@ -21,6 +22,16 @@ const INITIAL_VIEWPORT = {
   latitude: 20,
   zoom: 2,
 };
+
+type BboxDrawMode = 'none' | 'primary' | 'comparison';
+
+interface APIErrorResponse {
+  detail?: string;
+}
+
+interface MapInteractionInfo {
+  coordinate?: [number, number];
+}
 
 const MapPage = () => {
   // Layer visibility state
@@ -52,8 +63,12 @@ const MapPage = () => {
 
   // Bbox state
   const [currentBbox, setCurrentBbox] = useState<BBox | null>(null);
-  const [isDrawingBbox, setIsDrawingBbox] = useState(false);
+  const [comparisonBbox, setComparisonBbox] = useState<BBox | null>(null);
+  const [bboxDrawMode, setBboxDrawMode] = useState<BboxDrawMode>('none');
   const [totalSamplesCount, setTotalSamplesCount] = useState<number | undefined>(undefined);
+
+  const isDrawingBbox = bboxDrawMode !== 'none';
+  const isDrawingComparisonBbox = bboxDrawMode === 'comparison';
 
   // Selection state - using individual selectors for better reactivity
   const selectedSamples = useSelectionStore((state) => state.selectedSamples);
@@ -153,9 +168,10 @@ const MapPage = () => {
               });
               setVolcanoSamples(response.data);
               setVolcanoSamplesError(null);
-            } catch (error: any) {
+            } catch (error: unknown) {
               console.error('Error fetching volcano samples:', error);
-              const errorMessage = error.response?.data?.detail || error.message || 'Failed to fetch volcano samples';
+              const axiosError = error as AxiosError<APIErrorResponse>;
+              const errorMessage = axiosError.response?.data?.detail || axiosError.message || 'Failed to fetch volcano samples';
               setVolcanoSamplesError(errorMessage);
               setVolcanoSamples([]);
             } finally {
@@ -190,9 +206,10 @@ const MapPage = () => {
           });
           setBboxSamples(response.data);
           setBboxSamplesError(null);
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('Error fetching bbox samples:', error);
-          const errorMessage = error.response?.data?.detail || error.message || 'Failed to fetch samples in bounding box';
+          const axiosError = error as AxiosError<APIErrorResponse>;
+          const errorMessage = axiosError.response?.data?.detail || axiosError.message || 'Failed to fetch samples in bounding box';
           setBboxSamplesError(errorMessage);
           setBboxSamples([]);
         } finally {
@@ -300,9 +317,15 @@ const MapPage = () => {
   const [drawingStart, setDrawingStart] = useState<{ lon: number; lat: number } | null>(null);
   const [drawingCurrent, setDrawingCurrent] = useState<{ lon: number; lat: number } | null>(null);
 
+  const resetDrawingState = () => {
+    setBboxDrawMode('none');
+    setDrawingStart(null);
+    setDrawingCurrent(null);
+  };
+
   // Bbox handlers
   const handleStartDrawing = () => {
-    setIsDrawingBbox(true);
+    setBboxDrawMode('primary');
     setDrawingStart(null);
     setDrawingCurrent(null);
     // Clear any existing selection mode to avoid conflicts
@@ -311,7 +334,16 @@ const MapPage = () => {
     }
   };
 
-  const handleMapClick = (info: any) => {
+  const handleStartComparisonBbox = () => {
+    setBboxDrawMode('comparison');
+    setDrawingStart(null);
+    setDrawingCurrent(null);
+    if (selectionMode !== 'none') {
+      setSelectionMode('none');
+    }
+  };
+
+  const handleMapClick = (info: MapInteractionInfo) => {
     if (!isDrawingBbox) return;
 
     const { coordinate } = info;
@@ -332,17 +364,19 @@ const MapPage = () => {
       // Validate minimum size (at least 0.1 degrees)
       if (Math.abs(maxLon - minLon) > 0.1 && Math.abs(maxLat - minLat) > 0.1) {
         const newBbox: BBox = { minLon, minLat, maxLon, maxLat };
-        setCurrentBbox(newBbox); // This will trigger bbox sample fetch via useEffect
+        if (bboxDrawMode === 'comparison') {
+          setComparisonBbox(newBbox);
+        } else {
+          setCurrentBbox(newBbox); // This will trigger bbox sample fetch via useEffect
+        }
       }
 
       // Reset drawing state
-      setIsDrawingBbox(false);
-      setDrawingStart(null);
-      setDrawingCurrent(null);
+      resetDrawingState();
     }
   };
 
-  const handleMapHover = (info: any) => {
+  const handleMapHover = (info: MapInteractionInfo) => {
     if (!isDrawingBbox || !drawingStart) return;
 
     const { coordinate } = info;
@@ -358,9 +392,16 @@ const MapPage = () => {
 
   const handleClearBbox = () => {
     setCurrentBbox(null); // This will clear bbox samples via useEffect
-    setIsDrawingBbox(false);
-    setDrawingStart(null);
-    setDrawingCurrent(null);
+    if (bboxDrawMode === 'primary') {
+      resetDrawingState();
+    }
+  };
+
+  const handleClearComparisonBbox = () => {
+    setComparisonBbox(null);
+    if (bboxDrawMode === 'comparison') {
+      resetDrawingState();
+    }
   };
 
   // Calculate drawing rectangle for visualization
@@ -386,13 +427,18 @@ const MapPage = () => {
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && isDrawingBbox) {
-        handleClearBbox();
+        resetDrawingState();
       }
     };
 
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isDrawingBbox]);
+
+  const chartPanelSamples = selectedSamples.length > 0 ? selectedSamples : samples;
+  const chartPanelPrimaryLabel = selectedSamples.length > 0
+    ? `Selected Samples (${selectedSamples.length})`
+    : 'Current Map Data';
 
   return (
     <div ref={mapContainerRef} className="relative w-full h-full">
@@ -469,10 +515,14 @@ const MapPage = () => {
                 {drawingStart ? 'Click to complete rectangle' : 'Click to start drawing'}
               </div>
               <div className="text-sm">
-                {drawingStart ? 'Second click sets the opposite corner' : 'First click sets one corner of the bounding box'}
+                {drawingStart
+                  ? 'Second click sets the opposite corner'
+                  : bboxDrawMode === 'comparison'
+                    ? 'First click sets one corner of the comparison bounding box'
+                    : 'First click sets one corner of the bounding box'}
               </div>
               <button
-                onClick={handleClearBbox}
+                onClick={resetDrawingState}
                 className="mt-3 px-4 py-2 bg-white text-orange-600 rounded-md hover:bg-gray-100 font-medium"
               >
                 Cancel Drawing (ESC)
@@ -497,7 +547,9 @@ const MapPage = () => {
         onSampleClick={handleSampleClick}
         onViewportChange={handleViewportChange}
         activeBbox={currentBbox}
+        comparisonBbox={comparisonBbox}
         drawingBboxProp={getDrawingBbox()}
+        drawingBboxVariant={bboxDrawMode === 'comparison' ? 'comparison' : 'primary'}
         isDrawingBbox={isDrawingBbox}
         onMapClick={handleMapClick}
         onMapHover={handleMapHover}
@@ -571,7 +623,7 @@ const MapPage = () => {
         {/* Bbox Search Widget */}
         <BboxSearchWidget
           bbox={currentBbox}
-          isDrawing={isDrawingBbox}
+          isDrawing={bboxDrawMode === 'primary'}
           sampleCount={samples?.length}
           totalSamples={totalSamplesCount}
           onStartDrawing={handleStartDrawing}
@@ -582,12 +634,18 @@ const MapPage = () => {
 
       {/* Chart Panel */}
       <ChartPanel
-        samples={selectedSamples.length > 0 ? selectedSamples : samples}
+        samples={chartPanelSamples}
         isOpen={chartPanelOpen}
         onToggle={() => setChartPanelOpen(prev => !prev)}
         onClose={() => setChartPanelOpen(false)}
         selectedConfidenceLevels={selectedConfidenceLevels}
         onConfidenceLevelsChange={setSelectedConfidenceLevels}
+        sampleFilters={sampleFilters}
+        primaryDatasetLabel={chartPanelPrimaryLabel}
+        comparisonBbox={comparisonBbox}
+        isDrawingComparisonBbox={isDrawingComparisonBbox}
+        onStartComparisonBbox={handleStartComparisonBbox}
+        onClearComparisonBbox={handleClearComparisonBbox}
       />
 
       {/* Filter Button */}

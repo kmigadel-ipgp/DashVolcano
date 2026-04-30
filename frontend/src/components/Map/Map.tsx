@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import DeckGL from '@deck.gl/react';
 import { Map as MapboxMap } from 'react-map-gl/mapbox';
 import { ScatterplotLayer, GeoJsonLayer, IconLayer } from '@deck.gl/layers';
-import type { Sample, Volcano, TectonicBoundary } from '../../types';
+import type { BBox, Sample, Volcano, TectonicBoundary } from '../../types';
 import { 
   normalizeConfidence, 
   getConfidenceColor, 
@@ -51,9 +51,13 @@ interface MapProps {
   /** Whether the map is in loading state */
   loading?: boolean;
   /** Active bbox filter to show border */
-  activeBbox?: { minLon: number; minLat: number; maxLon: number; maxLat: number } | null;
+  activeBbox?: BBox | null;
+  /** Secondary comparison bbox shown for radar comparisons */
+  comparisonBbox?: BBox | null;
   /** Drawing bbox for visualization */
-  drawingBboxProp?: { minLon: number; minLat: number; maxLon: number; maxLat: number } | null;
+  drawingBboxProp?: BBox | null;
+  /** Which bbox is currently being drawn */
+  drawingBboxVariant?: 'primary' | 'comparison';
   /** Whether bbox drawing mode is active */
   isDrawingBbox?: boolean;
   /** Callback when map is clicked (for drawing) */
@@ -104,7 +108,9 @@ export const VolcanoMap: React.FC<MapProps> = ({
   onViewportChange,
   loading = false,
   activeBbox = null,
+  comparisonBbox = null,
   drawingBboxProp = null,
+  drawingBboxVariant = 'primary',
   isDrawingBbox = false,
   onMapClick,
   onMapHover,
@@ -363,33 +369,33 @@ export const VolcanoMap: React.FC<MapProps> = ({
 
   // Combine all layers
   // Drawing bbox layer (for real-time preview during drawing)
+  const createBboxFeature = (bbox: BBox) => ({
+    type: 'Feature' as const,
+    properties: {},
+    geometry: {
+      type: 'Polygon' as const,
+      coordinates: [[
+        [bbox.minLon, bbox.minLat],
+        [bbox.maxLon, bbox.minLat],
+        [bbox.maxLon, bbox.maxLat],
+        [bbox.minLon, bbox.maxLat],
+        [bbox.minLon, bbox.minLat],
+      ]],
+    },
+  });
+
   const drawingBboxLayer = () => {
     if (!drawingBboxProp) return null;
-
-    const { minLon, minLat, maxLon, maxLat } = drawingBboxProp;
-    
-    const bboxGeoJSON = {
-      type: 'Feature' as const,
-      properties: {},
-      geometry: {
-        type: 'Polygon' as const,
-        coordinates: [[
-          [minLon, minLat],
-          [maxLon, minLat],
-          [maxLon, maxLat],
-          [minLon, maxLat],
-          [minLon, minLat],
-        ]],
-      },
-    };
+    const bboxGeoJSON = createBboxFeature(drawingBboxProp);
+    const isComparison = drawingBboxVariant === 'comparison';
 
     return new GeoJsonLayer({
       id: 'drawing-bbox-layer',
       data: [bboxGeoJSON],
       filled: true,
       stroked: true,
-      getFillColor: [59, 130, 246, 80], // Blue with transparency for shadow effect
-      getLineColor: [59, 130, 246, 200], // Semi-transparent blue border
+      getFillColor: isComparison ? [5, 150, 105, 70] : [59, 130, 246, 80],
+      getLineColor: isComparison ? [5, 150, 105, 220] : [59, 130, 246, 200],
       getLineWidth: 2,
       lineWidthMinPixels: 2,
       getDashArray: [5, 3], // Dashed line
@@ -400,23 +406,7 @@ export const VolcanoMap: React.FC<MapProps> = ({
   // Active bbox layer (for showing the final selected search area)
   const activeBboxLayer = () => {
     if (!activeBbox) return null;
-
-    const { minLon, minLat, maxLon, maxLat } = activeBbox;
-    
-    const bboxGeoJSON = {
-      type: 'Feature' as const,
-      properties: {},
-      geometry: {
-        type: 'Polygon' as const,
-        coordinates: [[
-          [minLon, minLat],
-          [maxLon, minLat],
-          [maxLon, maxLat],
-          [minLon, maxLat],
-          [minLon, minLat],
-        ]],
-      },
-    };
+    const bboxGeoJSON = createBboxFeature(activeBbox);
 
     return new GeoJsonLayer({
       id: 'active-bbox-layer',
@@ -426,6 +416,22 @@ export const VolcanoMap: React.FC<MapProps> = ({
       getLineColor: [255, 165, 0, 255], // Solid orange border
       getLineWidth: 3,
       lineWidthMinPixels: 3,
+      pickable: false,
+    });
+  };
+
+  const comparisonBboxLayer = () => {
+    if (!comparisonBbox) return null;
+
+    return new GeoJsonLayer({
+      id: 'comparison-bbox-layer',
+      data: [createBboxFeature(comparisonBbox)],
+      filled: false,
+      stroked: true,
+      getLineColor: [5, 150, 105, 255],
+      getLineWidth: 3,
+      lineWidthMinPixels: 3,
+      getDashArray: [6, 4],
       pickable: false,
     });
   };
@@ -458,6 +464,11 @@ export const VolcanoMap: React.FC<MapProps> = ({
   const activeBboxBorder = activeBboxLayer();
   if (activeBboxBorder) {
     layers.push(activeBboxBorder);
+  }
+
+  const comparisonBboxBorder = comparisonBboxLayer();
+  if (comparisonBboxBorder) {
+    layers.push(comparisonBboxBorder);
   }
 
   // Add drawing bbox layer (on top)

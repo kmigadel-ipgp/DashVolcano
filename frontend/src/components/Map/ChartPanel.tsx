@@ -3,9 +3,19 @@ import { ChevronUp, ChevronDown, X } from 'lucide-react';
 import { TASPlot } from '../Charts/TASPlot';
 import { AFMPlot } from '../Charts/AFMPlot';
 import { ConfidenceFilter } from '../Filters';
+import { RockTypeRadarPanel } from './RockTypeRadarPanel';
 import { filterSamplesByConfidence } from '../../utils/confidence';
-import type { Sample } from '../../types';
+import type { BBox, Sample, SampleFilters } from '../../types';
 import type { ConfidenceLevel } from '../../utils/confidence';
+
+type ChartTab = 'both' | 'tas' | 'afm' | 'radar';
+
+const TAB_OPTIONS: Array<{ value: ChartTab; label: string }> = [
+  { value: 'both', label: 'Both' },
+  { value: 'tas', label: 'TAS Only' },
+  { value: 'afm', label: 'AFM Only' },
+  { value: 'radar', label: 'Radar' },
+];
 
 interface ChartPanelProps {
   /** Array of samples to display in charts */
@@ -20,6 +30,18 @@ interface ChartPanelProps {
   selectedConfidenceLevels: ConfidenceLevel[];
   /** Callback when confidence levels change */
   onConfidenceLevelsChange: (levels: ConfidenceLevel[]) => void;
+  /** Active non-spatial sample filters for comparison fetches */
+  sampleFilters: SampleFilters;
+  /** Label for the primary dataset shown in the radar tab */
+  primaryDatasetLabel: string;
+  /** Optional comparison bbox for radar-mode comparisons */
+  comparisonBbox?: BBox | null;
+  /** Whether a comparison bbox is currently being drawn */
+  isDrawingComparisonBbox?: boolean;
+  /** Start drawing a comparison bbox on the map */
+  onStartComparisonBbox?: () => void;
+  /** Clear the current comparison bbox */
+  onClearComparisonBbox?: () => void;
 }
 
 /**
@@ -38,8 +60,14 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
   onClose,
   selectedConfidenceLevels,
   onConfidenceLevelsChange,
+  sampleFilters,
+  primaryDatasetLabel,
+  comparisonBbox = null,
+  isDrawingComparisonBbox = false,
+  onStartComparisonBbox,
+  onClearComparisonBbox,
 }) => {
-  const [activeTab, setActiveTab] = useState<'both' | 'tas' | 'afm'>('both');
+  const [activeTab, setActiveTab] = useState<ChartTab>('both');
 
   // Apply confidence filtering to samples
   const filteredSamples = filterSamplesByConfidence(samples, selectedConfidenceLevels);
@@ -53,53 +81,48 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
     s => s.oxides?.['FEOT'] && s.oxides?.['MGO'] && s.oxides?.['NA2O'] && s.oxides?.['K2O']
   );
 
+  const radarValidSamples = filteredSamples.filter(
+    sample => sample.material === 'WR' && !!sample.petro?.rock_type
+  );
+
   if (!isOpen) {
-    return null;
+    return (
+      <button
+        onClick={onToggle}
+        className="absolute bottom-0 left-1/2 transform -translate-x-1/2 bg-volcano-600 text-white px-4 py-2 rounded-t-lg shadow-lg hover:bg-volcano-700 transition-colors z-30"
+      >
+        <ChevronUp className="w-5 h-5 inline" />
+        <span className="ml-2">Show Charts</span>
+      </button>
+    );
   }
 
   return (
     <div className="absolute bottom-0 left-0 right-0 z-30 bg-white border-t-2 border-volcano-600 shadow-2xl">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 bg-gradient-to-r from-volcano-600 to-volcano-500 text-white">
-        <div className="flex items-center gap-4">
-          <h3 className="font-semibold text-lg">Chemical Classification Diagrams</h3>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setActiveTab('both')}
-              className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                activeTab === 'both'
-                  ? 'bg-white text-volcano-600'
-                  : 'bg-volcano-700 hover:bg-volcano-800'
-              }`}
-            >
-              Both
-            </button>
-            <button
-              onClick={() => setActiveTab('tas')}
-              className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                activeTab === 'tas'
-                  ? 'bg-white text-volcano-600'
-                  : 'bg-volcano-700 hover:bg-volcano-800'
-              }`}
-            >
-              TAS Only
-            </button>
-            <button
-              onClick={() => setActiveTab('afm')}
-              className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                activeTab === 'afm'
-                  ? 'bg-white text-volcano-600'
-                  : 'bg-volcano-700 hover:bg-volcano-800'
-              }`}
-            >
-              AFM Only
-            </button>
+        <div className="flex items-center gap-4 min-w-0">
+          <h3 className="font-semibold text-lg shrink-0">Chemical and Rock-Type Charts</h3>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {TAB_OPTIONS.map(tab => (
+              <button
+                key={tab.value}
+                onClick={() => setActiveTab(tab.value)}
+                className={`px-3 py-1 rounded text-sm font-medium transition-colors whitespace-nowrap ${
+                  activeTab === tab.value
+                    ? 'bg-white text-volcano-600'
+                    : 'bg-volcano-700 hover:bg-volcano-800'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
         
         <div className="flex items-center gap-2">
           <span className="text-sm">
-            TAS: {tasValidSamples.length} | AFM: {afmValidSamples.length} samples
+            TAS: {tasValidSamples.length} | AFM: {afmValidSamples.length} | WR Radar: {radarValidSamples.length}
           </span>
           <button
             onClick={onToggle}
@@ -209,20 +232,24 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
                 </div>
               </div>
             )}
+
+            {activeTab === 'radar' && (
+              <div className="p-4 w-full">
+                <RockTypeRadarPanel
+                  samples={samples}
+                  sampleFilters={sampleFilters}
+                  selectedConfidenceLevels={selectedConfidenceLevels}
+                  primaryDatasetLabel={primaryDatasetLabel}
+                  comparisonBbox={comparisonBbox}
+                  isDrawingComparisonBbox={isDrawingComparisonBbox}
+                  onStartComparisonBbox={onStartComparisonBbox}
+                  onClearComparisonBbox={onClearComparisonBbox}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
-
-      {/* Minimized Toggle Button */}
-      {!isOpen && (
-        <button
-          onClick={onToggle}
-          className="absolute bottom-0 left-1/2 transform -translate-x-1/2 bg-volcano-600 text-white px-4 py-2 rounded-t-lg shadow-lg hover:bg-volcano-700 transition-colors"
-        >
-          <ChevronUp className="w-5 h-5" />
-          <span className="ml-2">Show Charts</span>
-        </button>
-      )}
     </div>
   );
 };

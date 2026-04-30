@@ -265,3 +265,27 @@ class ErrorResponse(BaseModel):
             }
         }
     )
+
+
+class RockTypeDistributionResponse(BaseModel):
+    """Aggregated rock type distribution for a filtered sample set."""
+
+    sample_count: int
+    rock_types: Dict[str, int]
+    material: Optional[str] = None
+    confidence_levels: Optional[List[str]] = None
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "sample_count": 120,
+                "rock_types": {
+                    "Basalt": 52,
+                    "Andesite": 38,
+                    "Rhyolite": 30
+                },
+                "material": "WR",
+                "confidence_levels": ["high", "medium"]
+            }
+        }
+    )
