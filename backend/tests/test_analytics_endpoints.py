@@ -432,6 +432,33 @@ class TestChemicalAnalysisEndpoint:
         
         # Should return at most 10 samples
         assert data["samples_count"] <= 10
+
+    def test_chemical_analysis_default_matches_samples_endpoint_for_large_volcano(self):
+        """Default chemical analysis should not silently truncate a large volcano dataset."""
+        volcano_number = "332010"
+
+        default_response = client.get(f"/api/volcanoes/{volcano_number}/chemical-analysis")
+        limited_response = client.get(f"/api/volcanoes/{volcano_number}/chemical-analysis?limit=5000")
+        samples_response = client.get(f"/api/samples?volcano_number={volcano_number}")
+
+        assert default_response.status_code == 200
+        assert limited_response.status_code == 200
+        assert samples_response.status_code == 200
+
+        default_data = default_response.json()
+        limited_data = limited_response.json()
+        samples_data = samples_response.json()
+
+        assert default_data["samples_count"] == len(default_data["all_samples"])
+        assert default_data["samples_count"] == samples_data["total"]
+        assert default_data["samples_count"] == samples_data["count"]
+
+        expected_limited_count = min(5000, default_data["samples_count"])
+        assert limited_data["samples_count"] == expected_limited_count
+
+        default_wr_count = sum(default_data["rock_types_wr"].values())
+        limited_wr_count = sum(limited_data["rock_types_wr"].values())
+        assert default_wr_count >= limited_wr_count
     
     def test_chemical_analysis_no_samples(self):
         """Test chemical analysis for volcano with no samples (Afdera 221110)."""

@@ -12,6 +12,7 @@
  */
 
 import type { MatchingMetadata } from '../types';
+import { getMatchingDistance } from './matchingMetadata';
 
 export type ConfidenceLevel = 'high' | 'medium' | 'low' | 'unknown';
 
@@ -200,7 +201,7 @@ export const getVolcanoNumber = (metadata?: MatchingMetadata): string | undefine
  * Extract distance from matching metadata (handles both legacy and new structure)
  */
 export const getDistance = (metadata?: MatchingMetadata): number | undefined => {
-  return metadata?.volcano?.dist_km || metadata?.distance_km;
+  return getMatchingDistance(metadata);
 };
 
 /**

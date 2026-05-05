@@ -54,16 +54,43 @@ export interface Oxides {
 export interface VolcanoInfo {
   name: string;
   number: string;
-  dist_km: number;
+  dist_km?: number;
   rock_type?: string;  // Primary rock type of volcano (legacy)
   petro?: Petro;  // New petrology structure
 }
 
+export interface SpatialScoreDetail {
+  dist_km?: number;
+  decay?: number;
+  final: number;
+}
+
+export interface TectonicScoreDetail {
+  regime_score?: number;
+  crust_modifier?: number;
+  note?: string;
+  final: number;
+}
+
+export interface TemporalScoreDetail {
+  base?: number;
+  precision?: number;
+  modifier?: number;
+  final: number;
+}
+
+export interface PetrologicalScoreDetail {
+  match_type?: string;
+  final: number;
+}
+
+export type MatchingScoreKey = 'sp' | 'te' | 'ti' | 'pe';
+
 export interface MatchingScores {
-  sp: number;  // Spatial score
-  te: number;  // Tectonic score
-  ti: number;  // Temporal score
-  pe: number;  // Petrological score
+  sp?: number | SpatialScoreDetail;
+  te?: number | TectonicScoreDetail;
+  ti?: number | TemporalScoreDetail;
+  pe?: number | PetrologicalScoreDetail;
   final: number;  // Final weighted score
 }
 

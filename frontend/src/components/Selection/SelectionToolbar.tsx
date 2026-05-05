@@ -8,6 +8,8 @@ interface SelectionToolbarProps {
   mode: SelectionMode;
   /** Number of samples currently selected */
   selectedCount: number;
+  /** Number of samples that will actually be exported */
+  downloadSampleCount?: number;
   /** Number of samples in current filtered view (e.g., bbox search) */
   filteredSampleCount?: number;
   /** Whether bbox filter is active */
@@ -39,6 +41,7 @@ interface SelectionToolbarProps {
 export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({
   mode,
   selectedCount,
+  downloadSampleCount,
   filteredSampleCount = 0,
   hasBboxFilter = false,
   onModeChange,
@@ -48,6 +51,12 @@ export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({
 }) => {
   // Show chart button if: manual selection exists OR bbox filter is active with samples
   const showChartButton = selectedCount > 0 || (hasBboxFilter && filteredSampleCount > 0);
+  const sourceSampleCount = selectedCount > 0 ? selectedCount : filteredSampleCount;
+  const effectiveDownloadCount = downloadSampleCount ?? sourceSampleCount;
+  const downloadScopeLabel = selectedCount > 0 ? 'selected samples' : 'samples in search area';
+  const downloadTitle = effectiveDownloadCount === sourceSampleCount
+    ? `Download ${effectiveDownloadCount} ${downloadScopeLabel}`
+    : `Download ${effectiveDownloadCount} ${downloadScopeLabel} after confidence filter`;
   return (
     <div className="bg-white rounded-lg shadow-lg p-2 flex flex-col gap-2 w-fit">
       {/* Lasso Tool */}
@@ -112,9 +121,7 @@ export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({
         <button
           onClick={onDownloadSelection}
           className="p-2 rounded hover:bg-gray-100 text-gray-700"
-          title={selectedCount > 0 
-            ? `Download ${selectedCount} selected samples`
-            : `Download ${filteredSampleCount} samples in search area`}
+          title={downloadTitle}
           aria-label="Download samples"
         >
           <Download className="w-5 h-5" />

@@ -1,4 +1,5 @@
 import type { Sample } from '../types';
+import { getMatchingDistance, getMatchingScoreValue } from './matchingMetadata';
 import { showSuccess, showError } from './toast';
 
 /**
@@ -12,6 +13,14 @@ export const exportSamplesToCSV = (samples: Sample[], filename?: string): void =
     showError('No samples to export');
     return;
   }
+
+  const formatOptionalNumber = (value: number | undefined, digits: number): string => {
+    return typeof value === 'number' && Number.isFinite(value)
+      ? value.toFixed(digits)
+      : '';
+  };
+
+  const formatCoordinate = (value: number | undefined): string => formatOptionalNumber(value, 6);
 
   // Define CSV headers
   const headers = [
@@ -51,7 +60,9 @@ export const exportSamplesToCSV = (samples: Sample[], filename?: string): void =
 
   // Convert samples to CSV rows
   const rows = samples.map(sample => {
-    const [longitude, latitude] = sample.geometry.coordinates;
+    const coordinates = sample.geometry?.coordinates;
+    const longitude = coordinates?.[0];
+    const latitude = coordinates?.[1];
     const metadata = sample.matching_metadata;
     const oxides = sample.oxides || {};
 
@@ -62,34 +73,34 @@ export const exportSamplesToCSV = (samples: Sample[], filename?: string): void =
       sample.petro?.rock_type || '',
       sample.petro?.rock_family || '',
       sample.tecto?.volcano_ui || sample.tecto?.ui || '',
-      latitude.toFixed(6),
-      longitude.toFixed(6),
+      formatCoordinate(latitude),
+      formatCoordinate(longitude),
       // Volcano information
       metadata?.volcano?.name || '',
       metadata?.volcano?.number || '',
-      metadata?.volcano?.dist_km !== undefined ? metadata.volcano.dist_km.toFixed(2) : '',
+      formatOptionalNumber(getMatchingDistance(metadata), 2),
       // Confidence and quality metrics
       metadata?.quality?.conf || '',
-      metadata?.quality?.cov !== undefined ? metadata.quality.cov.toFixed(3) : '',
-      metadata?.quality?.unc !== undefined ? metadata.quality.unc.toFixed(3) : '',
-      metadata?.scores?.sp !== undefined ? metadata.scores.sp.toFixed(3) : '',
-      metadata?.scores?.te !== undefined ? metadata.scores.te.toFixed(3) : '',
-      metadata?.scores?.ti !== undefined ? metadata.scores.ti.toFixed(3) : '',
-      metadata?.scores?.pe !== undefined ? metadata.scores.pe.toFixed(3) : '',
-      metadata?.scores?.final !== undefined ? metadata.scores.final.toFixed(3) : '',
+      formatOptionalNumber(metadata?.quality?.cov, 3),
+      formatOptionalNumber(metadata?.quality?.unc, 3),
+      formatOptionalNumber(getMatchingScoreValue(metadata?.scores, 'sp'), 3),
+      formatOptionalNumber(getMatchingScoreValue(metadata?.scores, 'te'), 3),
+      formatOptionalNumber(getMatchingScoreValue(metadata?.scores, 'ti'), 3),
+      formatOptionalNumber(getMatchingScoreValue(metadata?.scores, 'pe'), 3),
+      formatOptionalNumber(metadata?.scores?.final, 3),
       sample.references || '',
       // Oxides (values in wt%)
-      oxides['SIO2'] === undefined ? '' : oxides['SIO2'].toFixed(2),
-      oxides['AL2O3'] === undefined ? '' : oxides['AL2O3'].toFixed(2),
-      oxides['FEOT'] === undefined ? '' : oxides['FEOT'].toFixed(2),
-      oxides['MGO'] === undefined ? '' : oxides['MGO'].toFixed(2),
-      oxides['FE2O3'] === undefined ? '' : oxides['FE2O3'].toFixed(2),
-      oxides['CAO'] === undefined ? '' : oxides['CAO'].toFixed(2),
-      oxides['NA2O'] === undefined ? '' : oxides['NA2O'].toFixed(2),
-      oxides['K2O'] === undefined ? '' : oxides['K2O'].toFixed(2),
-      oxides['TIO2'] === undefined ? '' : oxides['TIO2'].toFixed(2),
-      oxides['P2O5'] === undefined ? '' : oxides['P2O5'].toFixed(2),
-      oxides['MNO'] === undefined ? '' : oxides['MNO'].toFixed(2),
+      formatOptionalNumber(oxides['SIO2'], 2),
+      formatOptionalNumber(oxides['AL2O3'], 2),
+      formatOptionalNumber(oxides['FEOT'], 2),
+      formatOptionalNumber(oxides['MGO'], 2),
+      formatOptionalNumber(oxides['FE2O3'], 2),
+      formatOptionalNumber(oxides['CAO'], 2),
+      formatOptionalNumber(oxides['NA2O'], 2),
+      formatOptionalNumber(oxides['K2O'], 2),
+      formatOptionalNumber(oxides['TIO2'], 2),
+      formatOptionalNumber(oxides['P2O5'], 2),
+      formatOptionalNumber(oxides['MNO'], 2),
     ];
   });
 

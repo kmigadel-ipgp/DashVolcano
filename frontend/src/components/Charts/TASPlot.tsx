@@ -105,6 +105,11 @@ export const TASPlot: React.FC<TASPlotProps> = React.memo(({
     'Unknown': 'x',
   };
 
+  const sampleMarkerOutline = {
+    color: '#000000',
+    width: 0.6,
+  };
+
   if (error) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -211,6 +216,7 @@ export const TASPlot: React.FC<TASPlotProps> = React.memo(({
           opacity: 0.7,
           symbol: shape,
           color: color,
+          line: sampleMarkerOutline,
         },
         text: samples.map(s => 
           `${s.sample_code}<br>`+
@@ -271,6 +277,7 @@ export const TASPlot: React.FC<TASPlotProps> = React.memo(({
           opacity: 0.7,
           symbol: shape,
           color: color,
+          line: sampleMarkerOutline,
         },
         text: samples.map(s => 
           `${s.sample_code}<br>`+

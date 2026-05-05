@@ -118,6 +118,11 @@ export const AFMPlot: React.FC<AFMPlotProps> = React.memo(({
     'Unknown': 'x',
   };
 
+  const sampleMarkerOutline = {
+    color: '#000000',
+    width: 0.6,
+  };
+
   // Get unique rock types and assign consistent colors using shared color utility
   const uniqueRockTypes = Array.from(new Set(sampleData.map(s => s.rock_type)));
   const rockTypeColors: Record<string, string> = {};
@@ -273,6 +278,7 @@ export const AFMPlot: React.FC<AFMPlotProps> = React.memo(({
         opacity: 0.7,
         symbol: shape,
         color: color,
+        line: sampleMarkerOutline,
       },
       text: samples.map(s => 
         `${s.sample_code}<br>`+

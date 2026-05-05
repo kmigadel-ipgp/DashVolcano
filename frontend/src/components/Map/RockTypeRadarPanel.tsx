@@ -95,13 +95,21 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
     [primaryRockTypes]
   );
 
+  const primarySeriesLabel = useMemo(() => {
+    if (!primaryDatasetLabel) {
+      return `${primarySampleCount} WR`;
+    }
+
+    return `${primaryDatasetLabel} (${primarySampleCount} WR)`;
+  }, [primaryDatasetLabel, primarySampleCount]);
+
   const primarySeries = useMemo<RockTypeRadarSeries>(() => ({
-    label: primaryDatasetLabel,
+    label: primarySeriesLabel,
     rockTypes: primaryRockTypes,
     sampleCount: primarySampleCount,
     color: PRIMARY_COLOR,
     sourceType: 'primary',
-  }), [primaryDatasetLabel, primaryRockTypes, primarySampleCount]);
+  }), [primaryRockTypes, primarySampleCount, primarySeriesLabel]);
 
   const comparisonSeries = useMemo<RockTypeRadarSeries | null>(() => {
     if (!comparisonData) {
