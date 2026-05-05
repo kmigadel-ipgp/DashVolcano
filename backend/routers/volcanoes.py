@@ -212,7 +212,7 @@ async def get_volcano_vei_distribution(
 async def get_volcano_chemical_analysis(
     volcano_number: str,
     db: Database = Depends(get_database),
-    limit: int = Query(5000, le=10000)
+    limit: Optional[int] = Query(None, ge=1, le=10000)
 ):
     """
     Get chemical analysis data for a volcano (TAS and AFM diagram data).
@@ -255,9 +255,14 @@ async def get_volcano_chemical_analysis(
         "oxides": 1  # All oxide fields
     }
     
-    samples = list(db.samples.find({
+    cursor = db.samples.find({
         "matching_metadata.volcano.number": volcano_number  # Use string directly, not int
-    }, projection).limit(limit).batch_size(10000))
+    }, projection).batch_size(10000)
+
+    if limit is not None:
+        cursor = cursor.limit(limit)
+
+    samples = list(cursor)
     
     if not samples:
         result = {

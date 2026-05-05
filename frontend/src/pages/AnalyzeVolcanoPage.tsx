@@ -4,6 +4,7 @@ import { TASPlot } from '../components/Charts/TASPlot';
 import { AFMPlot } from '../components/Charts/AFMPlot';
 import { RockTypeDistributionChart } from '../components/Charts/RockTypeDistributionChart';
 import { exportSamplesToCSV } from '../utils/csvExport';
+import { MISSING_SAMPLE_POINT, transformChemicalAnalysisSamples, type ChemicalAnalysisAllSample } from '../utils/chemicalAnalysisSamples';
 import { useKeyboardShortcuts, commonShortcuts } from '../hooks/useKeyboardShortcuts';
 import { showError } from '../utils/toast';
 import { CardSkeleton, ChartSkeleton } from '../components/LoadingSkeleton';
@@ -60,66 +61,10 @@ interface ChemicalAnalysisData {
     MNO?: number;
   }>;
   all_samples?: Array<{
-    sample_code: string;
-    sample_id: string;
-    db: string;
-    petro?: Petro;
-    material: string;
-    tectonic_setting?: string;
-    geometry?: { type: 'Point'; coordinates: [number, number] };
-    matching_metadata?: MatchingMetadata;
-    references?: string;
-    SIO2?: number;
-    NA2O?: number;
-    K2O?: number;
-    FEOT?: number;
-    MGO?: number;
-    TIO2?: number;
-    AL2O3?: number;
-    CAO?: number;
-    P2O5?: number;
-    MNO?: number;
-  }>;
+    } & ChemicalAnalysisAllSample>;
   rock_types: Record<string, number>;
   rock_types_wr: Record<string, number>;  // Rock types for Whole Rock (WR) samples only
 }
-
-/**
- * Transform all_samples array (includes ALL samples regardless of oxide completeness)
- */
-const transformAllSamples = (
-  allSamples: ChemicalAnalysisData['all_samples'],
-): Sample[] => {
-  if (!allSamples) return [];
-  
-  return allSamples.map(sample => {
-    const oxides: Record<string, number> = {};
-    if (sample['SIO2'] !== undefined) oxides['SIO2'] = sample['SIO2'];
-    if (sample['NA2O'] !== undefined) oxides['NA2O'] = sample['NA2O'];
-    if (sample['K2O'] !== undefined) oxides['K2O'] = sample['K2O'];
-    if (sample['FEOT'] !== undefined) oxides['FEOT'] = sample['FEOT'];
-    if (sample['MGO'] !== undefined) oxides['MGO'] = sample['MGO'];
-    if (sample['TIO2'] !== undefined) oxides['TIO2'] = sample['TIO2'];
-    if (sample['AL2O3'] !== undefined) oxides['AL2O3'] = sample['AL2O3'];
-    if (sample['CAO'] !== undefined) oxides['CAO'] = sample['CAO'];
-    if (sample['P2O5'] !== undefined) oxides['P2O5'] = sample['P2O5'];
-    if (sample['MNO'] !== undefined) oxides['MNO'] = sample['MNO'];
-
-    return {
-      _id: sample.sample_id,
-      sample_id: sample.sample_id,
-      sample_code: sample.sample_code,
-      db: sample.db,
-      material: sample.material,
-      petro: sample.petro,
-      tectonic_setting: sample.tectonic_setting,
-      geometry: sample.geometry || { type: 'Point', coordinates: [0, 0] },
-      matching_metadata: sample.matching_metadata,
-      references: sample.references,
-      oxides: Object.keys(oxides).length > 0 ? oxides : undefined,
-    };
-  });
-};
 
 /**
  * Transform backend chemical analysis data to Sample[] format for chart components
@@ -152,7 +97,7 @@ const transformToSamples = (data: ChemicalAnalysisData): Sample[] => {
       material: tas.material,
       petro: tas.petro,
       tecto: tas.tecto,
-      geometry: tas.geometry || { type: 'Point', coordinates: [0, 0] },
+      geometry: tas.geometry || MISSING_SAMPLE_POINT,
       matching_metadata: tas.matching_metadata,
       references: tas.references,
       oxides,
@@ -197,7 +142,7 @@ const transformToSamples = (data: ChemicalAnalysisData): Sample[] => {
         material: afm.material,
         petro: afm.petro,
         tecto: afm.tecto,
-        geometry: afm.geometry || { type: 'Point', coordinates: [0, 0] },
+        geometry: afm.geometry || MISSING_SAMPLE_POINT,
         matching_metadata: afm.matching_metadata,
         references: afm.references,
         oxides,
@@ -288,7 +233,7 @@ const AnalyzeVolcanoPage: React.FC = () => {
         setChemicalData(data);
         // Use all_samples if available (includes samples with incomplete oxides), otherwise use transformToSamples
         if (data.all_samples && data.all_samples.length > 0) {
-          setSamples(transformAllSamples(data.all_samples));
+          setSamples(transformChemicalAnalysisSamples(data.all_samples));
         } else {
           setSamples(transformToSamples(data));
         }

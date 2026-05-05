@@ -10,26 +10,7 @@ import {
   getDistance,
   isMatched
 } from '../../utils/confidence';
-
-/**
- * Helper to extract component score with backward compatibility
- * Tries .final first, falls back to direct number value
- */
-const getComponentScore = (scores: any, key: string): number | undefined => {
-  const component = scores?.[key];
-  if (component === undefined) return undefined;
-  if (typeof component === 'number') return component; // Legacy format
-  return component.final; // New format
-};
-
-/**
- * Helper to extract component metadata (dist_km, decay, regime_score, etc.)
- */
-const getComponentMeta = (scores: any, key: string): any => {
-  const component = scores?.[key];
-  if (typeof component === 'object') return component;
-  return {}; // Legacy format has no metadata
-};
+import { getMatchingScoreMeta, getMatchingScoreValue } from '../../utils/matchingMetadata';
 
 interface SampleDetailsPanelProps {
   /** The selected sample to display */
@@ -189,10 +170,10 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
 
             // Determine which components are available using helper
             const components = [
-              { key: 'sp', label: 'Spatial', value: getComponentScore(scores, 'sp'), weight: 0.4 },
-              { key: 'te', label: 'Tectonic', value: getComponentScore(scores, 'te'), weight: 0.2 },
-              { key: 'pe', label: 'Petrological', value: getComponentScore(scores, 'pe'), weight: 0.3 },
-              { key: 'ti', label: 'Temporal', value: getComponentScore(scores, 'ti'), weight: 0.1 },
+              { key: 'sp', label: 'Spatial', value: getMatchingScoreValue(scores, 'sp'), weight: 0.4 },
+              { key: 'te', label: 'Tectonic', value: getMatchingScoreValue(scores, 'te'), weight: 0.2 },
+              { key: 'pe', label: 'Petrological', value: getMatchingScoreValue(scores, 'pe'), weight: 0.3 },
+              { key: 'ti', label: 'Temporal', value: getMatchingScoreValue(scores, 'ti'), weight: 0.1 },
             ].filter(c => c.value !== undefined);
 
             const formulaParts = components.map(c => 
@@ -215,7 +196,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                   </div>
                   <div className="flex-1">
                     <p className="text-xs text-gray-500">Match Score</p>
-                    <p className="text-sm font-medium font-mono">{(scores.final * 100).toFixed(0)}%</p>
+                    <p className="text-sm font-medium font-mono">{((scores.final ?? 0) * 100).toFixed(0)}%</p>
                     {showMatchScoreExplanation && (
                       <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-gray-600 leading-relaxed">
                         <p className="font-semibold mb-2">How is this calculated?</p>
@@ -258,7 +239,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                               
                               {/* Spatial Score Explanation */}
                               {c.key === 'sp' && showSpatialExplanation && (() => {
-                                const spMeta = getComponentMeta(scores, 'sp');
+                                const spMeta = getMatchingScoreMeta(scores, 'sp');
                                 const distance = spMeta.dist_km ?? getDistance(matching_metadata);
                                 const decay = spMeta.decay ?? 50;
                                 const finalScore = c.value!;
@@ -295,7 +276,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                               
                               {/* Tectonic Score Explanation */}
                               {c.key === 'te' && showTectonicExplanation && (() => {
-                                const teMeta = getComponentMeta(scores, 'te');
+                                const teMeta = getMatchingScoreMeta(scores, 'te');
                                 const regimeScore = teMeta.regime_score;
                                 const crustModifier = teMeta.crust_modifier;
                                 const finalScore = c.value!;
@@ -387,7 +368,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                               
                               {/* Petrological Score Explanation */}
                               {c.key === 'pe' && showPetrologicalExplanation && (() => {
-                                const peMeta = getComponentMeta(scores, 'pe');
+                                const peMeta = getMatchingScoreMeta(scores, 'pe');
                                 const matchType = peMeta.match_type;
                                 const finalScore = c.value!;
                                 
@@ -678,7 +659,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                             [{formulaParts.join(' + ')}] / ({formulaSum})
                           </div>
                           <div className="mt-1 text-gray-500">
-                            = {(scores.final * 100).toFixed(1)}%
+                            = {((scores.final ?? 0) * 100).toFixed(1)}%
                           </div>
                         </div>
 

@@ -11,6 +11,7 @@ import { useSelectionStore } from '../store';
 import { Loader } from '../components/Common/Loader';
 import { ErrorMessage } from '../components/Common/ErrorMessage';
 import { exportSamplesToCSV } from '../utils/csvExport';
+import { filterSamplesByConfidence } from '../utils/confidence';
 import { useKeyboardShortcuts, commonShortcuts } from '../hooks/useKeyboardShortcuts';
 import { formatBboxForAPI } from '../hooks/useBboxDraw';
 import { fetchSamples } from '../api/samples';
@@ -256,9 +257,14 @@ const MapPage = () => {
     // Future: Show volcano details in a sidebar or modal
   };
 
+  const downloadableSamples = useMemo(() => {
+    const visibleSamples = selectedSamples.length > 0 ? selectedSamples : samples;
+    return filterSamplesByConfidence(visibleSamples, selectedConfidenceLevels);
+  }, [samples, selectedConfidenceLevels, selectedSamples]);
+
   // Download CSV handler
   const handleDownloadCSV = () => {
-    exportSamplesToCSV(selectedSamples);
+    exportSamplesToCSV(downloadableSamples);
   };
 
   // Keyboard shortcuts
@@ -437,7 +443,7 @@ const MapPage = () => {
 
   const chartPanelSamples = selectedSamples.length > 0 ? selectedSamples : samples;
   const chartPanelPrimaryLabel = selectedSamples.length > 0
-    ? `Selected Samples (${selectedSamples.length})`
+    ? 'Selected Samples'
     : 'Current Map Data';
 
   return (
@@ -608,15 +614,12 @@ const MapPage = () => {
         <SelectionToolbar
           mode={selectionMode}
           selectedCount={selectedSamples.length}
+          downloadSampleCount={downloadableSamples.length}
           filteredSampleCount={samples.length}
           hasBboxFilter={currentBbox !== null}
           onModeChange={setSelectionMode}
           onClearSelection={clearSelection}
-          onDownloadSelection={() => {
-            // Download manually selected samples if any, otherwise download filtered samples
-            const samplesToDownload = selectedSamples.length > 0 ? selectedSamples : samples;
-            exportSamplesToCSV(samplesToDownload);
-          }}
+          onDownloadSelection={handleDownloadCSV}
           onShowCharts={() => setChartPanelOpen(true)}
         />
 
