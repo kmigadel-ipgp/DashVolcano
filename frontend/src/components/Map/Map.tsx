@@ -8,6 +8,7 @@ import {
   getConfidenceColor, 
   getConfidenceLabel,
   getConfidenceIcon,
+  getVolcanoNumber,
   getVolcanoName,
   type ConfidenceLevel 
 } from '../../utils/confidence';
@@ -42,6 +43,8 @@ interface MapProps {
   showTectonicBoundaries?: boolean;
   /** Name of the selected volcano to highlight its samples */
   selectedVolcanoName?: string;
+  /** Stable volcano id for matching selected volcano samples */
+  selectedVolcanoNumber?: number | string;
   /** Callback when a volcano is clicked */
   onVolcanoClick?: (volcano: Volcano) => void;
   /** Callback when a sample is clicked */
@@ -103,6 +106,7 @@ export const VolcanoMap: React.FC<MapProps> = ({
   showVolcanoes = true,
   showTectonicBoundaries = true,
   selectedVolcanoName,
+  selectedVolcanoNumber,
   onVolcanoClick,
   onSampleClick,
   onViewportChange,
@@ -145,6 +149,27 @@ export const VolcanoMap: React.FC<MapProps> = ({
     y: number;
     object: HoverObject;
   } | null>(null);
+
+  const normalizedSelectedVolcanoName = selectedVolcanoName?.trim().toLowerCase();
+  const normalizedSelectedVolcanoNumber = selectedVolcanoNumber != null
+    ? String(selectedVolcanoNumber)
+    : undefined;
+
+  const isSelectedVolcanoSample = useCallback((sample: Sample) => {
+    if (normalizedSelectedVolcanoNumber) {
+      const sampleVolcanoNumber = getVolcanoNumber(sample.matching_metadata);
+      if (sampleVolcanoNumber) {
+        return sampleVolcanoNumber === normalizedSelectedVolcanoNumber;
+      }
+    }
+
+    if (normalizedSelectedVolcanoName) {
+      const sampleVolcanoName = getVolcanoName(sample.matching_metadata)?.trim().toLowerCase();
+      return sampleVolcanoName === normalizedSelectedVolcanoName;
+    }
+
+    return false;
+  }, [normalizedSelectedVolcanoName, normalizedSelectedVolcanoNumber]);
 
   /**
    * Handle viewport changes
@@ -238,7 +263,7 @@ export const VolcanoMap: React.FC<MapProps> = ({
       getFillColor: (d: Sample) => {
         // PRIORITY 1: Highlight samples from the selected volcano with orange color
         // This ALWAYS takes precedence over confidence coloring for the FILL
-        if (selectedVolcanoName && getVolcanoName(d.matching_metadata) === selectedVolcanoName) {
+        if (isSelectedVolcanoSample(d)) {
           return [255, 140, 0, 200]; // Orange with higher opacity for selected volcano
         }
         
@@ -261,15 +286,15 @@ export const VolcanoMap: React.FC<MapProps> = ({
       lineWidthMaxPixels: 2,
       getLineWidth: (d: Sample) => {
         // Thicker border for selected volcano samples to make confidence more visible
-        if (selectedVolcanoName && getVolcanoName(d.matching_metadata) === selectedVolcanoName) {
+        if (isSelectedVolcanoSample(d)) {
           return 2;
         }
         return 1;
       },
       updateTriggers: {
-        getFillColor: [selectedVolcanoName], // Force re-render when selected volcano changes
-        getLineColor: [selectedVolcanoName], // Update borders too
-        getLineWidth: [selectedVolcanoName],
+        getFillColor: [normalizedSelectedVolcanoName, normalizedSelectedVolcanoNumber],
+        getLineColor: [normalizedSelectedVolcanoName, normalizedSelectedVolcanoNumber],
+        getLineWidth: [normalizedSelectedVolcanoName, normalizedSelectedVolcanoNumber],
       },
       pickable: true,
       radiusMinPixels: 2,
@@ -307,7 +332,7 @@ export const VolcanoMap: React.FC<MapProps> = ({
         }
       },
     });
-  }, [samples, showSamplePoints, selectedVolcanoName, onSampleClick]);
+  }, [samples, showSamplePoints, isSelectedVolcanoSample, onSampleClick, normalizedSelectedVolcanoName, normalizedSelectedVolcanoNumber]);
 
   /**
    * Tectonic boundaries GeoJsonLayer

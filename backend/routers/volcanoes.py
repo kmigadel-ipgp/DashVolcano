@@ -1,6 +1,8 @@
 """
 Volcanoes router - API endpoints for volcano data
 """
+import re
+
 from fastapi import APIRouter, Depends, Query, HTTPException
 from pymongo.database import Database
 from typing import Optional
@@ -50,8 +52,10 @@ async def get_volcanoes_summary(
             query["tectonic_setting.ui"] = {"$in": settings}
     
     if volcano_name:
-        # Partial match with case-insensitive search
-        query["volcano_name"] = {"$regex": volcano_name, "$options": "i"}
+        volcano_name = volcano_name.strip()
+        if volcano_name:
+            # Treat the user input as a literal substring while keeping case-insensitive matching.
+            query["volcano_name"] = {"$regex": re.escape(volcano_name), "$options": "i"}
     
     projection = {
         "_id": 1,
