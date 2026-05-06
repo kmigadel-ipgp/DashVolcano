@@ -138,46 +138,53 @@ const MapPage = () => {
   // Convert boundaries response to array
   const tectonicBoundaries = boundaries?.features || [];
 
+  const selectedVolcano = useMemo(() => {
+    const selectedVolcanoName = volcanoFilters.volcano_name?.trim().toLowerCase();
+
+    if (!selectedVolcanoName || volcanoes.length === 0) {
+      return null;
+    }
+
+    return volcanoes.find((volcano) => volcano.volcano_name.trim().toLowerCase() === selectedVolcanoName)
+      ?? (volcanoes.length === 1 ? volcanoes[0] : null);
+  }, [volcanoFilters.volcano_name, volcanoes]);
+
   // Fetch samples for selected volcano
   useEffect(() => {
     const fetchVolcanoSamples = async () => {
-      if (volcanoFilters.volcano_name && volcanoes && volcanoes.length > 0) {
-        const selectedVolcano = volcanoes.find(v => v.volcano_name === volcanoFilters.volcano_name);
-        
-        if (selectedVolcano) {
-          // Zoom to volcano
-          if (selectedVolcano.geometry?.coordinates) {
-            const [longitude, latitude] = selectedVolcano.geometry.coordinates;
-            setViewport({
-              longitude,
-              latitude,
-              zoom: 8, // Close zoom to see volcano and samples
+      if (selectedVolcano) {
+        // Zoom to volcano
+        if (selectedVolcano.geometry?.coordinates) {
+          const [longitude, latitude] = selectedVolcano.geometry.coordinates;
+          setViewport({
+            longitude,
+            latitude,
+            zoom: 8, // Close zoom to see volcano and samples
+          });
+        }
+
+        // Fetch samples for this volcano
+        if (selectedVolcano.volcano_number) {
+          setLoadingVolcanoSamples(true);
+          setHasAppliedFilters(true);
+          setVolcanoSamplesError(null); // Clear previous errors
+
+          try {
+            // Combine volcano_number with sampleFilters (database, rock_type, tectonic_setting, SiO2)
+            const response = await fetchSamples({
+              volcano_number: selectedVolcano.volcano_number,
+              ...sampleFilters, // Include all sample filters (database, rock_type, tectonic_setting, min_sio2, max_sio2)
             });
-          }
-          
-          // Fetch samples for this volcano
-          if (selectedVolcano.volcano_number) {
-            setLoadingVolcanoSamples(true);
-            setHasAppliedFilters(true);
-            setVolcanoSamplesError(null); // Clear previous errors
-            
-            try {
-              // Combine volcano_number with sampleFilters (database, rock_type, tectonic_setting, SiO2)
-              const response = await fetchSamples({
-                volcano_number: selectedVolcano.volcano_number,
-                ...sampleFilters, // Include all sample filters (database, rock_type, tectonic_setting, min_sio2, max_sio2)
-              });
-              setVolcanoSamples(response.data);
-              setVolcanoSamplesError(null);
-            } catch (error: unknown) {
-              console.error('Error fetching volcano samples:', error);
-              const axiosError = error as AxiosError<APIErrorResponse>;
-              const errorMessage = axiosError.response?.data?.detail || axiosError.message || 'Failed to fetch volcano samples';
-              setVolcanoSamplesError(errorMessage);
-              setVolcanoSamples([]);
-            } finally {
-              setLoadingVolcanoSamples(false);
-            }
+            setVolcanoSamples(response.data);
+            setVolcanoSamplesError(null);
+          } catch (error: unknown) {
+            console.error('Error fetching volcano samples:', error);
+            const axiosError = error as AxiosError<APIErrorResponse>;
+            const errorMessage = axiosError.response?.data?.detail || axiosError.message || 'Failed to fetch volcano samples';
+            setVolcanoSamplesError(errorMessage);
+            setVolcanoSamples([]);
+          } finally {
+            setLoadingVolcanoSamples(false);
           }
         }
       } else {
@@ -188,7 +195,7 @@ const MapPage = () => {
     };
     
     fetchVolcanoSamples();
-  }, [volcanoFilters.volcano_name, volcanoes, sampleFilters]);
+  }, [selectedVolcano, sampleFilters]);
 
   // Fetch samples within bbox
   useEffect(() => {
@@ -547,7 +554,8 @@ const MapPage = () => {
         showVolcanoes={showVolcanoes}
         showSamplePoints={showSamplePoints}
         showTectonicBoundaries={showTectonicBoundaries}
-        selectedVolcanoName={volcanoFilters.volcano_name}
+        selectedVolcanoName={selectedVolcano?.volcano_name}
+        selectedVolcanoNumber={selectedVolcano?.volcano_number}
         loading={isLoading}
         onVolcanoClick={handleVolcanoClick}
         onSampleClick={handleSampleClick}
