@@ -347,6 +347,14 @@ const MapPage = () => {
     return filterSamplesByConfidence(chartScopeSamples, selectedConfidenceLevels);
   }, [chartScopeSamples, selectedConfidenceLevels]);
 
+  const filteredPrimarySamples = useMemo(() => {
+    return filterSamplesByConfidence(samples, selectedConfidenceLevels);
+  }, [samples, selectedConfidenceLevels]);
+
+  const visibleSelectedSamples = useMemo(() => {
+    return filterSamplesByConfidence(selectedSamples, selectedConfidenceLevels);
+  }, [selectedSamples, selectedConfidenceLevels]);
+
   const filteredComparisonSamples = useMemo(() => {
     return filterSamplesByConfidence(comparisonSamples, selectedConfidenceLevels);
   }, [comparisonSamples, selectedConfidenceLevels]);
@@ -515,9 +523,7 @@ const MapPage = () => {
 
   // Track total sample count when bbox is applied
   useEffect(() => {
-    if (samples && samples.length > 0) {
-      setTotalSamplesCount(samples.length);
-    }
+    setTotalSamplesCount(samples.length);
   }, [samples]);
 
   // ESC key to cancel bbox drawing
@@ -631,7 +637,7 @@ const MapPage = () => {
 
       {/* Map Component */}
       <VolcanoMap
-        samples={samples}
+        samples={filteredPrimarySamples}
         comparisonSamples={filteredComparisonSamples}
         volcanoes={volcanoes}
         tectonicBoundaries={tectonicBoundaries}
@@ -658,7 +664,7 @@ const MapPage = () => {
       {(selectionMode === 'lasso' || selectionMode === 'box') && mapDimensions.width > 0 && (
         <SelectionOverlay
           mode={selectionMode}
-          samples={samples}
+          samples={filteredPrimarySamples}
           onSelectionComplete={handleSelectionComplete}
           onCancel={handleSelectionCancel}
           viewState={viewport}
@@ -677,9 +683,9 @@ const MapPage = () => {
 
       {/* Summary Stats */}
       <SummaryStats
-        samples={samples}
+        samples={filteredPrimarySamples}
         volcanoes={volcanoes}
-        selectedSamples={selectedSamples}
+        selectedSamples={visibleSelectedSamples}
         publicationSamples={chartFilteredSamples}
         publicationSampleScopeCount={chartScopeSamples.length}
         loading={isLoading}
@@ -708,9 +714,10 @@ const MapPage = () => {
         {/* Selection Toolbar */}
         <SelectionToolbar
           mode={selectionMode}
-          selectedCount={selectedSamples.length}
+          selectedCount={visibleSelectedSamples.length}
+          totalSelectedCount={selectedSamples.length}
           downloadSampleCount={downloadableSamples.length}
-          filteredSampleCount={samples.length}
+          filteredSampleCount={filteredPrimarySamples.length}
           hasBboxFilter={currentBbox !== null}
           onModeChange={setSelectionMode}
           onClearSelection={clearSelection}
@@ -722,7 +729,7 @@ const MapPage = () => {
         <BboxSearchWidget
           bbox={currentBbox}
           isDrawing={bboxDrawMode === 'primary'}
-          sampleCount={samples?.length}
+          sampleCount={filteredPrimarySamples.length}
           totalSamples={totalSamplesCount}
           onStartDrawing={handleStartDrawing}
           onSetPresetRegion={handleSetPresetRegion}

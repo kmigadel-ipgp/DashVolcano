@@ -6,8 +6,10 @@ export type SelectionMode = 'none' | 'lasso' | 'box';
 interface SelectionToolbarProps {
   /** Current selection mode */
   mode: SelectionMode;
-  /** Number of samples currently selected */
+  /** Number of currently visible selected samples */
   selectedCount: number;
+  /** Total number of selected samples before confidence filtering */
+  totalSelectedCount?: number;
   /** Number of samples that will actually be exported */
   downloadSampleCount?: number;
   /** Number of samples in current filtered view (e.g., bbox search) */
@@ -41,6 +43,7 @@ interface SelectionToolbarProps {
 export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({
   mode,
   selectedCount,
+  totalSelectedCount,
   downloadSampleCount,
   filteredSampleCount = 0,
   hasBboxFilter = false,
@@ -49,11 +52,14 @@ export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({
   onDownloadSelection,
   onShowCharts,
 }) => {
+  const rawSelectedCount = totalSelectedCount ?? selectedCount;
+  const hasSelection = rawSelectedCount > 0;
+
   // Show chart button if: manual selection exists OR bbox filter is active with samples
-  const showChartButton = selectedCount > 0 || (hasBboxFilter && filteredSampleCount > 0);
-  const sourceSampleCount = selectedCount > 0 ? selectedCount : filteredSampleCount;
+  const showChartButton = hasSelection || (hasBboxFilter && filteredSampleCount > 0);
+  const sourceSampleCount = hasSelection ? rawSelectedCount : filteredSampleCount;
   const effectiveDownloadCount = downloadSampleCount ?? sourceSampleCount;
-  const downloadScopeLabel = selectedCount > 0 ? 'selected samples' : 'samples in search area';
+  const downloadScopeLabel = hasSelection ? 'selected samples' : 'samples in search area';
   const downloadTitle = effectiveDownloadCount === sourceSampleCount
     ? `Download ${effectiveDownloadCount} ${downloadScopeLabel}`
     : `Download ${effectiveDownloadCount} ${downloadScopeLabel} after confidence filter`;
@@ -88,10 +94,10 @@ export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({
       </button>
 
       {/* Divider */}
-      {(selectedCount > 0 || (hasBboxFilter && filteredSampleCount > 0)) && <div className="border-t border-gray-200 my-1" />}
+      {(hasSelection || (hasBboxFilter && filteredSampleCount > 0)) && <div className="border-t border-gray-200 my-1" />}
 
       {/* Clear Selection */}
-      {selectedCount > 0 && (
+      {hasSelection && (
         <button
           onClick={onClearSelection}
           className="p-2 rounded hover:bg-gray-100 text-gray-700"
@@ -117,7 +123,7 @@ export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({
       )}
 
       {/* Download Selection */}
-      {(selectedCount > 0 || (hasBboxFilter && filteredSampleCount > 0)) && (
+      {(hasSelection || (hasBboxFilter && filteredSampleCount > 0)) && (
         <button
           onClick={onDownloadSelection}
           className="p-2 rounded hover:bg-gray-100 text-gray-700"
@@ -129,10 +135,12 @@ export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({
       )}
 
       {/* Selection Count */}
-      {(selectedCount > 0 || (hasBboxFilter && filteredSampleCount > 0)) && (
+      {(hasSelection || (hasBboxFilter && filteredSampleCount > 0)) && (
         <div className="px-2 py-1 text-xs font-medium text-gray-700 text-center border-t border-gray-200 mt-1 pt-2">
-          {selectedCount > 0 
-            ? `${selectedCount} selected`
+          {hasSelection
+            ? (selectedCount === rawSelectedCount
+                ? `${selectedCount} selected`
+                : `${selectedCount} visible / ${rawSelectedCount} selected`)
             : `${filteredSampleCount} in area`}
         </div>
       )}
