@@ -11,6 +11,7 @@ interface HarkerDataPoint {
   TIO2?: number;
   AL2O3?: number;
   FEOT?: number;
+  MNO?: number;
   MGO?: number;
   CAO?: number;
   NA2O?: number;
@@ -33,7 +34,7 @@ interface HarkerDiagramsProps {
 
 /**
  * Harker Diagram Configuration
- * Defines the 8 major oxide variation diagrams vs SiO2
+ * Defines the 9 major oxide variation diagrams vs SiO2
  */
 const HARKER_DIAGRAMS = [
   { 
@@ -53,6 +54,12 @@ const HARKER_DIAGRAMS = [
     yaxis: 'FeO<sup>T</sup> (wt%)', 
     range: [0, 15] as [number, number],
     description: 'Total iron oxide - shows Fe enrichment trends'
+  },
+  {
+    oxide: 'MNO' as keyof HarkerDataPoint,
+    yaxis: 'MnO (wt%)',
+    range: [0, 0.6] as [number, number],
+    description: 'Manganese oxide - traces mafic mineral fractionation'
   },
   { 
     oxide: 'MGO' as keyof HarkerDataPoint, 
@@ -89,12 +96,12 @@ const HARKER_DIAGRAMS = [
 /**
  * HarkerDiagrams Component
  * 
- * Displays 8 Harker variation diagrams comparing major oxides vs SiO2
+ * Displays 9 Harker variation diagrams comparing major oxides vs SiO2
  * across multiple volcanoes. Harker diagrams are fundamental tools for
  * understanding magma differentiation and evolution.
  * 
  * Features:
- * - 8 diagrams in 4x2 grid layout
+ * - 9 diagrams in a 3x3 desktop grid layout
  * - Consistent SiO2 axis (40-80 wt%)
  * - Volcano-specific colors
  * - Interactive tooltips with sample details
@@ -152,7 +159,7 @@ export const HarkerDiagrams: React.FC<HarkerDiagramsProps> = React.memo(({ volca
 
       {/* Loading Skeleton */}
       {!diagramsReady && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {HARKER_DIAGRAMS.map(({ oxide }) => (
             <div key={`skeleton-${oxide}`} className="bg-white rounded-lg border border-gray-200 p-4">
               <div className="animate-pulse">
@@ -167,7 +174,7 @@ export const HarkerDiagrams: React.FC<HarkerDiagramsProps> = React.memo(({ volca
 
       {/* Actual Diagrams */}
       {diagramsReady && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {HARKER_DIAGRAMS.map(({ oxide, yaxis, range, description }) => {
           // Create traces (one per volcano) with sampled data
           const traces = volcanoes.map((volcano) => {
@@ -180,16 +187,16 @@ export const HarkerDiagrams: React.FC<HarkerDiagramsProps> = React.memo(({ volca
             if (validData.length === 0) return null;
 
             return {
-              type: 'scattergl' as const,  // WebGL for GPU acceleration - handles 100k+ points
+              type: 'scatter' as const,
               mode: 'markers' as const,
               name: volcano.volcanoName,
               x: validData.map((d) => d['SIO2']),
               y: validData.map((d) => d[oxide] as number),
               marker: {
                 color: volcano.color,
-                size: 3,                     // Smaller markers = faster rendering
+                size: 3,
                 opacity: 0.7,
-                line: { width: 0 }           // No borders = much faster
+                line: { width: 0 }
               },
               text: validData.map((d) => d.sample_code),
               customdata: validData.map((d) => [
@@ -270,8 +277,8 @@ export const HarkerDiagrams: React.FC<HarkerDiagramsProps> = React.memo(({ volca
       {isLargeDataset && (
         <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3">
           <p className="text-sm text-green-900">
-            <strong>🚀 GPU Acceleration Active:</strong> Displaying all {totalDataPoints.toLocaleString()} data points 
-            using WebGL rendering for optimal performance. All scientific data is preserved.
+            <strong>Large dataset notice:</strong> Displaying all {totalDataPoints.toLocaleString()} data points 
+            with standard Plotly rendering to keep all 9 diagrams visible. Rendering may be slower on lower-powered devices.
           </p>
         </div>
       )}
