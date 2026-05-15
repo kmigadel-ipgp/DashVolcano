@@ -29,6 +29,8 @@ type ViewState = {
 interface MapProps {
   /** Array of samples to display on the map */
   samples?: Sample[];
+  /** Secondary comparison samples shown only for radar/map comparison */
+  comparisonSamples?: Sample[];
   /** Array of volcanoes to display on the map */
   volcanoes?: Volcano[];
   /** Tectonic boundaries to display */
@@ -99,6 +101,7 @@ const INITIAL_VIEW_STATE: ViewState = {
  */
 export const VolcanoMap: React.FC<MapProps> = ({
   samples = [],
+  comparisonSamples = [],
   volcanoes = [],
   tectonicBoundaries = [],
   viewState: externalViewState,
@@ -143,6 +146,7 @@ export const VolcanoMap: React.FC<MapProps> = ({
     confidence_label?: string;
     confidence_description?: string;
     confidence_icon?: string;
+    sample_context?: string;
   };
   const [hoverInfo, setHoverInfo] = useState<{
     x: number;
@@ -334,6 +338,65 @@ export const VolcanoMap: React.FC<MapProps> = ({
     });
   }, [samples, showSamplePoints, isSelectedVolcanoSample, onSampleClick, normalizedSelectedVolcanoName, normalizedSelectedVolcanoNumber]);
 
+  const comparisonSampleLayer = useCallback(() => {
+    if (!showSamplePoints || comparisonSamples.length === 0) return null;
+
+    return new ScatterplotLayer({
+      id: 'comparison-samples-points',
+      data: comparisonSamples,
+      getPosition: (d: Sample) => d.geometry.coordinates,
+      getRadius: 3200,
+      getFillColor: (d: Sample) => {
+        const confidence = normalizeConfidence(d.matching_metadata?.confidence_level, d.matching_metadata);
+        const color = getConfidenceColor(confidence);
+        return [color[0], color[1], color[2], 140];
+      },
+      getLineColor: (d: Sample) => {
+        const confidence = normalizeConfidence(d.matching_metadata?.confidence_level, d.matching_metadata);
+        const color = getConfidenceColor(confidence);
+        return [color[0], color[1], color[2], 255];
+      },
+      stroked: true,
+      lineWidthMinPixels: 1,
+      lineWidthMaxPixels: 2,
+      getLineWidth: 2,
+      pickable: true,
+      radiusMinPixels: 2,
+      radiusMaxPixels: 9,
+      onClick: (info: any) => {
+        if (info.object && onSampleClick) {
+          onSampleClick(info.object as Sample);
+        }
+      },
+      onHover: (info: any) => {
+        if (info.object) {
+          const sample = info.object as Sample;
+          const confidence = normalizeConfidence(sample.matching_metadata?.confidence_level, sample.matching_metadata);
+
+          setHoverInfo({
+            x: info.x,
+            y: info.y,
+            object: {
+              type: 'comparison-sample',
+              volcano_name: getVolcanoName(sample.matching_metadata),
+              rock_name: sample.petro?.rock_type,
+              longitude: sample.geometry.coordinates[0],
+              latitude: sample.geometry.coordinates[1],
+              tectonic_setting: typeof sample.tecto === 'object' ? sample.tecto?.ui : sample.tecto,
+              references: sample.references,
+              confidence_level: confidence,
+              confidence_label: getConfidenceLabel(confidence),
+              confidence_icon: getConfidenceIcon(confidence),
+              sample_context: 'Radar comparison overlay',
+            } as any,
+          });
+        } else {
+          setHoverInfo(null);
+        }
+      },
+    });
+  }, [comparisonSamples, onSampleClick, showSamplePoints]);
+
   /**
    * Tectonic boundaries GeoJsonLayer
    * Lines for ridges, trenches, and transforms
@@ -478,6 +541,11 @@ export const VolcanoMap: React.FC<MapProps> = ({
   if (samplePoints) {
     layers.push(samplePoints);
   }
+
+  const comparisonPoints = comparisonSampleLayer();
+  if (comparisonPoints) {
+    layers.push(comparisonPoints);
+  }
   
   // Add volcano layer (top)
   const volcano = volcanoLayer();
@@ -536,9 +604,11 @@ export const VolcanoMap: React.FC<MapProps> = ({
     }
 
     // Sample tooltip - now includes confidence information
-    if ('type' in object && object.type === 'sample') {
+    if ('type' in object && (object.type === 'sample' || object.type === 'comparison-sample')) {
+      const isComparisonSample = object.type === 'comparison-sample';
+
       // Get confidence color for border accent
-      const confidenceColor = object.confidence_level 
+      const confidenceColor = object.confidence_level
         ? getConfidenceColor(object.confidence_level as ConfidenceLevel)
         : [156, 163, 175, 140];
       
@@ -559,11 +629,22 @@ export const VolcanoMap: React.FC<MapProps> = ({
             minWidth: '200px',
           }}
         >
-          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Sample</div>
+          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+            {isComparisonSample ? 'Comparison Sample' : 'Sample'}
+          </div>
           <div>Volcano: {object.volcano_name || 'N/A'}</div>
           <div>Rock: {object.rock_name || 'N/A'}</div>
           <div>Location: {object.latitude?.toFixed(2)}°, {object.longitude?.toFixed(2)}°</div>
           <div>Tectonic Setting: {object.tectonic_setting || 'N/A'}</div>
+          {isComparisonSample && object.sample_context && (
+            <div style={{
+              fontSize: '10px',
+              color: 'rgba(255, 255, 255, 0.7)',
+              marginTop: '4px',
+            }}>
+              {object.sample_context}
+            </div>
+          )}
           
           {/* Confidence Score Section */}
           {object.confidence_level && (
@@ -651,10 +732,8 @@ export const VolcanoMap: React.FC<MapProps> = ({
       onMapHover(info);
     }
     
-    // Update hover info for tooltip
-    if (info.object) {
-      setHoverInfo(info);
-    } else {
+    // Layer-specific onHover handlers own tooltip contents.
+    if (!info.object) {
       setHoverInfo(null);
     }
   }, [isDrawingBbox, onMapHover]);

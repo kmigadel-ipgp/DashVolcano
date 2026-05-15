@@ -6,7 +6,13 @@ import { ConfidenceFilter } from '../Filters';
 import { RockTypeRadarPanel } from './RockTypeRadarPanel';
 import { PublicationsTab } from './PublicationsTab';
 import { filterSamplesByConfidence } from '../../utils/confidence';
-import type { BBox, Sample, SampleFilters } from '../../types';
+import type {
+  BBox,
+  ComparisonVolcanoOption,
+  RockTypeComparisonMode,
+  Sample,
+  SampleFilters,
+} from '../../types';
 import type { ConfidenceLevel } from '../../utils/confidence';
 
 type ChartTab = 'both' | 'tas' | 'afm' | 'radar' | 'publications';
@@ -44,6 +50,20 @@ interface ChartPanelProps {
   onStartComparisonBbox?: () => void;
   /** Clear the current comparison bbox */
   onClearComparisonBbox?: () => void;
+  /** Active comparison mode for radar/map comparison */
+  comparisonMode: RockTypeComparisonMode;
+  /** Update the comparison mode */
+  onComparisonModeChange: (mode: RockTypeComparisonMode) => void;
+  /** Selected comparison volcano for radar/map comparison */
+  comparisonVolcano: ComparisonVolcanoOption | null;
+  /** Update the selected comparison volcano */
+  onComparisonVolcanoChange: (volcano: ComparisonVolcanoOption | null) => void;
+  /** Samples shown only in the radar comparison and map overlay */
+  comparisonSamples: Sample[];
+  /** Loading state for volcano/bbox comparison samples */
+  comparisonLoading?: boolean;
+  /** Error state for volcano/bbox comparison samples */
+  comparisonError?: string | null;
 }
 
 /**
@@ -68,6 +88,13 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
   isDrawingComparisonBbox = false,
   onStartComparisonBbox,
   onClearComparisonBbox,
+  comparisonMode,
+  onComparisonModeChange,
+  comparisonVolcano,
+  onComparisonVolcanoChange,
+  comparisonSamples,
+  comparisonLoading = false,
+  comparisonError = null,
 }) => {
   const [activeTab, setActiveTab] = useState<ChartTab>('both');
 
@@ -246,6 +273,13 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
                   isDrawingComparisonBbox={isDrawingComparisonBbox}
                   onStartComparisonBbox={onStartComparisonBbox}
                   onClearComparisonBbox={onClearComparisonBbox}
+                  comparisonMode={comparisonMode}
+                  onComparisonModeChange={onComparisonModeChange}
+                  comparisonVolcano={comparisonVolcano}
+                  onComparisonVolcanoChange={onComparisonVolcanoChange}
+                  comparisonSamples={comparisonSamples}
+                  comparisonLoading={comparisonLoading}
+                  comparisonError={comparisonError}
                 />
               </div>
             )}
