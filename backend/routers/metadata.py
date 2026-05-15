@@ -58,16 +58,20 @@ async def get_tectonic_settings_volcanoes(db: Database = Depends(get_database)):
 @router.get("/tectonic-settings-samples")
 async def get_tectonic_settings_samples(db: Database = Depends(get_database)):
     """
-    Get list of all tectonic settings from samples.
-    Returns the sample's tecto.ui values.
+    Get list of sample tectonic settings used by the map/filter UI.
+
+    This endpoint returns the canonical volcano-aligned sample taxonomy stored in
+    ``tecto.volcano_ui``. The broader sample-native taxonomy lives in
+    ``tecto.ui`` and is intentionally not exposed here because it exceeds the
+    constrained map/filter setting list.
     """
-    # Get tectonic settings from samples (tecto.ui field)
+    # Use the volcano-aligned sample taxonomy for the UI-facing metadata list.
     sample_settings = db.samples.distinct("tecto.volcano_ui")
-    # Combine and deduplicate
     all_settings = set(sample_settings)
+    filtered_settings = sorted([s for s in all_settings if s])
     return {
-        "count": len(all_settings),
-        "data": sorted([s for s in all_settings if s])
+        "count": len(filtered_settings),
+        "data": filtered_settings
     }
 
 

@@ -208,12 +208,14 @@ class Database:
     
     def _match_tectonic_setting_for_samples(self, tectonic_setting: list) -> list:
         """
-        Return pipeline stages to filter samples by their tectonic setting.
-        
-        Filters samples directly by their tecto.ui field.
+        Return pipeline stages to filter samples by their sample-native tectonic setting.
+
+        This helper targets ``tecto.ui`` for workflows that need the original
+        sample taxonomy. The map/filter UI uses the volcano-aligned taxonomy in
+        ``tecto.volcano_ui`` instead.
         
         Parameters:
-            tectonic_setting (list): List of tectonic settings (from sample tecto.ui)
+            tectonic_setting (list): List of tectonic settings from sample ``tecto.ui``
             
         Returns:
             (list): Pipeline stages for match, or empty list if no filter.
@@ -221,7 +223,7 @@ class Database:
         if not tectonic_setting:
             return []
         
-        # Filter samples directly by tecto.ui field
+        # Filter samples directly by the sample-native taxonomy field.
         return [{"$match": {"tecto.ui": {"$in": tectonic_setting}}}]
 
     def _match_countries(self, countries: list) -> list:
