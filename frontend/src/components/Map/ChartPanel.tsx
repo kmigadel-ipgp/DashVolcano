@@ -4,17 +4,19 @@ import { TASPlot } from '../Charts/TASPlot';
 import { AFMPlot } from '../Charts/AFMPlot';
 import { ConfidenceFilter } from '../Filters';
 import { RockTypeRadarPanel } from './RockTypeRadarPanel';
+import { PublicationsTab } from './PublicationsTab';
 import { filterSamplesByConfidence } from '../../utils/confidence';
 import type { BBox, Sample, SampleFilters } from '../../types';
 import type { ConfidenceLevel } from '../../utils/confidence';
 
-type ChartTab = 'both' | 'tas' | 'afm' | 'radar';
+type ChartTab = 'both' | 'tas' | 'afm' | 'radar' | 'publications';
 
 const TAB_OPTIONS: Array<{ value: ChartTab; label: string }> = [
   { value: 'both', label: 'Both' },
   { value: 'tas', label: 'TAS Only' },
   { value: 'afm', label: 'AFM Only' },
   { value: 'radar', label: 'Radar' },
+  { value: 'publications', label: 'Publications' },
 ];
 
 interface ChartPanelProps {
@@ -244,6 +246,15 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
                   isDrawingComparisonBbox={isDrawingComparisonBbox}
                   onStartComparisonBbox={onStartComparisonBbox}
                   onClearComparisonBbox={onClearComparisonBbox}
+                />
+              </div>
+            )}
+
+            {activeTab === 'publications' && (
+              <div className="p-4 w-full">
+                <PublicationsTab
+                  samples={filteredSamples}
+                  totalSamplesInScope={samples.length}
                 />
               </div>
             )}

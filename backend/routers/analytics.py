@@ -159,21 +159,23 @@ async def get_volcano_samples_with_vei(
     db: Database = Depends(get_database)
 ):
     """
-    Get samples with VEI from eruptions.
-    
-    Since samples don't have eruption dates, this endpoint assigns VEI values
-    based on the most common VEI for this volcano's eruptions. This provides
-    a representative VEI distribution for visualization purposes.
+    Get TAS-eligible samples matched to eruption VEI by sample year.
+
+    Samples are matched to eruptions from the same volcano when the sample's
+    `eruption_date.year` falls within the inclusive eruption interval defined by
+    `start_date.year` and `end_date.year` (or `start_date.year` when no end year
+    is available). If multiple eruptions match, the one with the most recent
+    compatible `start_date.year` is selected.
     
     Args:
         volcano_number: GVP volcano number
         
     Returns:
-        - samples_with_vei: List of samples with VEI added (distributed across eruptions)
+        - samples_with_vei: List of samples with VEI added from matched eruptions
         - total_samples: Total samples for this volcano
-        - matched_samples: Number of samples with VEI assigned
-        - match_rate: Percentage of samples with VEI (currently returns all samples)
-        - method: "representative_distribution" - indicates VEI is assigned, not matched
+        - matched_samples: Number of samples with VEI matched by year/range
+        - match_rate: Percentage of volcano samples with VEI matched
+        - method: "year_based_matching" - indicates VEI is matched from eruption dates
     """
     # Convert volcano_number to string for MongoDB query (matching_metadata.volcano.number is stored as string)
     volcano_num_str = str(volcano_number)
@@ -205,23 +207,35 @@ async def get_volcano_samples_with_vei(
             "message": "No eruption records with VEI found for this volcano"
         }
     
-    # Join samples with eruptions by volcano number and year
+    # Join samples with eruptions by volcano number and inclusive year range.
     # Note: volcano_number is int in eruptions, string in samples.matching_metadata.volcano.number
     pipeline = [
         {
+            "$addFields": {
+                "sample_year": {
+                    "$convert": {
+                        "input": "$eruption_date.year",
+                        "to": "int",
+                        "onError": None,
+                        "onNull": None,
+                    }
+                }
+            }
+        },
+        {
             "$match": {
                 "matching_metadata.volcano.number": volcano_num_str,
-                "eruption_date.year": {"$ne": None},
-                "oxides.SIO2": {"$exists": True},
-                "oxides.NA2O": {"$exists": True},
-                "oxides.K2O": {"$exists": True}
+                "sample_year": {"$ne": None},
+                "oxides.SIO2": {"$exists": True, "$ne": None},
+                "oxides.NA2O": {"$exists": True, "$ne": None},
+                "oxides.K2O": {"$exists": True, "$ne": None}
             }
         },
         {
             "$lookup": {
                 "from": "eruptions",
                 "let": {
-                    "sample_year": "$eruption_date.year"
+                    "sample_year": "$sample_year"
                 },
                 "pipeline": [
                     {
@@ -229,7 +243,14 @@ async def get_volcano_samples_with_vei(
                             "$expr": {
                                 "$and": [
                                     {"$eq": ["$volcano_number", volcano_number]},
-                                    {"$eq": ["$start_date.year", "$$sample_year"]},
+                                    {"$ne": ["$start_date.year", None]},
+                                    {"$lte": ["$start_date.year", "$$sample_year"]},
+                                    {
+                                        "$gte": [
+                                            {"$ifNull": ["$end_date.year", "$start_date.year"]},
+                                            "$$sample_year"
+                                        ]
+                                    },
                                     {"$ne": ["$vei", None]},
                                     {"$gte": ["$vei", 0]},
                                     {"$lte": ["$vei", 8]}
@@ -237,7 +258,9 @@ async def get_volcano_samples_with_vei(
                             }
                         }
                     },
-                    {"$project": {"vei": 1, "start_date": 1}}
+                    {"$sort": {"start_date.year": -1, "eruption_number": -1}},
+                    {"$limit": 1},
+                    {"$project": {"vei": 1, "start_date": 1, "end_date": 1, "eruption_number": 1}}
                 ],
                 "as": "matching_eruptions"
             }
@@ -257,7 +280,7 @@ async def get_volcano_samples_with_vei(
                 "geometry": 1,
                 "oxides": 1,  # Preserve original MongoDB oxide field names like SIO2(WT%)
                 "vei": {"$arrayElemAt": ["$matching_eruptions.vei", 0]},
-                "eruption_year": "$eruption_date.year",
+                "eruption_year": "$sample_year",
                 "matching_metadata": 1
             }
         }
@@ -281,5 +304,8 @@ async def get_volcano_samples_with_vei(
         "match_rate": matched_samples / total_samples if total_samples > 0 else 0,
         "method": "year_based_matching",
         "vei_distribution": vei_counts,
-        "message": f"Samples matched with eruptions by year. {len(eruptions)} eruptions with VEI found."
+        "message": (
+            "Samples matched with eruptions when the sample year falls within the "
+            f"eruption start/end year range. {len(eruptions)} eruptions with VEI found."
+        )
     }

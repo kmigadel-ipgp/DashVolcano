@@ -264,10 +264,13 @@ const MapPage = () => {
     // Future: Show volcano details in a sidebar or modal
   };
 
-  const downloadableSamples = useMemo(() => {
-    const visibleSamples = selectedSamples.length > 0 ? selectedSamples : samples;
-    return filterSamplesByConfidence(visibleSamples, selectedConfidenceLevels);
-  }, [samples, selectedConfidenceLevels, selectedSamples]);
+  const chartScopeSamples = selectedSamples.length > 0 ? selectedSamples : samples;
+
+  const chartFilteredSamples = useMemo(() => {
+    return filterSamplesByConfidence(chartScopeSamples, selectedConfidenceLevels);
+  }, [chartScopeSamples, selectedConfidenceLevels]);
+
+  const downloadableSamples = chartFilteredSamples;
 
   // Download CSV handler
   const handleDownloadCSV = () => {
@@ -448,7 +451,7 @@ const MapPage = () => {
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isDrawingBbox]);
 
-  const chartPanelSamples = selectedSamples.length > 0 ? selectedSamples : samples;
+  const chartPanelSamples = chartScopeSamples;
   const chartPanelPrimaryLabel = selectedSamples.length > 0
     ? 'Selected Samples'
     : 'Current Map Data';
@@ -595,6 +598,8 @@ const MapPage = () => {
         samples={samples}
         volcanoes={volcanoes}
         selectedSamples={selectedSamples}
+        publicationSamples={chartFilteredSamples}
+        publicationSampleScopeCount={chartScopeSamples.length}
         loading={isLoading}
       />
 

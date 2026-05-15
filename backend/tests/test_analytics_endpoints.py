@@ -11,8 +11,12 @@ Tests:
 Run with: pytest backend/tests/test_analytics_endpoints.py -v
 """
 
+from contextlib import contextmanager
+from copy import deepcopy
+
 import pytest
 from fastapi.testclient import TestClient
+from backend.dependencies import get_database
 from backend.main import app
 
 client = TestClient(app)
@@ -39,6 +43,314 @@ def normalize_confidence(sample):
     if legacy in {"low", "3"}:
         return "low"
     return "unknown"
+
+
+def _get_nested_value(document, path):
+    current = document
+    parts = path.split(".")
+
+    for index, part in enumerate(parts):
+        if isinstance(current, list):
+            remaining = ".".join(parts[index:])
+            return [_get_nested_value(item, remaining) for item in current]
+        if not isinstance(current, dict):
+            return None
+        current = current.get(part)
+
+    return current
+
+
+def _has_nested_value(document, path):
+    current = document
+
+    for part in path.split("."):
+        if not isinstance(current, dict) or part not in current:
+            return False
+        current = current[part]
+
+    return True
+
+
+def _set_nested_value(document, path, value):
+    current = document
+    parts = path.split(".")
+
+    for part in parts[:-1]:
+        next_value = current.get(part)
+        if not isinstance(next_value, dict):
+            next_value = {}
+            current[part] = next_value
+        current = next_value
+
+    current[parts[-1]] = value
+
+
+def _evaluate_expression(document, expression, variables=None):
+    variables = variables or {}
+
+    if isinstance(expression, str):
+        if expression.startswith("$$"):
+            return variables.get(expression[2:])
+        if expression.startswith("$"):
+            return _get_nested_value(document, expression[1:])
+        return expression
+
+    if not isinstance(expression, dict):
+        return expression
+
+    if "$and" in expression:
+        return all(_evaluate_expression(document, item, variables) for item in expression["$and"])
+
+    if "$eq" in expression:
+        left, right = expression["$eq"]
+        return _evaluate_expression(document, left, variables) == _evaluate_expression(document, right, variables)
+
+    if "$ne" in expression:
+        left, right = expression["$ne"]
+        return _evaluate_expression(document, left, variables) != _evaluate_expression(document, right, variables)
+
+    if "$gte" in expression:
+        left, right = expression["$gte"]
+        return _evaluate_expression(document, left, variables) >= _evaluate_expression(document, right, variables)
+
+    if "$lte" in expression:
+        left, right = expression["$lte"]
+        return _evaluate_expression(document, left, variables) <= _evaluate_expression(document, right, variables)
+
+    if "$ifNull" in expression:
+        value_expression, fallback_expression = expression["$ifNull"]
+        value = _evaluate_expression(document, value_expression, variables)
+        if value is None:
+            return _evaluate_expression(document, fallback_expression, variables)
+        return value
+
+    if "$convert" in expression:
+        spec = expression["$convert"]
+        value = _evaluate_expression(document, spec.get("input"), variables)
+        if value is None:
+            return spec.get("onNull")
+        try:
+            if spec.get("to") == "int":
+                return int(value)
+        except (TypeError, ValueError):
+            return spec.get("onError")
+        return value
+
+    if "$arrayElemAt" in expression:
+        array_expression, index_expression = expression["$arrayElemAt"]
+        values = _evaluate_expression(document, array_expression, variables)
+        index = _evaluate_expression(document, index_expression, variables)
+        if not isinstance(values, list):
+            return None
+        try:
+            return values[index]
+        except (IndexError, TypeError):
+            return None
+
+    raise AssertionError(f"Unsupported expression in fake Mongo evaluator: {expression}")
+
+
+def _matches_query(document, query, variables=None):
+    for key, condition in query.items():
+        if key == "$expr":
+            if not _evaluate_expression(document, condition, variables):
+                return False
+            continue
+
+        value = _get_nested_value(document, key)
+
+        if isinstance(condition, dict):
+            for operator, expected in condition.items():
+                if operator == "$exists":
+                    if _has_nested_value(document, key) != expected:
+                        return False
+                elif operator == "$ne":
+                    if value == expected:
+                        return False
+                elif operator == "$gte":
+                    if value < expected:
+                        return False
+                elif operator == "$lte":
+                    if value > expected:
+                        return False
+                else:
+                    raise AssertionError(f"Unsupported query operator in fake Mongo evaluator: {operator}")
+        elif value != condition:
+            return False
+
+    return True
+
+
+def _apply_sort(documents, sort_spec):
+    sorted_documents = list(documents)
+
+    for field, direction in reversed(list(sort_spec.items())):
+        reverse = direction < 0
+        sorted_documents.sort(key=lambda document: _get_nested_value(document, field), reverse=reverse)
+
+    return sorted_documents
+
+
+def _apply_project(document, project_spec, variables=None):
+    projected = {}
+
+    for field, expression in project_spec.items():
+        if field == "_id" and expression == 0:
+            continue
+        if expression == 1:
+            projected[field] = deepcopy(_get_nested_value(document, field))
+            continue
+        projected[field] = _evaluate_expression(document, expression, variables)
+
+    return projected
+
+
+def _apply_pipeline(documents, pipeline, lookup_collections=None, variables=None):
+    results = [deepcopy(document) for document in documents]
+    lookup_collections = lookup_collections or {}
+
+    for stage in pipeline:
+        if "$match" in stage:
+            results = [
+                document for document in results
+                if _matches_query(document, stage["$match"], variables)
+            ]
+        elif "$addFields" in stage:
+            updated_results = []
+            for document in results:
+                updated = deepcopy(document)
+                for field, expression in stage["$addFields"].items():
+                    _set_nested_value(updated, field, _evaluate_expression(updated, expression, variables))
+                updated_results.append(updated)
+            results = updated_results
+        elif "$lookup" in stage:
+            lookup_spec = stage["$lookup"]
+            joined_results = []
+            foreign_documents = lookup_collections[lookup_spec["from"]]
+
+            for document in results:
+                lookup_variables = {
+                    name: _evaluate_expression(document, expression, variables)
+                    for name, expression in lookup_spec.get("let", {}).items()
+                }
+                joined = _apply_pipeline(
+                    foreign_documents,
+                    lookup_spec["pipeline"],
+                    lookup_collections=lookup_collections,
+                    variables=lookup_variables,
+                )
+                updated = deepcopy(document)
+                updated[lookup_spec["as"]] = joined
+                joined_results.append(updated)
+
+            results = joined_results
+        elif "$sort" in stage:
+            results = _apply_sort(results, stage["$sort"])
+        elif "$limit" in stage:
+            results = results[:stage["$limit"]]
+        elif "$project" in stage:
+            results = [_apply_project(document, stage["$project"], variables) for document in results]
+        else:
+            raise AssertionError(f"Unsupported pipeline stage in fake Mongo evaluator: {stage}")
+
+    return results
+
+
+class FakeAnalyticsSamplesCollection:
+    def __init__(self, documents, eruption_documents):
+        self._documents = [deepcopy(document) for document in documents]
+        self._eruption_documents = [deepcopy(document) for document in eruption_documents]
+
+    def count_documents(self, query):
+        return sum(1 for document in self._documents if _matches_query(document, query))
+
+    def aggregate(self, pipeline, **_kwargs):
+        return _apply_pipeline(
+            self._documents,
+            pipeline,
+            lookup_collections={"eruptions": self._eruption_documents},
+        )
+
+
+class FakeFindCursor:
+    def __init__(self, documents):
+        self._documents = list(documents)
+
+    def sort(self, field, direction):
+        self._documents = _apply_sort(self._documents, {field: direction})
+        return self
+
+    def __iter__(self):
+        return iter(self._documents)
+
+
+class FakeAnalyticsEruptionsCollection:
+    def __init__(self, documents):
+        self._documents = [deepcopy(document) for document in documents]
+
+    def find(self, query):
+        filtered = [document for document in self._documents if _matches_query(document, query)]
+        return FakeFindCursor(filtered)
+
+
+class FakeAnalyticsDatabase:
+    def __init__(self, sample_documents, eruption_documents):
+        self.samples = FakeAnalyticsSamplesCollection(sample_documents, eruption_documents)
+        self.eruptions = FakeAnalyticsEruptionsCollection(eruption_documents)
+
+
+@contextmanager
+def samples_with_vei_test_client(sample_documents, eruption_documents):
+    fake_db = FakeAnalyticsDatabase(sample_documents, eruption_documents)
+
+    def override_get_database():
+        yield fake_db
+
+    app.dependency_overrides[get_database] = override_get_database
+
+    try:
+        with TestClient(app) as scoped_client:
+            yield scoped_client
+    finally:
+        app.dependency_overrides.pop(get_database, None)
+
+
+def build_sample_document(
+    sample_code="sample-1",
+    sample_year=1721,
+    volcano_number="305030",
+    oxides=None,
+):
+    if oxides is None:
+        oxides = {"SIO2": 50.2, "NA2O": 4.1, "K2O": 2.3}
+
+    return {
+        "sample_code": sample_code,
+        "material": "WR",
+        "matching_metadata": {"volcano": {"number": volcano_number}},
+        "eruption_date": {"year": sample_year},
+        "oxides": oxides,
+    }
+
+
+def build_eruption_document(
+    eruption_number,
+    start_year,
+    end_year=None,
+    vei=2,
+    volcano_number=305030,
+):
+    eruption = {
+        "eruption_number": eruption_number,
+        "volcano_number": volcano_number,
+        "start_date": {"year": start_year},
+        "vei": vei,
+    }
+
+    if end_year is not None:
+        eruption["end_date"] = {"year": end_year}
+
+    return eruption
 
 
 class TestTASPolygonsEndpoint:
@@ -275,6 +587,81 @@ class TestVEIDistributionEndpoint:
         response = client.get("/api/volcanoes/999999999/vei-distribution")
         assert response.status_code == 404
         assert "detail" in response.json()
+
+
+class TestSamplesWithVEIEndpoint:
+    """Test TAS-by-VEI sample matching endpoint."""
+
+    def test_matches_exact_eruption_year(self):
+        samples = [build_sample_document(sample_code="exact-year", sample_year=1720)]
+        eruptions = [build_eruption_document(eruption_number=1, start_year=1720, vei=3)]
+
+        with samples_with_vei_test_client(samples, eruptions) as scoped_client:
+            response = scoped_client.get("/api/analytics/volcano/305030/samples-with-vei")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["matched_samples"] == 1
+        assert data["samples_with_vei"][0]["sample_code"] == "exact-year"
+        assert data["samples_with_vei"][0]["vei"] == 3
+        assert data["samples_with_vei"][0]["eruption_year"] == 1720
+
+    def test_matches_sample_year_within_eruption_range(self):
+        samples = [
+            build_sample_document(
+                sample_code="SAMPLE_005662_s_H-07-6 [15740]",
+                sample_year=1721,
+            )
+        ]
+        eruptions = [build_eruption_document(eruption_number=1, start_year=1720, end_year=1721, vei=2)]
+
+        with samples_with_vei_test_client(samples, eruptions) as scoped_client:
+            response = scoped_client.get("/api/analytics/volcano/305030/samples-with-vei")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["matched_samples"] == 1
+        assert data["samples_with_vei"][0]["sample_code"] == "SAMPLE_005662_s_H-07-6 [15740]"
+        assert data["samples_with_vei"][0]["vei"] == 2
+
+    def test_prefers_most_recent_compatible_eruption_range(self):
+        samples = [build_sample_document(sample_code="range-priority", sample_year=1721)]
+        eruptions = [
+            build_eruption_document(eruption_number=1, start_year=1719, end_year=1721, vei=1),
+            build_eruption_document(eruption_number=2, start_year=1720, end_year=1721, vei=4),
+        ]
+
+        with samples_with_vei_test_client(samples, eruptions) as scoped_client:
+            response = scoped_client.get("/api/analytics/volcano/305030/samples-with-vei")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["matched_samples"] == 1
+        assert data["samples_with_vei"][0]["vei"] == 4
+
+    def test_normalizes_string_sample_years(self):
+        samples = [build_sample_document(sample_code="string-year", sample_year="1721")]
+        eruptions = [build_eruption_document(eruption_number=1, start_year=1720, end_year=1721, vei=2)]
+
+        with samples_with_vei_test_client(samples, eruptions) as scoped_client:
+            response = scoped_client.get("/api/analytics/volcano/305030/samples-with-vei")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["matched_samples"] == 1
+        assert data["samples_with_vei"][0]["eruption_year"] == 1721
+
+    def test_excludes_samples_without_complete_tas_oxides(self):
+        samples = [build_sample_document(sample_code="incomplete", oxides={"SIO2": 50.2, "NA2O": 4.1})]
+        eruptions = [build_eruption_document(eruption_number=1, start_year=1720, end_year=1721, vei=2)]
+
+        with samples_with_vei_test_client(samples, eruptions) as scoped_client:
+            response = scoped_client.get("/api/analytics/volcano/305030/samples-with-vei")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["matched_samples"] == 0
+        assert data["samples_with_vei"] == []
 
 
 class TestRockTypeDistributionEndpoint:

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BarChart3, ChevronUp, ChevronDown } from 'lucide-react';
 import type { Sample, Volcano } from '../../types';
+import { getUniqueMapTectonicSettings, getUniquePublicationCount } from '../../utils/mapStats';
 
 interface SummaryStatsProps {
   /** Array of samples currently displayed */
@@ -9,6 +10,10 @@ interface SummaryStatsProps {
   volcanoes: Volcano[];
   /** Array of selected samples */
   selectedSamples: Sample[];
+  /** Samples used to derive publication stats */
+  publicationSamples?: Sample[];
+  /** Number of samples in the publication scope before confidence filtering */
+  publicationSampleScopeCount?: number;
   /** Whether data is loading */
   loading?: boolean;
 }
@@ -21,6 +26,8 @@ export const SummaryStats: React.FC<SummaryStatsProps> = ({
   samples,
   volcanoes,
   selectedSamples,
+  publicationSamples = [],
+  publicationSampleScopeCount = 0,
   loading = false,
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
@@ -33,10 +40,8 @@ export const SummaryStats: React.FC<SummaryStatsProps> = ({
     volcanoes.filter(v => v.country).map(v => v.country)
   ).size;
 
-  const uniqueTectonicSettings = new Set([
-    ...samples.filter(s => s.tecto).map(s => typeof s.tecto === 'object' ? s.tecto?.ui : s.tecto),
-    ...volcanoes.filter(v => v.tectonic_setting).map(v => v.tectonic_setting),
-  ]).size;
+  const uniqueTectonicSettings = getUniqueMapTectonicSettings(samples, volcanoes).length;
+  const uniquePublications = getUniquePublicationCount(publicationSamples);
 
   // Format large numbers
   const formatNumber = (num: number) => {
@@ -115,6 +120,13 @@ export const SummaryStats: React.FC<SummaryStatsProps> = ({
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-gray-500">Tectonic Settings:</span>
                   <span className="text-xs font-medium text-gray-700">{uniqueTectonicSettings}</span>
+                </div>
+              )}
+
+              {publicationSampleScopeCount > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-500">Publications:</span>
+                  <span className="text-xs font-medium text-gray-700">{uniquePublications}</span>
                 </div>
               )}
             </div>
