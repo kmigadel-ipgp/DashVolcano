@@ -4,10 +4,10 @@ import { Globe2, Map as MapIcon, X } from 'lucide-react';
 import { RockTypeRadarChart } from '../Charts';
 import { fetchRockTypeDistribution } from '../../api/analytics';
 import { fetchVolcanoes } from '../../api/volcanoes';
-import { formatBboxForAPI } from '../../hooks/useBboxDraw';
 import { calculateRockTypeDistribution, filterSamplesByConfidence } from '../../utils/confidence';
 import type {
   BBox,
+  ComparisonVolcanoOption,
   RockTypeComparisonMode,
   RockTypeDistributionResponse,
   RockTypeRadarSeries,
@@ -16,11 +16,6 @@ import type {
   Volcano,
 } from '../../types';
 import type { ConfidenceLevel } from '../../utils/confidence';
-
-interface VolcanoOption {
-  volcano_name: string;
-  volcano_number: number;
-}
 
 interface RockTypeRadarPanelProps {
   samples: Sample[];
@@ -31,6 +26,13 @@ interface RockTypeRadarPanelProps {
   isDrawingComparisonBbox?: boolean;
   onStartComparisonBbox?: () => void;
   onClearComparisonBbox?: () => void;
+  comparisonMode: RockTypeComparisonMode;
+  onComparisonModeChange: (mode: RockTypeComparisonMode) => void;
+  comparisonVolcano: ComparisonVolcanoOption | null;
+  onComparisonVolcanoChange: (volcano: ComparisonVolcanoOption | null) => void;
+  comparisonSamples?: Sample[];
+  comparisonLoading?: boolean;
+  comparisonError?: string | null;
 }
 
 interface APIErrorResponse {
@@ -70,14 +72,19 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
   isDrawingComparisonBbox = false,
   onStartComparisonBbox,
   onClearComparisonBbox,
+  comparisonMode,
+  onComparisonModeChange,
+  comparisonVolcano,
+  onComparisonVolcanoChange,
+  comparisonSamples = [],
+  comparisonLoading = false,
+  comparisonError = null,
 }) => {
-  const [comparisonMode, setComparisonMode] = useState<RockTypeComparisonMode>('none');
-  const [comparisonData, setComparisonData] = useState<RockTypeDistributionResponse | null>(null);
-  const [comparisonLoading, setComparisonLoading] = useState(false);
-  const [comparisonError, setComparisonError] = useState<string | null>(null);
-  const [volcanoOptions, setVolcanoOptions] = useState<VolcanoOption[]>([]);
-  const [volcanoSearch, setVolcanoSearch] = useState('');
-  const [selectedVolcano, setSelectedVolcano] = useState<VolcanoOption | null>(null);
+  const [globalComparisonData, setGlobalComparisonData] = useState<RockTypeDistributionResponse | null>(null);
+  const [globalComparisonLoading, setGlobalComparisonLoading] = useState(false);
+  const [globalComparisonError, setGlobalComparisonError] = useState<string | null>(null);
+  const [volcanoOptions, setVolcanoOptions] = useState<ComparisonVolcanoOption[]>([]);
+  const [volcanoSearch, setVolcanoSearch] = useState(comparisonVolcano?.volcano_name ?? '');
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const primarySamples = useMemo(
@@ -111,48 +118,76 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
     sourceType: 'primary',
   }), [primaryRockTypes, primarySampleCount, primarySeriesLabel]);
 
-  const comparisonSeries = useMemo<RockTypeRadarSeries | null>(() => {
-    if (!comparisonData) {
-      return null;
-    }
+  const comparisonRockTypes = useMemo(
+    () => calculateRockTypeDistribution(
+      comparisonSamples.filter(sample => sample.material === 'WR' && !!sample.petro?.rock_type)
+    ),
+    [comparisonSamples]
+  );
 
+  const comparisonSampleCount = useMemo(
+    () => Object.values(comparisonRockTypes).reduce((sum, count) => sum + count, 0),
+    [comparisonRockTypes]
+  );
+
+  const comparisonSeries = useMemo<RockTypeRadarSeries | null>(() => {
     if (comparisonMode === 'global') {
+      if (!globalComparisonData || Object.keys(globalComparisonData.rock_types).length === 0) {
+        return null;
+      }
+
       return {
-        label: 'Filtered DB Baseline',
-        rockTypes: comparisonData.rock_types,
-        sampleCount: comparisonData.sample_count,
+        label: `Filtered DB Baseline (${globalComparisonData.sample_count} WR)`,
+        rockTypes: globalComparisonData.rock_types,
+        sampleCount: globalComparisonData.sample_count,
         color: MODE_COLORS.global,
         sourceType: 'global',
       };
     }
 
-    if (comparisonMode === 'volcano' && selectedVolcano) {
+    if (comparisonMode === 'volcano' && comparisonVolcano) {
+      if (comparisonSampleCount === 0 || Object.keys(comparisonRockTypes).length === 0) {
+        return null;
+      }
+
       return {
-        label: selectedVolcano.volcano_name,
-        rockTypes: comparisonData.rock_types,
-        sampleCount: comparisonData.sample_count,
+        label: `${comparisonVolcano.volcano_name} (${comparisonSampleCount} WR)`,
+        rockTypes: comparisonRockTypes,
+        sampleCount: comparisonSampleCount,
         color: MODE_COLORS.volcano,
         sourceType: 'volcano',
       };
     }
 
     if (comparisonMode === 'bbox') {
+      if (comparisonSampleCount === 0 || Object.keys(comparisonRockTypes).length === 0) {
+        return null;
+      }
+
       return {
-        label: 'Comparison Area',
-        rockTypes: comparisonData.rock_types,
-        sampleCount: comparisonData.sample_count,
+        label: `Comparison Area (${comparisonSampleCount} WR)`,
+        rockTypes: comparisonRockTypes,
+        sampleCount: comparisonSampleCount,
         color: MODE_COLORS.bbox,
         sourceType: 'bbox',
       };
     }
 
     return null;
-  }, [comparisonData, comparisonMode, selectedVolcano]);
+  }, [comparisonMode, comparisonRockTypes, comparisonSampleCount, comparisonVolcano, globalComparisonData]);
 
   const radarSeries = useMemo(
     () => comparisonSeries ? [primarySeries, comparisonSeries] : [primarySeries],
     [comparisonSeries, primarySeries]
   );
+
+  const resolvedComparisonLoading = comparisonMode === 'global'
+    ? globalComparisonLoading
+    : comparisonLoading;
+
+  const resolvedComparisonError = comparisonMode === 'global'
+    ? globalComparisonError
+    : comparisonError;
 
   const filteredVolcanoOptions = useMemo(() => {
     if (!volcanoSearch) {
@@ -163,6 +198,17 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
       .filter(volcano => volcano.volcano_name.toLowerCase().includes(volcanoSearch.toLowerCase()))
       .slice(0, 10);
   }, [volcanoOptions, volcanoSearch]);
+
+  useEffect(() => {
+    if (comparisonVolcano && volcanoSearch !== comparisonVolcano.volcano_name) {
+      setVolcanoSearch(comparisonVolcano.volcano_name);
+      return;
+    }
+
+    if (!comparisonVolcano && comparisonMode !== 'volcano' && volcanoSearch) {
+      setVolcanoSearch('');
+    }
+  }, [comparisonMode, comparisonVolcano, volcanoSearch]);
 
   useEffect(() => {
     if (comparisonMode !== 'volcano' || volcanoOptions.length > 0) {
@@ -188,7 +234,7 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
         setVolcanoOptions(options);
       } catch {
         if (!cancelled) {
-          setComparisonError('Failed to load volcano list for radar comparison.');
+          setGlobalComparisonError('Failed to load volcano list for radar comparison.');
         }
       }
     };
@@ -201,53 +247,33 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
   }, [comparisonMode, volcanoOptions.length]);
 
   useEffect(() => {
-    if (comparisonMode === 'none') {
-      setComparisonData(null);
-      setComparisonError(null);
-      setComparisonLoading(false);
-      return;
-    }
-
-    if (comparisonMode === 'volcano' && !selectedVolcano) {
-      setComparisonData(null);
-      setComparisonError(null);
-      setComparisonLoading(false);
-      return;
-    }
-
-    if (comparisonMode === 'bbox' && !comparisonBbox) {
-      setComparisonData(null);
-      setComparisonError(null);
-      setComparisonLoading(false);
+    if (comparisonMode !== 'global') {
+      setGlobalComparisonData(null);
+      setGlobalComparisonError(null);
+      setGlobalComparisonLoading(false);
       return;
     }
 
     let cancelled = false;
 
     const loadComparison = async () => {
-      setComparisonLoading(true);
-      setComparisonError(null);
+      setGlobalComparisonLoading(true);
+      setGlobalComparisonError(null);
 
       try {
         const filters = buildDistributionFilters(sampleFilters, selectedConfidenceLevels);
         const response = await fetchRockTypeDistribution({
           ...filters,
-          ...(comparisonMode === 'volcano' && selectedVolcano
-            ? { volcano_number: selectedVolcano.volcano_number }
-            : {}),
-          ...(comparisonMode === 'bbox' && comparisonBbox
-            ? { bbox: formatBboxForAPI(comparisonBbox) }
-            : {}),
         });
 
         if (!cancelled) {
-          setComparisonData(response);
+          setGlobalComparisonData(response);
         }
       } catch (error: unknown) {
         if (!cancelled) {
           const axiosError = error as AxiosError<APIErrorResponse>;
-          setComparisonData(null);
-          setComparisonError(
+          setGlobalComparisonData(null);
+          setGlobalComparisonError(
             axiosError.response?.data?.detail ||
             axiosError.message ||
             'Failed to load comparison distribution.'
@@ -255,7 +281,7 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
         }
       } finally {
         if (!cancelled) {
-          setComparisonLoading(false);
+          setGlobalComparisonLoading(false);
         }
       }
     };
@@ -265,7 +291,7 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [comparisonBbox, comparisonMode, sampleFilters, selectedConfidenceLevels, selectedVolcano]);
+  }, [comparisonMode, sampleFilters, selectedConfidenceLevels]);
 
   return (
     <div className="space-y-4">
@@ -273,7 +299,7 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-gray-700">Compare against:</span>
           <button
-            onClick={() => setComparisonMode('none')}
+            onClick={() => onComparisonModeChange('none')}
             className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
               comparisonMode === 'none'
                 ? 'bg-volcano-600 text-white'
@@ -283,7 +309,7 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
             None
           </button>
           <button
-            onClick={() => setComparisonMode('global')}
+            onClick={() => onComparisonModeChange('global')}
             className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
               comparisonMode === 'global'
                 ? 'bg-blue-600 text-white'
@@ -294,7 +320,7 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
             Filtered DB Baseline
           </button>
           <button
-            onClick={() => setComparisonMode('volcano')}
+            onClick={() => onComparisonModeChange('volcano')}
             className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
               comparisonMode === 'volcano'
                 ? 'bg-teal-700 text-white'
@@ -304,7 +330,7 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
             Another Volcano
           </button>
           <button
-            onClick={() => setComparisonMode('bbox')}
+            onClick={() => onComparisonModeChange('bbox')}
             className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
               comparisonMode === 'bbox'
                 ? 'bg-emerald-700 text-white'
@@ -330,7 +356,7 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
               value={volcanoSearch}
               onChange={(event) => {
                 setVolcanoSearch(event.target.value);
-                setSelectedVolcano(null);
+                onComparisonVolcanoChange(null);
                 setShowSuggestions(true);
               }}
               onFocus={() => setShowSuggestions(true)}
@@ -338,10 +364,10 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
               placeholder="Type to search volcanoes..."
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-600 focus:border-teal-600"
             />
-            {selectedVolcano && (
+            {comparisonVolcano && (
               <button
                 onClick={() => {
-                  setSelectedVolcano(null);
+                  onComparisonVolcanoChange(null);
                   setVolcanoSearch('');
                 }}
                 className="absolute top-9 right-3 text-gray-400 hover:text-gray-600"
@@ -357,7 +383,7 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
                     key={volcano.volcano_number}
                     type="button"
                     onClick={() => {
-                      setSelectedVolcano(volcano);
+                      onComparisonVolcanoChange(volcano);
                       setVolcanoSearch(volcano.volcano_name);
                       setShowSuggestions(false);
                     }}
@@ -414,7 +440,7 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
         <RockTypeRadarChart series={radarSeries} />
       )}
 
-      {comparisonMode === 'volcano' && !selectedVolcano && (
+      {comparisonMode === 'volcano' && !comparisonVolcano && (
         <div className="border rounded-lg p-4 bg-gray-50 text-sm text-gray-600">
           Choose a volcano from the autocomplete list to load a comparison distribution.
         </div>
@@ -426,19 +452,31 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
         </div>
       )}
 
-      {comparisonLoading && (
+      {resolvedComparisonLoading && (
         <div className="border rounded-lg p-4 bg-white text-sm text-gray-600">
           Loading comparison distribution...
         </div>
       )}
 
-      {comparisonError && (
+      {resolvedComparisonError && (
         <div className="border rounded-lg p-4 bg-red-50 text-sm text-red-700 border-red-200">
-          {comparisonError}
+          {resolvedComparisonError}
         </div>
       )}
 
-      {comparisonMode !== 'none' && !comparisonLoading && comparisonData && Object.keys(comparisonData.rock_types).length === 0 && (
+      {comparisonMode === 'global' && !resolvedComparisonLoading && globalComparisonData && Object.keys(globalComparisonData.rock_types).length === 0 && (
+        <div className="border rounded-lg p-4 bg-gray-50 text-sm text-gray-600">
+          No rock-type distribution is available for the selected comparison filters.
+        </div>
+      )}
+
+      {comparisonMode === 'volcano' && comparisonVolcano && !resolvedComparisonLoading && !resolvedComparisonError && comparisonSampleCount === 0 && (
+        <div className="border rounded-lg p-4 bg-gray-50 text-sm text-gray-600">
+          No whole-rock rock type samples are available for the selected comparison volcano.
+        </div>
+      )}
+
+      {comparisonMode === 'bbox' && comparisonBbox && !resolvedComparisonLoading && !resolvedComparisonError && comparisonSampleCount === 0 && (
         <div className="border rounded-lg p-4 bg-gray-50 text-sm text-gray-600">
           No rock-type distribution is available for the selected comparison filters.
         </div>

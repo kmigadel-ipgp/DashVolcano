@@ -8,14 +8,32 @@ import type {
   SpatialNearbyParams,
 } from '../types';
 
+const joinFilterValue = (value?: string | string[]) => {
+  if (Array.isArray(value)) {
+    return value.join(',');
+  }
+
+  return value;
+};
+
 /**
  * Fetch samples with optional filters
  */
 export const fetchSamples = async (
   filters?: SampleFilters
 ): Promise<PaginatedResponse<Sample>> => {
+  const params = filters
+    ? {
+        ...filters,
+        rock_type: joinFilterValue(filters.rock_type),
+        tectonic_setting: joinFilterValue(filters.tectonic_setting),
+        material: joinFilterValue(filters.material),
+        confidence_levels: filters.confidence_levels?.join(','),
+      }
+    : undefined;
+
   const response = await apiClient.get<PaginatedResponse<Sample>>('/samples', {
-    params: filters,
+    params,
   });
   return response.data;
 };

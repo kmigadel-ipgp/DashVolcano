@@ -282,6 +282,8 @@ export interface SampleFilters {
   min_sio2?: number; // Updated to match backend naming
   max_sio2?: number; // Updated to match backend naming
   bbox?: string; // Bounding box as "min_lon,min_lat,max_lon,max_lat"
+  material?: string | string[];
+  confidence_levels?: Array<'high' | 'medium' | 'low' | 'unknown'>;
   limit?: number;
   offset?: number;
 }
@@ -306,6 +308,11 @@ export interface RockTypeDistributionFilters {
 }
 
 export type RockTypeComparisonMode = 'none' | 'global' | 'volcano' | 'bbox';
+
+export interface ComparisonVolcanoOption {
+  volcano_name: string;
+  volcano_number: number;
+}
 
 export interface RockTypeRadarSeries {
   label: string;

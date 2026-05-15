@@ -15,7 +15,15 @@ import { filterSamplesByConfidence } from '../utils/confidence';
 import { useKeyboardShortcuts, commonShortcuts } from '../hooks/useKeyboardShortcuts';
 import { formatBboxForAPI } from '../hooks/useBboxDraw';
 import { fetchSamples } from '../api/samples';
-import type { Volcano, Sample, SampleFilters, VolcanoFilters, BBox } from '../types';
+import type {
+  BBox,
+  ComparisonVolcanoOption,
+  RockTypeComparisonMode,
+  Sample,
+  SampleFilters,
+  Volcano,
+  VolcanoFilters,
+} from '../types';
 import type { ConfidenceLevel } from '../utils/confidence';
 
 const INITIAL_VIEWPORT = {
@@ -33,6 +41,19 @@ interface APIErrorResponse {
 interface MapInteractionInfo {
   coordinate?: [number, number];
 }
+
+const buildRadarComparisonFilters = (
+  sampleFilters: SampleFilters,
+  selectedConfidenceLevels: ConfidenceLevel[]
+): SampleFilters => ({
+  database: sampleFilters.database,
+  rock_type: sampleFilters.rock_type,
+  tectonic_setting: sampleFilters.tectonic_setting,
+  min_sio2: sampleFilters.min_sio2,
+  max_sio2: sampleFilters.max_sio2,
+  material: 'WR',
+  confidence_levels: selectedConfidenceLevels,
+});
 
 const MapPage = () => {
   // Layer visibility state
@@ -61,6 +82,11 @@ const MapPage = () => {
   // Chart panel state
   const [chartPanelOpen, setChartPanelOpen] = useState(false);
   const [selectedConfidenceLevels, setSelectedConfidenceLevels] = useState<ConfidenceLevel[]>(['high', 'medium', 'low', 'unknown']);
+  const [comparisonMode, setComparisonMode] = useState<RockTypeComparisonMode>('none');
+  const [comparisonVolcano, setComparisonVolcano] = useState<ComparisonVolcanoOption | null>(null);
+  const [comparisonSamples, setComparisonSamples] = useState<Sample[]>([]);
+  const [loadingComparisonSamples, setLoadingComparisonSamples] = useState(false);
+  const [comparisonSamplesError, setComparisonSamplesError] = useState<string | null>(null);
 
   // Bbox state
   const [currentBbox, setCurrentBbox] = useState<BBox | null>(null);
@@ -232,6 +258,59 @@ const MapPage = () => {
     
     fetchBboxSamples();
   }, [currentBbox, sampleFilters]);
+
+  useEffect(() => {
+    const fetchComparisonSamples = async () => {
+      if (comparisonMode === 'none' || comparisonMode === 'global') {
+        setComparisonSamples([]);
+        setComparisonSamplesError(null);
+        setLoadingComparisonSamples(false);
+        return;
+      }
+
+      if (comparisonMode === 'volcano' && !comparisonVolcano) {
+        setComparisonSamples([]);
+        setComparisonSamplesError(null);
+        setLoadingComparisonSamples(false);
+        return;
+      }
+
+      if (comparisonMode === 'bbox' && !comparisonBbox) {
+        setComparisonSamples([]);
+        setComparisonSamplesError(null);
+        setLoadingComparisonSamples(false);
+        return;
+      }
+
+      setLoadingComparisonSamples(true);
+      setComparisonSamplesError(null);
+
+      try {
+        const response = await fetchSamples({
+          ...buildRadarComparisonFilters(sampleFilters, selectedConfidenceLevels),
+          ...(comparisonMode === 'volcano' && comparisonVolcano
+            ? { volcano_number: comparisonVolcano.volcano_number }
+            : {}),
+          ...(comparisonMode === 'bbox' && comparisonBbox
+            ? { bbox: formatBboxForAPI(comparisonBbox) }
+            : {}),
+        });
+
+        setComparisonSamples(response.data);
+        setComparisonSamplesError(null);
+      } catch (error: unknown) {
+        console.error('Error fetching comparison samples:', error);
+        const axiosError = error as AxiosError<APIErrorResponse>;
+        const errorMessage = axiosError.response?.data?.detail || axiosError.message || 'Failed to fetch comparison samples';
+        setComparisonSamplesError(errorMessage);
+        setComparisonSamples([]);
+      } finally {
+        setLoadingComparisonSamples(false);
+      }
+    };
+
+    fetchComparisonSamples();
+  }, [comparisonBbox, comparisonMode, comparisonVolcano, sampleFilters, selectedConfidenceLevels]);
   
   // Detect when user applies filters from FilterPanel (excluding just limit changes)
   // Also detect when filters are CLEARED (empty object) to prevent unnecessary fetches
@@ -253,7 +332,7 @@ const MapPage = () => {
   const isLoading = samplesLoading || volcanoesLoading || tectonicLoading;
   
   // Combine all errors for display
-  const allErrors = [volcanoesError, tectonicError, volcanoSamplesError, bboxSamplesError]
+  const allErrors = [volcanoesError, tectonicError, volcanoSamplesError, bboxSamplesError, comparisonSamplesError]
     .filter(Boolean)
     .join(' | ');
   const error = allErrors || null;
@@ -551,6 +630,7 @@ const MapPage = () => {
       {/* Map Component */}
       <VolcanoMap
         samples={samples}
+        comparisonSamples={comparisonSamples}
         volcanoes={volcanoes}
         tectonicBoundaries={tectonicBoundaries}
         viewState={viewport}
@@ -564,7 +644,7 @@ const MapPage = () => {
         onSampleClick={handleSampleClick}
         onViewportChange={handleViewportChange}
         activeBbox={currentBbox}
-        comparisonBbox={comparisonBbox}
+        comparisonBbox={comparisonMode === 'bbox' ? comparisonBbox : null}
         drawingBboxProp={getDrawingBbox()}
         drawingBboxVariant={bboxDrawMode === 'comparison' ? 'comparison' : 'primary'}
         isDrawingBbox={isDrawingBbox}
@@ -662,6 +742,13 @@ const MapPage = () => {
         isDrawingComparisonBbox={isDrawingComparisonBbox}
         onStartComparisonBbox={handleStartComparisonBbox}
         onClearComparisonBbox={handleClearComparisonBbox}
+        comparisonMode={comparisonMode}
+        onComparisonModeChange={setComparisonMode}
+        comparisonVolcano={comparisonVolcano}
+        onComparisonVolcanoChange={setComparisonVolcano}
+        comparisonSamples={comparisonSamples}
+        comparisonLoading={loadingComparisonSamples}
+        comparisonError={comparisonSamplesError}
       />
 
       {/* Filter Button */}
