@@ -43,8 +43,7 @@ interface MapInteractionInfo {
 }
 
 const buildRadarComparisonFilters = (
-  sampleFilters: SampleFilters,
-  selectedConfidenceLevels: ConfidenceLevel[]
+  sampleFilters: SampleFilters
 ): SampleFilters => ({
   database: sampleFilters.database,
   rock_type: sampleFilters.rock_type,
@@ -52,7 +51,6 @@ const buildRadarComparisonFilters = (
   min_sio2: sampleFilters.min_sio2,
   max_sio2: sampleFilters.max_sio2,
   material: 'WR',
-  confidence_levels: selectedConfidenceLevels,
 });
 
 const MapPage = () => {
@@ -287,7 +285,7 @@ const MapPage = () => {
 
       try {
         const response = await fetchSamples({
-          ...buildRadarComparisonFilters(sampleFilters, selectedConfidenceLevels),
+          ...buildRadarComparisonFilters(sampleFilters),
           ...(comparisonMode === 'volcano' && comparisonVolcano
             ? { volcano_number: comparisonVolcano.volcano_number }
             : {}),
@@ -310,7 +308,7 @@ const MapPage = () => {
     };
 
     fetchComparisonSamples();
-  }, [comparisonBbox, comparisonMode, comparisonVolcano, sampleFilters, selectedConfidenceLevels]);
+  }, [comparisonBbox, comparisonMode, comparisonVolcano, sampleFilters]);
   
   // Detect when user applies filters from FilterPanel (excluding just limit changes)
   // Also detect when filters are CLEARED (empty object) to prevent unnecessary fetches
@@ -348,6 +346,10 @@ const MapPage = () => {
   const chartFilteredSamples = useMemo(() => {
     return filterSamplesByConfidence(chartScopeSamples, selectedConfidenceLevels);
   }, [chartScopeSamples, selectedConfidenceLevels]);
+
+  const filteredComparisonSamples = useMemo(() => {
+    return filterSamplesByConfidence(comparisonSamples, selectedConfidenceLevels);
+  }, [comparisonSamples, selectedConfidenceLevels]);
 
   const downloadableSamples = chartFilteredSamples;
 
@@ -630,7 +632,7 @@ const MapPage = () => {
       {/* Map Component */}
       <VolcanoMap
         samples={samples}
-        comparisonSamples={comparisonSamples}
+        comparisonSamples={filteredComparisonSamples}
         volcanoes={volcanoes}
         tectonicBoundaries={tectonicBoundaries}
         viewState={viewport}
@@ -746,7 +748,7 @@ const MapPage = () => {
         onComparisonModeChange={setComparisonMode}
         comparisonVolcano={comparisonVolcano}
         onComparisonVolcanoChange={setComparisonVolcano}
-        comparisonSamples={comparisonSamples}
+        comparisonSamples={filteredComparisonSamples}
         comparisonLoading={loadingComparisonSamples}
         comparisonError={comparisonSamplesError}
       />
