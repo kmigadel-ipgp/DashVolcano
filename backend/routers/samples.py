@@ -7,7 +7,11 @@ from bson import ObjectId
 from typing import Optional, List
 
 from backend.dependencies import get_database
-from backend.services.sample_filters import build_sample_match_query
+from backend.services.sample_filters import (
+    build_confidence_filter_stages,
+    build_sample_match_query,
+    parse_confidence_levels,
+)
 
 router = APIRouter()
 
@@ -26,6 +30,11 @@ async def get_samples(
         description="Bounding box as 'min_lon,min_lat,max_lon,max_lat' (e.g., '-10,35,20,60')",
         pattern=r"^-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?$"
     ),
+    material: Optional[str] = Query(None, description="Filter by material (comma-separated for multiple)"),
+    confidence_levels: Optional[str] = Query(
+        None,
+        description="Confidence levels to include (comma-separated: high,medium,low,unknown)",
+    ),
     limit: Optional[int] = Query(None, ge=1, le=100000, description="Maximum number of results (default: None = no limit, max: 100000)"),
     offset: int = Query(0, ge=0, description="Pagination offset")
 ):
@@ -35,6 +44,7 @@ async def get_samples(
     Bounding box format: min_lon,min_lat,max_lon,max_lat
     Example: bbox=-10,35,20,60 (covers Western Europe)
     """
+    selected_confidence_levels = parse_confidence_levels(confidence_levels)
     query = build_sample_match_query(
         rock_type=rock_type,
         database=database,
@@ -43,7 +53,9 @@ async def get_samples(
         max_sio2=max_sio2,
         volcano_number=volcano_number,
         bbox=bbox,
+        material=material,
     )
+    confidence_stages = build_confidence_filter_stages(selected_confidence_levels)
     
     # Project only necessary fields for performance
     # Minimize data transfer by excluding large nested objects unless specifically needed
@@ -88,10 +100,7 @@ async def get_samples(
     }
     
     # Use aggregation pipeline to enrich samples with volcano rock_type via lookup
-    pipeline = [
-        {"$match": query},
-        {"$skip": offset},
-    ]
+    pipeline = [{"$match": query}, *confidence_stages, {"$skip": offset}]
     
     if limit is not None:
         pipeline.append({"$limit": limit})
@@ -152,8 +161,10 @@ async def get_samples(
                 # Remove from root level to avoid duplication
                 del sample[oxide]
     
-    # Get total count for the query (useful for pagination)
-    total_count = db.samples.count_documents(query)
+    # Get total count for the fully filtered query (useful for pagination)
+    count_pipeline = [{"$match": query}, *confidence_stages, {"$count": "total"}]
+    count_result = list(db.samples.aggregate(count_pipeline, batchSize=10000))
+    total_count = count_result[0]["total"] if count_result else 0
     
     return {
         "count": len(samples),
