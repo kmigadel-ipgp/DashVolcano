@@ -43,8 +43,7 @@ interface MapInteractionInfo {
 }
 
 const buildRadarComparisonFilters = (
-  sampleFilters: SampleFilters,
-  selectedConfidenceLevels: ConfidenceLevel[]
+  sampleFilters: SampleFilters
 ): SampleFilters => ({
   database: sampleFilters.database,
   rock_type: sampleFilters.rock_type,
@@ -52,7 +51,6 @@ const buildRadarComparisonFilters = (
   min_sio2: sampleFilters.min_sio2,
   max_sio2: sampleFilters.max_sio2,
   material: 'WR',
-  confidence_levels: selectedConfidenceLevels,
 });
 
 const MapPage = () => {
@@ -287,7 +285,7 @@ const MapPage = () => {
 
       try {
         const response = await fetchSamples({
-          ...buildRadarComparisonFilters(sampleFilters, selectedConfidenceLevels),
+          ...buildRadarComparisonFilters(sampleFilters),
           ...(comparisonMode === 'volcano' && comparisonVolcano
             ? { volcano_number: comparisonVolcano.volcano_number }
             : {}),
@@ -310,7 +308,7 @@ const MapPage = () => {
     };
 
     fetchComparisonSamples();
-  }, [comparisonBbox, comparisonMode, comparisonVolcano, sampleFilters, selectedConfidenceLevels]);
+  }, [comparisonBbox, comparisonMode, comparisonVolcano, sampleFilters]);
   
   // Detect when user applies filters from FilterPanel (excluding just limit changes)
   // Also detect when filters are CLEARED (empty object) to prevent unnecessary fetches
@@ -348,6 +346,18 @@ const MapPage = () => {
   const chartFilteredSamples = useMemo(() => {
     return filterSamplesByConfidence(chartScopeSamples, selectedConfidenceLevels);
   }, [chartScopeSamples, selectedConfidenceLevels]);
+
+  const filteredPrimarySamples = useMemo(() => {
+    return filterSamplesByConfidence(samples, selectedConfidenceLevels);
+  }, [samples, selectedConfidenceLevels]);
+
+  const visibleSelectedSamples = useMemo(() => {
+    return filterSamplesByConfidence(selectedSamples, selectedConfidenceLevels);
+  }, [selectedSamples, selectedConfidenceLevels]);
+
+  const filteredComparisonSamples = useMemo(() => {
+    return filterSamplesByConfidence(comparisonSamples, selectedConfidenceLevels);
+  }, [comparisonSamples, selectedConfidenceLevels]);
 
   const downloadableSamples = chartFilteredSamples;
 
@@ -513,9 +523,7 @@ const MapPage = () => {
 
   // Track total sample count when bbox is applied
   useEffect(() => {
-    if (samples && samples.length > 0) {
-      setTotalSamplesCount(samples.length);
-    }
+    setTotalSamplesCount(samples.length);
   }, [samples]);
 
   // ESC key to cancel bbox drawing
@@ -629,8 +637,8 @@ const MapPage = () => {
 
       {/* Map Component */}
       <VolcanoMap
-        samples={samples}
-        comparisonSamples={comparisonSamples}
+        samples={filteredPrimarySamples}
+        comparisonSamples={filteredComparisonSamples}
         volcanoes={volcanoes}
         tectonicBoundaries={tectonicBoundaries}
         viewState={viewport}
@@ -656,7 +664,7 @@ const MapPage = () => {
       {(selectionMode === 'lasso' || selectionMode === 'box') && mapDimensions.width > 0 && (
         <SelectionOverlay
           mode={selectionMode}
-          samples={samples}
+          samples={filteredPrimarySamples}
           onSelectionComplete={handleSelectionComplete}
           onCancel={handleSelectionCancel}
           viewState={viewport}
@@ -675,9 +683,9 @@ const MapPage = () => {
 
       {/* Summary Stats */}
       <SummaryStats
-        samples={samples}
+        samples={filteredPrimarySamples}
         volcanoes={volcanoes}
-        selectedSamples={selectedSamples}
+        selectedSamples={visibleSelectedSamples}
         publicationSamples={chartFilteredSamples}
         publicationSampleScopeCount={chartScopeSamples.length}
         loading={isLoading}
@@ -706,9 +714,10 @@ const MapPage = () => {
         {/* Selection Toolbar */}
         <SelectionToolbar
           mode={selectionMode}
-          selectedCount={selectedSamples.length}
+          selectedCount={visibleSelectedSamples.length}
+          totalSelectedCount={selectedSamples.length}
           downloadSampleCount={downloadableSamples.length}
-          filteredSampleCount={samples.length}
+          filteredSampleCount={filteredPrimarySamples.length}
           hasBboxFilter={currentBbox !== null}
           onModeChange={setSelectionMode}
           onClearSelection={clearSelection}
@@ -720,7 +729,7 @@ const MapPage = () => {
         <BboxSearchWidget
           bbox={currentBbox}
           isDrawing={bboxDrawMode === 'primary'}
-          sampleCount={samples?.length}
+          sampleCount={filteredPrimarySamples.length}
           totalSamples={totalSamplesCount}
           onStartDrawing={handleStartDrawing}
           onSetPresetRegion={handleSetPresetRegion}
@@ -746,7 +755,7 @@ const MapPage = () => {
         onComparisonModeChange={setComparisonMode}
         comparisonVolcano={comparisonVolcano}
         onComparisonVolcanoChange={setComparisonVolcano}
-        comparisonSamples={comparisonSamples}
+        comparisonSamples={filteredComparisonSamples}
         comparisonLoading={loadingComparisonSamples}
         comparisonError={comparisonSamplesError}
       />
