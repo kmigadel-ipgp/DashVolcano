@@ -168,13 +168,16 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
             const label = getConfidenceLabel(confidence);
             const icon = getConfidenceIcon(confidence);
 
-            // Determine which components are available using helper
-            const components = [
-              { key: 'sp', label: 'Spatial', value: getMatchingScoreValue(scores, 'sp'), weight: 0.4 },
-              { key: 'te', label: 'Tectonic', value: getMatchingScoreValue(scores, 'te'), weight: 0.2 },
-              { key: 'pe', label: 'Petrological', value: getMatchingScoreValue(scores, 'pe'), weight: 0.3 },
-              { key: 'ti', label: 'Temporal', value: getMatchingScoreValue(scores, 'ti'), weight: 0.1 },
-            ].filter(c => c.value !== undefined);
+            // Backend score weights from volcano-sample-matcher.
+            const allComponents = [
+              { key: 'sp', label: 'Spatial', value: getMatchingScoreValue(scores, 'sp'), weight: 0.35 },
+              { key: 'te', label: 'Tectonic', value: getMatchingScoreValue(scores, 'te'), weight: 0.25 },
+              { key: 'pe', label: 'Petrological', value: getMatchingScoreValue(scores, 'pe'), weight: 0.25 },
+              { key: 'ti', label: 'Temporal', value: getMatchingScoreValue(scores, 'ti'), weight: 0.15 },
+            ];
+
+            const components = allComponents.filter(c => c.value !== undefined);
+            const missingComponents = allComponents.filter(c => c.value === undefined);
 
             const formulaParts = components.map(c => 
               `(${(c.value! * 100).toFixed(1)}% × ${c.weight})`
@@ -202,13 +205,19 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                         <p className="font-semibold mb-2">How is this calculated?</p>
                         
                         <p className="mb-2">
-                          This match score combines four independent geological dimensions: 
+                          This score combines four geological dimensions used by the backend:
                           Spatial, Tectonic, Petrological, and Temporal.
                         </p>
-                        
+
                         <p className="mb-2">
-                          Each dimension produces a score between 0 and 1. 
-                          The final score is a weighted average of the available dimensions.
+                          Each dimension contributes a score between 0 and 1. The final score is a
+                          weighted average over the dimensions that are actually available.
+                        </p>
+
+                        <p className="mb-2">
+                          A volcano is assigned only if the best candidate reaches at least 40% final
+                          score and 30% weighted coverage. Literature evidence is excluded from this
+                          geological score.
                         </p>
                         
                         {/* Component Scores with Weights and Explanations */}
@@ -403,249 +412,60 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                               
                               {/* Temporal Score Explanation */}
                               {c.key === 'ti' && showTemporalExplanation && (
-                                <div className="mt-1 pl-2 text-xs bg-white p-2 rounded border border-blue-200">
+                                  <div className="mt-1 pl-2 text-xs bg-white p-2 rounded border border-blue-200">
                                   <p className="font-semibold mb-1">Temporal Score Calculation:</p>
-                                  <p className="mb-1">All GVP volcanoes are Holocene (0-11,700 years BP). Score measures temporal compatibility:</p>
-                                  <ul className="list-disc ml-4 space-y-0.5">
-                                    <li><strong>Dated eruptions:</strong> within Holocene = 1.0, outside = 0.0</li>
-                                    <li><strong>Age classes:</strong> Holocene/Recent = 1.0, Pleistocene = 0.7, Neogene = 0.3, older = 0.0</li>
-                                    <li><strong>Precision modifier:</strong> applies gentle adjustment (0.85-1.15) based on data quality</li>
-                                  </ul>
-                                  
-                                  {/* Dynamic Example */}
-                                  {(() => {
-                                    const HOLOCENE_MIN = 0;
-                                    const HOLOCENE_MAX = 11700;
-                                    
-                                    // Extract temporal data from sample
-                                    const geologicalAge = sample.geological_age;
-                                    const eruptionDate = sample.eruption_date;
-                                    
-                                    // Helper function to normalize age strings (from Python backend)
-                                    const normalizeAgeString = (ageText: string | undefined): string | null => {
-                                      if (!ageText) return null;
-                                      const normalized = ageText.toUpperCase().trim();
-                                      
-                                      // Skip invalid values
-                                      if (['NO DATA (CHECKED)', 'NO DATA', 'UNKNOWN', 'NAN'].includes(normalized)) {
+                                    <p className="mb-1">
+                                      The backend temporal score tests whether the sample is compatible with
+                                      Holocene volcanism, using 0 to 11,700 years BP as the reference window.
+                                    </p>
+                                    <ul className="list-disc ml-4 space-y-0.5 mb-2">
+                                      <li><strong>Quantitative ages first:</strong> dated eruptions or age intervals are scored from their overlap with the Holocene window.</li>
+                                      <li><strong>Textual fallback:</strong> Holocene/Recent = 1.0, Pleistocene = 0.7, Neogene = 0.3, older = 0.0.</li>
+                                      <li><strong>Precision modifier:</strong> backend precision slightly adjusts the base score, but textual fallback is capped to avoid overconfidence.</li>
+                                    </ul>
+                                    <p className="text-[11px] text-gray-500">
+                                      Ages are normalized in years BP using the backend 1950 reference, not the current calendar year.
+                                    </p>
+
+                                    {(() => {
+                                      const tiMeta = getMatchingScoreMeta(scores, 'ti');
+                                      const base = tiMeta.base;
+                                      const precision = tiMeta.precision;
+                                      const modifier = tiMeta.modifier;
+                                      const finalScore = c.value!;
+
+                                      if (
+                                        base === undefined &&
+                                        precision === undefined &&
+                                        modifier === undefined
+                                      ) {
                                         return null;
                                       }
-                                      
-                                      // Basic normalization
-                                      return normalized
-                                        .replace(/[^\w\s]/g, '')  // Remove special chars
-                                        .replace(/\s+/g, ' ');    // Normalize spaces
-                                    };
-                                    
-                                    // Try dated eruption first (point measurement)
-                                    if (eruptionDate?.year !== undefined) {
-                                      const yearsBP = 2026 - eruptionDate.year;
-                                      const withinHolocene = yearsBP >= HOLOCENE_MIN && yearsBP <= HOLOCENE_MAX;
-                                      const baseScore = withinHolocene ? 1.0 : 0.0;
-                                      
-                                      // Calculate precision (high for dated eruptions)
-                                      let precision = 0.95; // Very high precision for dated eruptions
-                                      
-                                      // Bonus for month/day precision (GEOROC style)
-                                      if (eruptionDate.month !== undefined) {
-                                        precision += 0.02;
-                                      }
-                                      if (eruptionDate.day !== undefined) {
-                                        precision += 0.03;
-                                      }
-                                      
-                                      // Penalize future dates slightly
-                                      const currentYear = 2026;
-                                      // Database-specific minimum precision (GEOROC tends to be more precise)
 
-                                      const min_precision_db = db === 'GEOROC' ? 0.3 : 0.2;
-
-                                      if (eruptionDate.year > currentYear) {
-                                        precision = Math.max(min_precision_db, precision - 0.10);
-                                      }
-                                      
-                                      // Clamp precision using database-specific minimum
-                                      precision = Math.max(min_precision_db, Math.min(1.0, precision));
-                                      
-                                      // Apply precision modifier (gentle adjustment)
-                                      // modifier range: 0.85 to 1.15 (when precision varies from 0.0 to 1.0)
-                                      const modifier = 1.0 + (precision - 0.5) * 0.3;
-                                      const finalScore = baseScore * modifier;
-                                      
-                                      // Clamp final score
-                                      const clampedScore = Math.max(0.0, Math.min(1.0, finalScore));
-                                      
                                       return (
                                         <div className="bg-blue-50 p-2 rounded border border-blue-300 mt-2 space-y-1">
-                                          <p className="font-semibold text-gray-700">For this sample (dated eruption):</p>
-                                          <p className="text-[10px] text-gray-500">Data source: eruption_date</p>
-                                          <p>
-                                            Eruption year: <span className="font-mono text-blue-600">{eruptionDate.year}</span>
-                                            {eruptionDate.month && eruptionDate.day && (
-                                              <span className="text-gray-500"> ({eruptionDate.month}/{eruptionDate.day})</span>
-                                            )}
-                                          </p>
-                                          <p>
-                                            Age: <span className="font-mono text-blue-600">{yearsBP.toFixed(0)} years BP</span>
-                                          </p>
-                                          <p>
-                                            Holocene range: <span className="font-mono text-green-600">{HOLOCENE_MIN}-{HOLOCENE_MAX} years BP</span>
-                                          </p>
-                                          <p className="font-mono text-sm">
-                                            Point {withinHolocene ? 'within' : 'outside'} Holocene → base score = {baseScore.toFixed(1)}
-                                          </p>
-                                          
-                                          {/* Precision calculation */}
-                                          <div className="mt-2 pt-2 border-t border-blue-200">
-                                            <p className="font-semibold text-gray-700 mb-1">Precision modifier:</p>
-                                            <p>
-                                              Data quality: <span className="font-mono text-blue-600">{precision.toFixed(2)}</span>
-                                              <span className="text-gray-500 text-[10px]">
-                                                {' '}(0.95 base
-                                                {eruptionDate.month && ' +0.02 month'}
-                                                {eruptionDate.day && ' +0.03 day'})
-                                              </span>
-                                            </p>
+                                          <p className="font-semibold text-gray-700">Backend values stored for this sample:</p>
+                                          {base !== undefined && (
                                             <p className="font-mono text-sm">
-                                              modifier = 1.0 + ({precision.toFixed(2)} - 0.5) × 0.3 = {modifier.toFixed(3)}
-                                            </p>
-                                            <p className="font-mono text-sm">
-                                              final = {baseScore.toFixed(1)} × {modifier.toFixed(3)} = {finalScore.toFixed(3)}
-                                            </p>
-                                          </div>
-                                          
-                                          <p className="font-mono text-sm font-semibold text-blue-700 pt-2 border-t border-blue-200">
-                                            Final score = {clampedScore.toFixed(3)} = {(clampedScore * 100).toFixed(0)}%
-                                          </p>
-                                        </div>
-                                      );
-                                    }
-                                    
-                                    // Fallback to geological age classification
-                                    if (geologicalAge?.age) {
-                                      const agePrefix = geologicalAge.age_prefix || '';
-                                      const fullAge = agePrefix ? `${agePrefix} ${geologicalAge.age}` : geologicalAge.age;
-                                      const normalized = normalizeAgeString(fullAge);
-                                      
-                                      if (!normalized) {
-                                        return (
-                                          <p className="mt-2 text-gray-500 italic">
-                                            Invalid geological age data
-                                          </p>
-                                        );
-                                      }
-                                      
-                                      // Score by geological period (from Python backend logic)
-                                      let baseScore = 0;
-                                      let scoreReason = '';
-                                      
-                                      if (normalized.includes('HOLOCENE') || normalized.includes('RECENT')) {
-                                        baseScore = 1.0;
-                                        scoreReason = 'Holocene/Recent period';
-                                      } else if (normalized.includes('PLEISTOCENE')) {
-                                        baseScore = 0.7;
-                                        scoreReason = 'Pleistocene (potentially compatible)';
-                                      } else if (normalized.includes('PLIOCENE') || normalized.includes('MIOCENE') || normalized.includes('NEOGENE')) {
-                                        baseScore = 0.3;
-                                        scoreReason = 'Neogene (unlikely but possible)';
-                                      } else {
-                                        baseScore = 0.0;
-                                        scoreReason = 'Pre-Neogene (incompatible)';
-                                      }
-                                      
-                                      // Calculate precision (low for textual ages, with prefix refinement)
-                                      // Database-specific minimum precision (GEOROC tends to be more precise)
-                                      const min_precision_db = db === 'GEOROC' ? 0.3 : 0.2;
-                                      let precision = min_precision_db; // Base precision for textual data (database-specific)
-                                      
-                                      // Refinement by age prefix (PetDB style)
-                                      if (agePrefix) {
-                                        const prefixUpper = agePrefix.toUpperCase();
-                                        if (['LATE', 'UPPER', 'RECENT'].includes(prefixUpper)) {
-                                          precision += 0.05;
-                                        } else if (['EARLY', 'LOWER'].includes(prefixUpper)) {
-                                          precision -= 0.05;
-                                        }
-                                      }
-                                      
-                                      // Clamp precision using database-specific minimum
-                                      precision = Math.max(min_precision_db, Math.min(0.95, precision));
-                                      
-                                      // Apply precision modifier
-                                      const modifier = 1.0 + (precision - 0.5) * 0.3;
-                                      const finalScore = baseScore * modifier;
-                                      
-                                      // Textual age class scores are capped at 0.8 to avoid overconfidence
-                                      const cappedScore = Math.min(finalScore, 0.8);
-                                      
-                                      // Clamp to valid range
-                                      const clampedScore = Math.max(0.0, Math.min(1.0, cappedScore));
-                                      
-                                      return (
-                                        <div className="bg-blue-50 p-2 rounded border border-blue-300 mt-2 space-y-1">
-                                          <p className="font-semibold text-gray-700">For this sample (age class):</p>
-                                          <p className="text-[10px] text-gray-500">Data source: geological_age (textual)</p>
-                                          <p>
-                                            Age: <span className="font-mono text-blue-600">{fullAge}</span>
-                                            {normalized !== fullAge.toUpperCase() && (
-                                              <span className="text-gray-500 text-[10px]"> (normalized: {normalized})</span>
-                                            )}
-                                          </p>
-                                          <p className="font-mono text-sm">
-                                            {scoreReason} → base score = {baseScore.toFixed(1)}
-                                          </p>
-                                          
-                                          {/* Precision calculation */}
-                                          <div className="mt-2 pt-2 border-t border-blue-200">
-                                            <p className="font-semibold text-gray-700 mb-1">Precision modifier:</p>
-                                            <p>
-                                              Data quality: <span className="font-mono text-blue-600">{precision.toFixed(2)}</span>
-                                              <span className="text-gray-500 text-[10px]">
-                                                {' '}({min_precision_db.toFixed(2)} {db} base
-                                                {agePrefix && (['LATE', 'UPPER', 'RECENT'].includes(agePrefix.toUpperCase()) ? ' +0.05 prefix' : 
-                                                               ['EARLY', 'LOWER'].includes(agePrefix.toUpperCase()) ? ' -0.05 prefix' : '')})
-                                              </span>
-                                            </p>
-                                            <p className="font-mono text-sm">
-                                              modifier = 1.0 + ({precision.toFixed(2)} - 0.5) × 0.3 = {modifier.toFixed(3)}
-                                            </p>
-                                            <p className="font-mono text-sm">
-                                              score = {baseScore.toFixed(1)} × {modifier.toFixed(3)} = {finalScore.toFixed(3)}
-                                            </p>
-                                          </div>
-                                          
-                                          {cappedScore < finalScore && (
-                                            <p className="text-amber-600 text-[10px] pt-1">
-                                              ⚠️ Textual age capped at 0.8 to avoid overconfidence
+                                              Base score = <span className="text-blue-700">{(base * 100).toFixed(1)}%</span>
                                             </p>
                                           )}
-                                          
-                                          <p className="font-mono text-sm font-semibold text-blue-700 pt-2 border-t border-blue-200">
-                                            Final score = {clampedScore.toFixed(3)} = {(clampedScore * 100).toFixed(0)}%
+                                          {precision !== undefined && (
+                                            <p className="font-mono text-sm">
+                                              Precision = <span className="text-blue-700">{precision.toFixed(3)}</span>
+                                            </p>
+                                          )}
+                                          {modifier !== undefined && (
+                                            <p className="font-mono text-sm">
+                                              Modifier = <span className="text-blue-700">{modifier.toFixed(3)}</span>
+                                            </p>
+                                          )}
+                                          <p className="font-mono text-sm font-semibold text-blue-700">
+                                            Final temporal score = {(finalScore * 100).toFixed(1)}%
                                           </p>
-                                          
-                                          {/* Reference scale */}
-                                          <div className="mt-2 pt-2 border-t border-blue-200">
-                                            <p className="text-[10px] text-gray-600 font-semibold">Age class scoring:</p>
-                                            <ul className="text-[10px] text-gray-500 list-disc ml-4">
-                                              <li>Holocene/Recent: 1.0 (compatible)</li>
-                                              <li>Pleistocene: 0.7 (potentially compatible)</li>
-                                              <li>Neogene: 0.3 (unlikely)</li>
-                                              <li>Older: 0.0 (incompatible)</li>
-                                              <li>Textual ages capped at 0.8 max</li>
-                                            </ul>
-                                          </div>
                                         </div>
                                       );
-                                    }
-                                    
-                                    // No temporal data available
-                                    return (
-                                      <p className="mt-2 text-gray-500 italic">
-                                        No temporal data available (geological_age or eruption_date missing)
-                                      </p>
-                                    );
-                                  })()}
+                                    })()}
                                 </div>
                               )}
                             </div>
@@ -665,7 +485,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
 
                         {components.length < 4 && (
                           <p className="text-amber-600 mt-1 italic text-[11px]">
-                            ⚠️ Missing dimensions are excluded from the denominator.
+                            ⚠️ Missing dimensions are excluded from the denominator, so coverage falls as weighted evidence is missing.
                           </p>
                         )}
                       </div>
@@ -691,21 +511,25 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                       {showCoverageExplanation && (
                         <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-gray-600 leading-relaxed">
                           <p className="mb-2">
-                            <strong>Coverage</strong> shows how many data dimensions (spatial, tectonic, petrological, temporal) 
-                            are available for this match. Higher coverage = more reliable match.
+                            <strong>Coverage</strong> is the share of weighted evidence available for this match,
+                            not a simple count of dimensions. The backend weights are Spatial 35%, Tectonic 25%,
+                            Petrological 25%, and Temporal 15%.
                           </p>
-                          
-                          {/* Dynamic Example */}
+
                           <div className="bg-white p-2 rounded border border-blue-200 space-y-1">
                             <p className="font-semibold text-gray-700">For this sample:</p>
                             <p>
-                              <span className="font-mono text-blue-600">{components.length}/4 dimensions</span> are available 
-                              = <span className="font-mono text-blue-600">{(coverage * 100).toFixed(0)}%</span> coverage
+                              <span className="font-mono text-blue-600">{(coverage * 100).toFixed(0)}%</span> of the total
+                              weighted evidence is available.
                             </p>
                             <div className="mt-1">
-                              <p className="text-green-700">✓ Available: {components.map(c => c.label).join(', ')}</p>
-                              {components.length < 4 && (
-                                <p className="text-orange-600">✗ Missing: {['Spatial', 'Tectonic', 'Petrological', 'Temporal'].filter(d => !components.some(c => c.label === d)).join(', ')}</p>
+                              <p className="text-green-700">
+                                ✓ Available: {components.map(c => `${c.label} (${(c.weight * 100).toFixed(0)}%)`).join(', ')}
+                              </p>
+                              {missingComponents.length > 0 && (
+                                <p className="text-orange-600">
+                                  ✗ Missing: {missingComponents.map(c => `${c.label} (${(c.weight * 100).toFixed(0)}%)`).join(', ')}
+                                </p>
                               )}
                             </div>
                           </div>
@@ -733,8 +557,9 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                       {showUncertaintyExplanation && (
                         <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-gray-600 leading-relaxed">
                           <p>
-                            <strong>Uncertainty</strong> = 1 − Coverage. It represents the proportion of missing data dimensions. 
-                            Lower uncertainty = more complete evidence.
+                            <strong>Uncertainty</strong> = 1 − Coverage. It represents the share of weighted
+                            evidence that is missing from the geological comparison. Lower uncertainty means the
+                            backend had a more complete basis for scoring this sample.
                           </p>
                         </div>
                       )}
@@ -760,16 +585,16 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                       {showGapExplanation && (
                         <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-gray-600 leading-relaxed">
                           <p className="mb-2">
-                            <strong>Score Gap</strong> is the difference between the best match score and the second-best match score. 
-                            A larger gap indicates a clearer, more unambiguous match.
+                            <strong>Score Gap</strong> is the difference between the best candidate and the
+                            second-best candidate for the same sample.
                           </p>
                           <ul className="list-disc ml-4 space-y-0.5">
-                            <li><strong>High gap (≥30%):</strong> Clear winner, unambiguous match</li>
-                            <li><strong>Medium gap (≥20%):</strong> Good distinction between matches</li>
-                            <li><strong>Low gap (&lt;20%):</strong> Ambiguous, multiple similar candidates</li>
+                            <li><strong>Gap &lt; 10%:</strong> backend treats the result as ambiguous unless explicit literature support exists.</li>
+                            <li><strong>Gap ≥ 20%:</strong> can support medium confidence when score and coverage are also sufficient.</li>
+                            <li><strong>Gap ≥ 30%:</strong> can support high confidence when the rest of the evidence is strong enough.</li>
                           </ul>
                           <p className="mt-1 text-gray-500 italic">
-                            Used in confidence calculation to detect ambiguous matches
+                            A large gap helps confidence, but gap alone does not determine the final label.
                           </p>
                         </div>
                       )}
@@ -803,12 +628,24 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                       </div>
                     {showConfidenceExplanation && (
                       <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-gray-600 leading-relaxed space-y-2">
-                        <p className="font-semibold text-gray-800">Confidence is not just about score — it's a geological decision tree</p>
+                        <p className="font-semibold text-gray-800">Confidence is not the same thing as score.</p>
                         
                         <p className="text-gray-700">
-                          The confidence assessment follows a <strong>hierarchical logic</strong> with blocking rules. 
-                          High match scores can still result in low confidence if fundamental criteria are not met.
+                          The backend first decides whether a volcano can be assigned at all, then assigns a
+                          confidence label based on score strength, weighted coverage, ambiguity, spatial
+                          uncertainty, and optional literature support.
                         </p>
+
+                        <div className="bg-white p-2 rounded border border-blue-300">
+                          <p className="font-semibold text-blue-800 mb-1">Stage 0: Assignment</p>
+                          <ul className="text-[11px] space-y-0.5 ml-3">
+                            <li>• <strong>Best candidate score ≥ 40%</strong></li>
+                            <li>• <strong>Coverage ≥ 30%</strong></li>
+                          </ul>
+                          <p className="text-[11px] text-gray-600 mt-1">
+                            If either condition fails, the backend keeps the sample unmatched. This is a valid result, not an error.
+                          </p>
+                        </div>
 
                         {/* Stage 1: Data Sufficiency */}
                         <div className="bg-white p-2 rounded border border-blue-300">
@@ -825,7 +662,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                           <ul className="text-[11px] space-y-0.5 ml-3">
                             <li>• <strong>Score Gap &lt; 10%</strong> → <span className="text-orange-600 font-semibold">Low confidence</span> (unless literature)</li>
                             <li className="text-gray-600">→ Multiple similar candidates = uncertain match</li>
-                            <li>• <strong>High spatial uncertainty + low coverage</strong> → <span className="text-orange-600 font-semibold">Low confidence</span></li>
+                            <li>• <strong>Spatial uncertainty &gt; 70% and coverage &lt; 60%</strong> → <span className="text-orange-600 font-semibold">Low confidence</span></li>
                             <li className="text-gray-600">→ Unreliable location weakens other evidence</li>
                           </ul>
                         </div>
@@ -840,7 +677,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                               <div className="text-gray-600 ml-3">→ Strong multi-dimensional evidence</div>
                             </li>
                             <li>
-                              <strong className="text-blue-700">Medium:</strong> Score ≥50%, Coverage ≥50%, Gap ≥20%
+                              <strong className="text-blue-700">Medium:</strong> Score ≥50%, Coverage ≥40%, Gap ≥20%
                               <div className="text-gray-600 ml-3">→ Reasonable but incomplete evidence</div>
                             </li>
                             <li>
@@ -856,7 +693,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                           <ul className="text-[11px] space-y-0.5 ml-3">
                             <li>• Can <strong>raise confidence by one level</strong> (Low→Medium or Medium→High)</li>
                             <li>• <strong>Cannot override</strong> missing data or ambiguity blocks</li>
-                            <li className="text-gray-600">→ Literature validates but doesn't replace geological evidence</li>
+                            <li className="text-gray-600">→ It supports confidence only; it does not change the geological score.</li>
                           </ul>
                         </div>
 
@@ -867,7 +704,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                             A sample with <strong>Score=85%</strong> might still be <strong>Low confidence</strong> if:
                           </p>
                           <ul className="text-[11px] ml-3 mt-1">
-                            <li>• Only 2/4 dimensions available (coverage &lt;40%)</li>
+                            <li>• Too little weighted evidence is available (coverage &lt;40%)</li>
                             <li>• Another volcano scores 82% (ambiguous, gap=3%)</li>
                             <li>• Spatial data is highly uncertain</li>
                           </ul>
@@ -877,7 +714,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                         </div>
 
                         <p className="text-[10px] text-gray-500 italic mt-2">
-                          This hierarchical approach prevents overconfidence when fundamental geological criteria are not met.
+                          Confidence reflects reliability of the assignment, not just the size of the score.
                         </p>
                       </div>
                     )}
@@ -897,7 +734,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                       </button>
                     </div>
                     <div className="flex-1">
-                      <p className="text-xs text-gray-500">Literature confirms association</p>
+                      <p className="text-xs text-gray-500">Supporting Literature Evidence</p>
                       <p className="text-sm font-medium font-mono">
                         {(matching_metadata.evidence.lit.conf * 100).toFixed(0)}%
                       </p>
@@ -905,9 +742,15 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                         <div className="mt-2 p-2 bg-indigo-50 border border-indigo-200 rounded text-xs text-gray-600 leading-relaxed">
                           <p className="font-semibold mb-1">Literature Evidence</p>
                           <p>
-                            Published scientific literature confirms this sample-volcano association. 
-                            This provides independent validation of the geological match.
+                            This is supporting text-based evidence derived from the sample citation metadata.
+                            It can raise confidence, but it does not modify the geological score and does not
+                            force an assignment on its own.
                           </p>
+                          {matching_metadata.evidence.lit.type && matching_metadata.evidence.lit.type !== 'none' && (
+                            <p className="mt-1.5 text-indigo-600">
+                              <strong>Match type:</strong> {matching_metadata.evidence.lit.type}
+                            </p>
+                          )}
                           {matching_metadata.evidence.lit.src && (
                             <p className="mt-1.5 text-indigo-600">
                               <strong>Source:</strong> {matching_metadata.evidence.lit.src}
