@@ -70,7 +70,7 @@ async def get_samples(
         "material": 1,
         "matching_metadata": 1,  # Include full matching_metadata structure
         "references": 1,
-        "geo_age": 1,  # Include temporal data for score explanations
+        "geological_age": 1,  # Include temporal data for score explanations
         "eruption_date": 1,   # Include eruption date for temporal calculations
         # Include key oxides for TAS/AFM plots (only what's needed)
         # Support both structures: oxides in nested object or at root level

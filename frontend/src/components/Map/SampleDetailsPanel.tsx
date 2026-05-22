@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, MapPin, Mountain, Database, Layers, FileText, Info } from 'lucide-react';
-import type { Sample } from '../../types';
+import type { DateInfo, Sample } from '../../types';
+import { formatDateInfo } from '../../utils/dateUtils';
 import { 
   normalizeConfidence, 
   getConfidenceColorHex, 
@@ -11,6 +12,385 @@ import {
   isMatched
 } from '../../utils/confidence';
 import { getMatchingScoreMeta, getMatchingScoreValue } from '../../utils/matchingMetadata';
+
+const BP_REFERENCE_YEAR = 1950;
+const HOLOCENE_MAX_BP = 11700;
+const TIMELINE_MAX_BP = 40000;
+const HOLOCENE_LEFT_PERCENT = ((TIMELINE_MAX_BP - HOLOCENE_MAX_BP) / TIMELINE_MAX_BP) * 100;
+const TIMELINE_MIN_WIDTH_PERCENT = 1;
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const HATCHED_FILL = 'repeating-linear-gradient(135deg, rgba(15, 23, 42, 0.18) 0, rgba(15, 23, 42, 0.18) 4px, transparent 4px, transparent 8px)';
+
+type CalendarDate = {
+  year: number;
+  month: number;
+  day: number;
+};
+
+type DatePrecision = 'year' | 'month' | 'day';
+
+type QualitativeBucket = 'holocene' | 'pleistocene' | 'other';
+
+const QUALITATIVE_BUCKETS: Array<{
+  key: QualitativeBucket;
+  label: string;
+  color: string;
+}> = [
+  { key: 'holocene', label: 'Holocene / Recent', color: 'rgba(96, 165, 250, 0.35)' },
+  { key: 'pleistocene', label: 'Pleistocene', color: 'rgba(251, 191, 36, 0.35)' },
+  { key: 'other', label: 'Other', color: 'rgba(203, 213, 225, 0.5)' },
+];
+
+type QuantitativeTemporalTimeline = {
+  kind: 'dated-interval' | 'geological-interval';
+  sourceKindLabel: string;
+  sourceValueLabel: string;
+  derivedIntervalLabel: string;
+  legendLabel: string;
+  summary: string;
+  clippedOlder: boolean;
+  intervalLeft: number;
+  intervalWidth: number;
+  overlapLeft: number;
+  overlapWidth: number;
+  overlapRatio: number;
+};
+
+type QualitativeTemporalTimeline = {
+  kind: 'geological-label';
+  sourceKindLabel: string;
+  sourceValueLabel: string;
+  category: QualitativeBucket;
+  categoryLabel: string;
+  fallbackScore: number;
+  summary: string;
+};
+
+type TemporalTimeline =
+  | QuantitativeTemporalTimeline
+  | QualitativeTemporalTimeline
+  | {
+      kind: 'none';
+    };
+
+const isFiniteNumber = (value: unknown): value is number => (
+  typeof value === 'number' && Number.isFinite(value)
+);
+
+const clamp = (value: number, min: number, max: number) => (
+  Math.min(Math.max(value, min), max)
+);
+
+const formatBp = (value: number) => {
+  const normalized = Math.max(0, value);
+
+  if (normalized >= 1000) {
+    const scaled = normalized / 1000;
+    return `${scaled.toFixed(Number.isInteger(scaled) ? 0 : 1)} ka BP`;
+  }
+
+  return `${Math.round(normalized)} BP`;
+};
+
+const formatCalendarYear = (year: number) => (
+  year < 0 ? `${Math.abs(year)} BCE` : `${year} CE`
+);
+
+const formatOverlapRatio = (value: number) => `${(value * 100).toFixed(1)}%`;
+
+const createHatchedFill = (backgroundColor: string): React.CSSProperties => ({
+  backgroundColor,
+  backgroundImage: HATCHED_FILL,
+});
+
+const toTimelinePercent = (ageBp: number) => (
+  ((TIMELINE_MAX_BP - clamp(ageBp, 0, TIMELINE_MAX_BP)) / TIMELINE_MAX_BP) * 100
+);
+
+const isLeapYear = (year: number) => {
+  const astronomicalYear = year < 0 ? year + 1 : year;
+
+  if (astronomicalYear % 4 !== 0) {
+    return false;
+  }
+
+  if (astronomicalYear % 100 !== 0) {
+    return true;
+  }
+
+  return astronomicalYear % 400 === 0;
+};
+
+const getDaysInMonth = (year: number, month: number) => {
+  if (month === 2) {
+    return isLeapYear(year) ? 29 : 28;
+  }
+
+  if ([4, 6, 9, 11].includes(month)) {
+    return 30;
+  }
+
+  return 31;
+};
+
+const getDayOfYear = (date: CalendarDate) => {
+  let total = date.day;
+
+  for (let month = 1; month < date.month; month += 1) {
+    total += getDaysInMonth(date.year, month);
+  }
+
+  return total;
+};
+
+const formatCalendarDate = (date: CalendarDate) => (
+  `${date.day} ${MONTH_NAMES[date.month - 1]} ${formatCalendarYear(date.year)}`
+);
+
+const calendarDateToBp = (date: CalendarDate, boundary: 'start' | 'end') => {
+  const dayOfYear = getDayOfYear(date);
+  const daysInYear = isLeapYear(date.year) ? 366 : 365;
+  const continuousYear = date.year < 0 ? date.year + 1 : date.year;
+  const decimalYear = boundary === 'start'
+    ? continuousYear + ((dayOfYear - 1) / daysInYear)
+    : continuousYear + (dayOfYear / daysInYear);
+
+  return Math.max(0, BP_REFERENCE_YEAR - decimalYear);
+};
+
+const buildQuantitativeTimeline = (
+  kind: QuantitativeTemporalTimeline['kind'],
+  olderBp: number,
+  youngerBp: number,
+  sourceKindLabel: string,
+  sourceValueLabel: string,
+  derivedIntervalLabel: string,
+  legendLabel: string,
+  intro: string,
+): QuantitativeTemporalTimeline => {
+  const normalizedOlderBp = Math.max(olderBp, youngerBp);
+  const normalizedYoungerBp = Math.min(olderBp, youngerBp);
+  const clippedOlder = normalizedOlderBp > TIMELINE_MAX_BP;
+  const intervalLeft = toTimelinePercent(normalizedOlderBp);
+  const intervalRight = toTimelinePercent(normalizedYoungerBp);
+  const overlapOlderBp = Math.min(normalizedOlderBp, HOLOCENE_MAX_BP);
+  const overlapYoungerBp = Math.max(normalizedYoungerBp, 0);
+  const overlapBp = Math.max(0, overlapOlderBp - overlapYoungerBp);
+  const overlapLeft = toTimelinePercent(overlapOlderBp);
+  const overlapRight = toTimelinePercent(overlapYoungerBp);
+  const intervalBp = Math.max(normalizedOlderBp - normalizedYoungerBp, 0);
+  const overlapRatio = intervalBp > 0
+    ? overlapBp / intervalBp
+    : (normalizedOlderBp <= HOLOCENE_MAX_BP ? 1 : 0);
+
+  let summary: string;
+  if (overlapRatio >= 0.8) {
+    summary = `${intro} Holocene overlap covers ${formatOverlapRatio(overlapRatio)} of the derived interval, which clears the 80% threshold for the full tier.`;
+  } else if (overlapRatio > 0) {
+    summary = `${intro} Holocene overlap covers ${formatOverlapRatio(overlapRatio)} of the derived interval, so it falls in the partial-overlap tier.`;
+  } else {
+    summary = `${intro} No part of the derived interval overlaps the Holocene window, so the temporal score drops to 0.`;
+  }
+
+  if (clippedOlder) {
+    summary += ` Ages older than ${formatBp(TIMELINE_MAX_BP)} are clipped at the left edge for readability.`;
+  }
+
+  return {
+    kind,
+    sourceKindLabel,
+    sourceValueLabel,
+    derivedIntervalLabel,
+    legendLabel,
+    summary,
+    clippedOlder,
+    intervalLeft,
+    intervalWidth: Math.max(intervalRight - intervalLeft, TIMELINE_MIN_WIDTH_PERCENT),
+    overlapLeft,
+    overlapWidth: overlapBp > 0 ? Math.max(overlapRight - overlapLeft, TIMELINE_MIN_WIDTH_PERCENT) : 0,
+    overlapRatio,
+  };
+};
+
+const expandDatePrecisionWindow = (dateInfo: DateInfo | null | undefined): {
+  precision: DatePrecision;
+  sourceKindLabel: string;
+  sourceValueLabel: string;
+  start: CalendarDate;
+  end: CalendarDate;
+} | null => {
+  if (!dateInfo?.year && dateInfo?.year !== 0) {
+    return null;
+  }
+
+  const year = dateInfo.year;
+  const month = typeof dateInfo.month === 'number' && dateInfo.month >= 1 && dateInfo.month <= 12
+    ? dateInfo.month
+    : undefined;
+  const maxDay = month ? getDaysInMonth(year, month) : undefined;
+  const day = month !== undefined
+    && maxDay !== undefined
+    && typeof dateInfo.day === 'number'
+    && dateInfo.day >= 1
+    && dateInfo.day <= maxDay
+      ? dateInfo.day
+      : undefined;
+  const sourceValueLabel = formatDateInfo({ year, month, day }, true);
+
+  if (month && day) {
+    const exactDate = { year, month, day };
+    return {
+      precision: 'day',
+      sourceKindLabel: 'Day-precision date',
+      sourceValueLabel,
+      start: exactDate,
+      end: exactDate,
+    };
+  }
+
+  if (month) {
+    return {
+      precision: 'month',
+      sourceKindLabel: 'Month-only date',
+      sourceValueLabel,
+      start: { year, month, day: 1 },
+      end: { year, month, day: getDaysInMonth(year, month) },
+    };
+  }
+
+  return {
+    precision: 'year',
+    sourceKindLabel: 'Year-only date',
+    sourceValueLabel,
+    start: { year, month: 1, day: 1 },
+    end: { year, month: 12, day: 31 },
+  };
+};
+
+const getGeologicalLabel = (sample: Sample, fallbackLabel?: string) => {
+  const labelParts = [sample.geological_age?.age_prefix, sample.geological_age?.age]
+    .filter((part): part is string => typeof part === 'string' && part.trim().length > 0)
+    .map(part => part.trim());
+
+  if (labelParts.length > 0) {
+    return labelParts.join(' ');
+  }
+
+  return fallbackLabel?.trim() || undefined;
+};
+
+const buildDateTimeline = (eruptionDate: DateInfo): TemporalTimeline => {
+  const expanded = expandDatePrecisionWindow(eruptionDate);
+  if (!expanded) {
+    return { kind: 'none' };
+  }
+
+  const olderBp = calendarDateToBp(expanded.start, 'start');
+  const youngerBp = calendarDateToBp(expanded.end, 'end');
+  const intro = expanded.precision === 'year'
+    ? 'Year-only dates are expanded to the full calendar year before overlap is computed.'
+    : expanded.precision === 'month'
+      ? 'Month-only dates are expanded to the full calendar month before overlap is computed.'
+      : 'Day-precision dates remain one-day intervals before overlap is computed.';
+
+  return buildQuantitativeTimeline(
+    'dated-interval',
+    olderBp,
+    youngerBp,
+    expanded.sourceKindLabel,
+    expanded.sourceValueLabel,
+    `${formatCalendarDate(expanded.start)} -> ${formatCalendarDate(expanded.end)}`,
+    'Derived date interval',
+    intro,
+  );
+};
+
+const buildGeologicalIntervalTimeline = (sample: Sample, fallbackLabel?: string): TemporalTimeline => {
+  const ageMin = sample.geological_age?.age_min;
+  const ageMax = sample.geological_age?.age_max;
+
+  if (!isFiniteNumber(ageMin) && !isFiniteNumber(ageMax)) {
+    return { kind: 'none' };
+  }
+
+  const firstAge = isFiniteNumber(ageMin) ? Math.max(0, ageMin) : Math.max(0, ageMax!);
+  const secondAge = isFiniteNumber(ageMax) ? Math.max(0, ageMax) : Math.max(0, ageMin!);
+  const youngerBp = Math.min(firstAge, secondAge);
+  const olderBp = Math.max(firstAge, secondAge);
+  const hasTwoBounds = isFiniteNumber(ageMin) && isFiniteNumber(ageMax) && Math.abs(ageMax - ageMin) > 1e-6;
+  const sourceValueLabel = getGeologicalLabel(sample, fallbackLabel) ?? (hasTwoBounds
+    ? `${formatBp(olderBp)} -> ${formatBp(youngerBp)}`
+    : formatBp(olderBp));
+  const intro = hasTwoBounds
+    ? 'Numeric geological bounds are shown as a hatched interval.'
+    : 'Only one numeric geological bound is available, so the geological age is shown as a narrow hatched marker.';
+
+  return buildQuantitativeTimeline(
+    'geological-interval',
+    olderBp,
+    youngerBp,
+    'Geological interval',
+    sourceValueLabel,
+    hasTwoBounds ? `${formatBp(olderBp)} -> ${formatBp(youngerBp)}` : formatBp(olderBp),
+    'Geological interval',
+    intro,
+  );
+};
+
+const buildGeologicalLabelTimeline = (sourceValueLabel: string): TemporalTimeline => {
+  const normalizedLabel = sourceValueLabel.toUpperCase();
+
+  if (normalizedLabel.includes('HOLOCENE') || normalizedLabel.includes('RECENT')) {
+    return {
+      kind: 'geological-label',
+      sourceKindLabel: 'Geological label',
+      sourceValueLabel,
+      category: 'holocene',
+      categoryLabel: 'Holocene / Recent',
+      fallbackScore: 0.7,
+      summary: 'No numeric age bounds are available, so this is shown as a qualitative hatched band instead of a metric interval. Holocene / Recent maps to the textual fallback tier of 0.7.',
+    };
+  }
+
+  if (normalizedLabel.includes('PLEISTOCENE')) {
+    return {
+      kind: 'geological-label',
+      sourceKindLabel: 'Geological label',
+      sourceValueLabel,
+      category: 'pleistocene',
+      categoryLabel: 'Pleistocene',
+      fallbackScore: 0.5,
+      summary: 'No numeric age bounds are available, so this is shown as a qualitative hatched band instead of a metric interval. Pleistocene maps to the textual fallback tier of 0.5.',
+    };
+  }
+
+  return {
+    kind: 'geological-label',
+    sourceKindLabel: 'Geological label',
+    sourceValueLabel,
+    category: 'other',
+    categoryLabel: 'Other geological age',
+    fallbackScore: 0,
+    summary: 'No numeric age bounds are available, so this is shown as a qualitative hatched band instead of a metric interval. Other geological labels map to the textual fallback tier of 0.0.',
+  };
+};
+
+const getTemporalTimeline = (sample: Sample, fallbackLabel?: string): TemporalTimeline => {
+  if (isFiniteNumber(sample.geological_age?.age_min) || isFiniteNumber(sample.geological_age?.age_max)) {
+    return buildGeologicalIntervalTimeline(sample, fallbackLabel);
+  }
+
+  if (sample.eruption_date && (sample.eruption_date.year || sample.eruption_date.year === 0)) {
+    return buildDateTimeline(sample.eruption_date);
+  }
+
+  const geologicalLabel = getGeologicalLabel(sample, fallbackLabel);
+  if (geologicalLabel) {
+    return buildGeologicalLabelTimeline(geologicalLabel);
+  }
+
+  return { kind: 'none' };
+};
 
 interface SampleDetailsPanelProps {
   /** The selected sample to display */
@@ -46,9 +426,11 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
   
   if (!sample) return null;
 
-  const { sample_id, db, petro, tecto, geometry, oxides, matching_metadata, references } = sample;
+  const { sample_id, sample_code, db, petro, tecto, geometry, oxides, matching_metadata, references } = sample;
+  const displaySampleCode = sample_code?.trim() || sample_id;
   const rock_type = petro?.rock_type;
   const [longitude, latitude] = geometry.coordinates;
+  const temporalEvidenceValue = getMatchingScoreMeta(matching_metadata?.scores, 'ti').evidence_value;
 
   // Extract tectonic setting display value (support both legacy string and new nested structure)
   const tectonicSettingDisplay = typeof tecto === 'object' 
@@ -83,6 +465,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
     { name: 'K₂O (wt%)', value: oxides['K2O'] },
     { name: 'TiO₂ (wt%)', value: oxides['TIO2'] },
   ].filter(oxide => oxide.value !== undefined) : [];
+  const temporalTimeline = getTemporalTimeline(sample, temporalEvidenceValue);
 
   return (
     <div className="absolute top-4 right-4 z-20 w-80 bg-white rounded-lg shadow-2xl overflow-hidden">
@@ -105,9 +488,9 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
           <div className="flex items-start gap-2">
             <Database className="w-4 h-4 text-volcano-600 mt-0.5 flex-shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-gray-500">Sample ID</p>
-              <p className="text-sm font-medium truncate" title={sample_id}>
-                {sample_id}
+              <p className="text-xs text-gray-500">Sample Code</p>
+              <p className="text-sm font-medium truncate" title={displaySampleCode}>
+                {displaySampleCode}
               </p>
             </div>
           </div>
@@ -412,60 +795,218 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                               
                               {/* Temporal Score Explanation */}
                               {c.key === 'ti' && showTemporalExplanation && (
-                                  <div className="mt-1 pl-2 text-xs bg-white p-2 rounded border border-blue-200">
+                                <div className="mt-1 pl-2 text-xs bg-white p-2 rounded border border-blue-200">
                                   <p className="font-semibold mb-1">Temporal Score Calculation:</p>
-                                    <p className="mb-1">
-                                      The backend temporal score tests whether the sample is compatible with
-                                      Holocene volcanism, using 0 to 11,700 years BP as the reference window.
-                                    </p>
-                                    <ul className="list-disc ml-4 space-y-0.5 mb-2">
-                                      <li><strong>Quantitative ages first:</strong> dated eruptions or age intervals are scored from their overlap with the Holocene window.</li>
-                                      <li><strong>Textual fallback:</strong> Holocene/Recent = 1.0, Pleistocene = 0.7, Neogene = 0.3, older = 0.0.</li>
-                                      <li><strong>Precision modifier:</strong> backend precision slightly adjusts the base score, but textual fallback is capped to avoid overconfidence.</li>
-                                    </ul>
-                                    <p className="text-[11px] text-gray-500">
-                                      Ages are normalized in years BP using the backend 1950 reference, not the current calendar year.
-                                    </p>
+                                  {(() => {
+                                    const tiMeta = getMatchingScoreMeta(scores, 'ti');
+                                    const evidenceValue = tiMeta.evidence_value ?? temporalEvidenceValue;
+                                    const finalScore = c.value;
+                                    const quantitativeTimeline = temporalTimeline.kind === 'dated-interval' || temporalTimeline.kind === 'geological-interval'
+                                      ? temporalTimeline
+                                      : null;
+                                    const qualitativeTimeline = temporalTimeline.kind === 'geological-label'
+                                      ? temporalTimeline
+                                      : null;
+                                    const timelineMaxLabel = quantitativeTimeline
+                                      ? `${formatBp(TIMELINE_MAX_BP)}${quantitativeTimeline.clippedOlder ? '+' : ''}`
+                                      : undefined;
+                                    const sourceValueLabel = temporalTimeline.kind !== 'none'
+                                      ? temporalTimeline.sourceValueLabel
+                                      : undefined;
+                                    const shouldShowStoredValue = evidenceValue !== undefined
+                                      && evidenceValue !== sourceValueLabel
+                                      && evidenceValue !== quantitativeTimeline?.derivedIntervalLabel;
+                                    const sampleIntervalStyle = quantitativeTimeline?.kind === 'geological-interval'
+                                      ? createHatchedFill('rgba(252, 211, 77, 0.85)')
+                                      : undefined;
+                                    const overlapIntervalStyle = quantitativeTimeline?.kind === 'geological-interval'
+                                      ? createHatchedFill('rgba(74, 222, 128, 0.85)')
+                                      : undefined;
 
-                                    {(() => {
-                                      const tiMeta = getMatchingScoreMeta(scores, 'ti');
-                                      const base = tiMeta.base;
-                                      const precision = tiMeta.precision;
-                                      const modifier = tiMeta.modifier;
-                                      const finalScore = c.value!;
+                                    return (
+                                      <>
+                                        <p className="mb-2">
+                                          The temporal score asks one question: is the sample age compatible
+                                          with Holocene volcanism? The backend uses the Holocene window from
+                                          0 to 11,700 years BP and stores only the direct final score.
+                                        </p>
 
-                                      if (
-                                        base === undefined &&
-                                        precision === undefined &&
-                                        modifier === undefined
-                                      ) {
-                                        return null;
-                                      }
+                                        {quantitativeTimeline && (
+                                          <div className="bg-gray-50 p-2 rounded border border-gray-300 mb-2 space-y-2">
+                                            <p className="font-semibold text-gray-700">Visual timeline for this sample:</p>
+                                            <div className="flex flex-wrap gap-2 text-[10px] text-gray-600">
+                                              <span className="inline-flex items-center gap-1">
+                                                <span className="h-2 w-2 rounded-sm border border-slate-400 bg-slate-300" />
+                                                Outside Holocene
+                                              </span>
+                                              <span className="inline-flex items-center gap-1">
+                                                <span className="h-2 w-2 rounded-sm border border-blue-300 bg-blue-200" />
+                                                Holocene window
+                                              </span>
+                                              <span className="inline-flex items-center gap-1">
+                                                <span
+                                                  className={`h-2 w-2 rounded-sm border ${quantitativeTimeline.kind === 'geological-interval' ? 'border-amber-600' : 'border-amber-500 bg-amber-300'}`}
+                                                  style={sampleIntervalStyle}
+                                                />
+                                                {quantitativeTimeline.legendLabel}
+                                              </span>
+                                              <span className="inline-flex items-center gap-1">
+                                                <span
+                                                  className={`h-2 w-2 rounded-sm border ${quantitativeTimeline.kind === 'geological-interval' ? 'border-green-700' : 'border-green-600 bg-green-400'}`}
+                                                  style={overlapIntervalStyle}
+                                                />
+                                                Overlap used for score
+                                              </span>
+                                            </div>
+                                            <p className="text-[11px] text-gray-500">
+                                              Holocene window = <span className="font-mono text-gray-700">0 to 11.7 ka BP</span>
+                                            </p>
+                                            <div className="relative h-6 overflow-hidden rounded-md border border-gray-300 bg-slate-200">
+                                              <div
+                                                className="absolute inset-y-0 border-l border-blue-300 bg-blue-200"
+                                                style={{
+                                                  left: `${HOLOCENE_LEFT_PERCENT}%`,
+                                                  width: `${100 - HOLOCENE_LEFT_PERCENT}%`,
+                                                }}
+                                              />
+                                              <div
+                                                className={`absolute top-1/2 h-3 -translate-y-1/2 rounded-full border ${quantitativeTimeline.kind === 'geological-interval' ? 'border-amber-600' : 'border-amber-500 bg-amber-300/90'}`}
+                                                style={{
+                                                  left: `${quantitativeTimeline.intervalLeft}%`,
+                                                  width: `${quantitativeTimeline.intervalWidth}%`,
+                                                  ...sampleIntervalStyle,
+                                                }}
+                                              />
+                                              {quantitativeTimeline.overlapWidth > 0 && (
+                                                <div
+                                                  className={`absolute top-1/2 h-3 -translate-y-1/2 rounded-full border ${quantitativeTimeline.kind === 'geological-interval' ? 'border-green-700' : 'border-green-600 bg-green-400/90'}`}
+                                                  style={{
+                                                    left: `${quantitativeTimeline.overlapLeft}%`,
+                                                    width: `${quantitativeTimeline.overlapWidth}%`,
+                                                    ...overlapIntervalStyle,
+                                                  }}
+                                                />
+                                              )}
+                                            </div>
+                                            <div className="flex justify-between text-[10px] text-gray-500">
+                                              <span>{timelineMaxLabel}</span>
+                                              <span>0 BP</span>
+                                            </div>
+                                            <div className="space-y-1">
+                                              <p className="text-[11px] text-gray-700">
+                                                {quantitativeTimeline.kind === 'dated-interval' ? 'Derived interval' : 'Numeric interval'} = <span className="font-mono text-gray-800">{quantitativeTimeline.derivedIntervalLabel}</span>
+                                              </p>
+                                              <p className="text-[11px] text-gray-700">
+                                                Holocene overlap = <span className="font-mono text-gray-800">{formatOverlapRatio(quantitativeTimeline.overlapRatio)}</span>
+                                              </p>
+                                              <p className="text-[11px] text-gray-600">
+                                                {quantitativeTimeline.summary}
+                                              </p>
+                                            </div>
+                                          </div>
+                                        )}
 
-                                      return (
-                                        <div className="bg-blue-50 p-2 rounded border border-blue-300 mt-2 space-y-1">
-                                          <p className="font-semibold text-gray-700">Backend values stored for this sample:</p>
-                                          {base !== undefined && (
-                                            <p className="font-mono text-sm">
-                                              Base score = <span className="text-blue-700">{(base * 100).toFixed(1)}%</span>
-                                            </p>
-                                          )}
-                                          {precision !== undefined && (
-                                            <p className="font-mono text-sm">
-                                              Precision = <span className="text-blue-700">{precision.toFixed(3)}</span>
-                                            </p>
-                                          )}
-                                          {modifier !== undefined && (
-                                            <p className="font-mono text-sm">
-                                              Modifier = <span className="text-blue-700">{modifier.toFixed(3)}</span>
-                                            </p>
-                                          )}
-                                          <p className="font-mono text-sm font-semibold text-blue-700">
-                                            Final temporal score = {(finalScore * 100).toFixed(1)}%
+                                        {qualitativeTimeline && (
+                                          <div className="bg-gray-50 p-2 rounded border border-gray-300 mb-2 space-y-2">
+                                            <p className="font-semibold text-gray-700">Qualitative fallback band for this sample:</p>
+                                            <div className="grid grid-cols-3 gap-1 text-[10px]">
+                                              {QUALITATIVE_BUCKETS.map((bucket) => {
+                                                const isActive = bucket.key === qualitativeTimeline.category;
+
+                                                return (
+                                                  <div
+                                                    key={bucket.key}
+                                                    className={`relative overflow-hidden rounded border px-1 py-2 text-center leading-tight ${isActive ? 'border-blue-500 text-gray-800' : 'border-gray-300 bg-white text-gray-500'}`}
+                                                    style={isActive ? createHatchedFill(bucket.color) : undefined}
+                                                  >
+                                                    {bucket.label}
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                            <div className="space-y-1">
+                                              <p className="text-[11px] text-gray-700">
+                                                Geological label = <span className="font-mono text-gray-800">{qualitativeTimeline.sourceValueLabel}</span>
+                                              </p>
+                                              <p className="text-[11px] text-gray-700">
+                                                Fallback bucket = <span className="font-mono text-gray-800">{qualitativeTimeline.categoryLabel}</span>
+                                              </p>
+                                              <p className="text-[11px] text-gray-600">
+                                                {qualitativeTimeline.summary}
+                                              </p>
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        <div className="bg-gray-50 p-2 rounded border border-gray-300 mb-2 space-y-1">
+                                          <p className="font-semibold text-gray-700">Quantitative rule used first:</p>
+                                          <p className="mb-1">For dates and numeric age intervals, the backend computes:</p>
+                                          <p className="font-mono text-blue-600 mb-2">
+                                            overlap_ratio = overlap_with_holocene / sample_interval_width
                                           </p>
+                                          <ul className="list-disc ml-4 space-y-0.5">
+                                            <li><strong>Year-only dates</strong> expand to 1 Jan → 31 Dec before overlap is computed.</li>
+                                            <li><strong>Month-only dates</strong> expand to the full calendar month before overlap is computed.</li>
+                                            <li><strong>Day-precision dates</strong> remain one-day intervals.</li>
+                                            <li><strong>Overlap ratio &gt;= 0.8</strong> = 1.0</li>
+                                            <li><strong>Overlap ratio &gt; 0</strong> = 0.5</li>
+                                            <li><strong>No overlap</strong> = 0.0</li>
+                                            <li><strong>Single numeric ages</strong> only check whether they land inside or outside the Holocene window.</li>
+                                          </ul>
                                         </div>
-                                      );
-                                    })()}
+
+                                        <div className="bg-gray-50 p-2 rounded border border-gray-300 mb-2 space-y-1">
+                                          <p className="font-semibold text-gray-700">Textual fallback when no numeric interval exists:</p>
+                                          <ul className="list-disc ml-4 space-y-0.5">
+                                            <li><strong>Holocene / Recent</strong> = 0.7</li>
+                                            <li><strong>Pleistocene</strong> = 0.5</li>
+                                            <li><strong>Other textual ages</strong> = 0.0</li>
+                                            <li><strong>Pure geological labels</strong> stay qualitative here unless numeric bounds are available.</li>
+                                          </ul>
+                                        </div>
+
+                                        <p className="text-[11px] text-gray-500 mb-2">
+                                          Ages are normalized in years BP with 1950 as the reference year.
+                                        </p>
+
+                                        {(temporalTimeline.kind !== 'none' || shouldShowStoredValue || finalScore !== undefined) && (
+                                          <div className="bg-blue-50 p-2 rounded border border-blue-300 mt-2 space-y-1">
+                                            <p className="font-semibold text-gray-700">This sample:</p>
+                                            {temporalTimeline.kind !== 'none' && (
+                                              <p className="font-mono text-sm">
+                                                Evidence used = <span className="text-blue-700">{temporalTimeline.sourceKindLabel}</span>
+                                              </p>
+                                            )}
+                                            {sourceValueLabel !== undefined && (
+                                              <p className="font-mono text-sm">
+                                                Input value = <span className="text-blue-700">{sourceValueLabel}</span>
+                                              </p>
+                                            )}
+                                            {quantitativeTimeline && (
+                                              <p className="font-mono text-sm">
+                                                {quantitativeTimeline.kind === 'dated-interval' ? 'Derived interval' : 'Numeric interval'} = <span className="text-blue-700">{quantitativeTimeline.derivedIntervalLabel}</span>
+                                              </p>
+                                            )}
+                                            {qualitativeTimeline && (
+                                              <p className="font-mono text-sm">
+                                                Fallback bucket = <span className="text-blue-700">{qualitativeTimeline.categoryLabel} ({qualitativeTimeline.fallbackScore.toFixed(1)})</span>
+                                              </p>
+                                            )}
+                                            {shouldShowStoredValue && (
+                                              <p className="font-mono text-sm">
+                                                Stored value = <span className="text-blue-700">{evidenceValue}</span>
+                                              </p>
+                                            )}
+                                            {finalScore !== undefined && (
+                                              <p className="font-mono text-sm font-semibold text-blue-700">
+                                                Temporal score = {(finalScore * 100).toFixed(1)}%
+                                              </p>
+                                            )}
+                                          </div>
+                                        )}
+                                      </>
+                                    );
+                                  })()}
                                 </div>
                               )}
                             </div>
