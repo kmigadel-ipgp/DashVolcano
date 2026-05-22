@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, MapPin, Mountain, Database, Layers, FileText, Info } from 'lucide-react';
 import type { Sample } from '../../types';
+import { dateInfoToYear } from '../../utils/dateUtils';
 import { 
   normalizeConfidence, 
   getConfidenceColorHex, 
@@ -11,6 +12,143 @@ import {
   isMatched
 } from '../../utils/confidence';
 import { getMatchingScoreMeta, getMatchingScoreValue } from '../../utils/matchingMetadata';
+
+const BP_REFERENCE_YEAR = 1950;
+const HOLOCENE_MAX_BP = 11700;
+const TIMELINE_MAX_BP = 40000;
+const HOLOCENE_LEFT_PERCENT = ((TIMELINE_MAX_BP - HOLOCENE_MAX_BP) / TIMELINE_MAX_BP) * 100;
+
+type TemporalTimeline =
+  | {
+      kind: 'interval';
+      ageLabel: string;
+      summary: string;
+      clippedOlder: boolean;
+      intervalLeft: number;
+      intervalWidth: number;
+      overlapLeft: number;
+      overlapWidth: number;
+      overlapRatio: number;
+    }
+  | {
+      kind: 'point';
+      ageLabel: string;
+      summary: string;
+      clippedOlder: boolean;
+      pointLeft: number;
+      pointInHolocene: boolean;
+    }
+  | {
+      kind: 'none';
+    };
+
+const isFiniteNumber = (value: unknown): value is number => (
+  typeof value === 'number' && Number.isFinite(value)
+);
+
+const clamp = (value: number, min: number, max: number) => (
+  Math.min(Math.max(value, min), max)
+);
+
+const formatBp = (value: number) => {
+  const normalized = Math.max(0, value);
+
+  if (normalized >= 1000) {
+    const scaled = normalized / 1000;
+    return `${scaled.toFixed(Number.isInteger(scaled) ? 0 : 1)} ka BP`;
+  }
+
+  return `${Math.round(normalized)} BP`;
+};
+
+const formatCalendarYear = (year: number) => (
+  year < 0 ? `${Math.abs(year)} BCE` : `${year} CE`
+);
+
+const formatOverlapRatio = (value: number) => `${(value * 100).toFixed(1)}%`;
+
+const toTimelinePercent = (ageBp: number) => (
+  ((TIMELINE_MAX_BP - clamp(ageBp, 0, TIMELINE_MAX_BP)) / TIMELINE_MAX_BP) * 100
+);
+
+const buildPointTimeline = (ageBp: number, ageLabel: string): TemporalTimeline => {
+  const clippedOlder = ageBp > TIMELINE_MAX_BP;
+  const pointInHolocene = ageBp <= HOLOCENE_MAX_BP;
+
+  return {
+    kind: 'point',
+    ageLabel,
+    summary: pointInHolocene
+      ? 'The point age lands inside the Holocene window, so it counts as temporally compatible.'
+      : 'The point age lands outside the Holocene window, so the temporal score drops to 0.',
+    clippedOlder,
+    pointLeft: toTimelinePercent(ageBp),
+    pointInHolocene,
+  };
+};
+
+const getTemporalTimeline = (sample: Sample): TemporalTimeline => {
+  const ageMin = sample.geological_age?.age_min;
+  const ageMax = sample.geological_age?.age_max;
+
+  if (isFiniteNumber(ageMin) || isFiniteNumber(ageMax)) {
+    const firstAge = isFiniteNumber(ageMin) ? Math.max(0, ageMin) : Math.max(0, ageMax!);
+    const secondAge = isFiniteNumber(ageMax) ? Math.max(0, ageMax) : Math.max(0, ageMin!);
+    const youngerBp = Math.min(firstAge, secondAge);
+    const olderBp = Math.max(firstAge, secondAge);
+
+    if (Math.abs(olderBp - youngerBp) < 1e-6) {
+      return buildPointTimeline(olderBp, formatBp(olderBp));
+    }
+
+    const overlapOlderBp = Math.min(olderBp, HOLOCENE_MAX_BP);
+    const overlapYoungerBp = Math.max(youngerBp, 0);
+    const overlapBp = Math.max(0, overlapOlderBp - overlapYoungerBp);
+    const intervalBp = olderBp - youngerBp;
+    const overlapRatio = intervalBp > 0 ? overlapBp / intervalBp : 0;
+    const clippedOlder = olderBp > TIMELINE_MAX_BP;
+    const intervalLeft = toTimelinePercent(olderBp);
+    const intervalRight = toTimelinePercent(youngerBp);
+    const overlapLeft = toTimelinePercent(overlapOlderBp);
+    const overlapRight = toTimelinePercent(overlapYoungerBp);
+
+    let summary: string;
+    if (overlapRatio >= 0.8) {
+      summary = `Holocene overlap covers ${formatOverlapRatio(overlapRatio)} of the stored interval, which clears the 80% threshold for the full tier.`;
+    } else if (overlapRatio > 0) {
+      summary = `Holocene overlap covers ${formatOverlapRatio(overlapRatio)} of the stored interval, so it falls in the partial-overlap tier.`;
+    } else {
+      summary = 'No part of the stored interval overlaps the Holocene window, so the temporal score drops to 0.';
+    }
+
+    if (clippedOlder) {
+      summary += ` Ages older than ${formatBp(TIMELINE_MAX_BP)} are clipped at the left edge for readability.`;
+    }
+
+    return {
+      kind: 'interval',
+      ageLabel: `${formatBp(olderBp)} to ${formatBp(youngerBp)}`,
+      summary,
+      clippedOlder,
+      intervalLeft,
+      intervalWidth: Math.max(intervalRight - intervalLeft, 1.5),
+      overlapLeft,
+      overlapWidth: overlapBp > 0 ? Math.max(overlapRight - overlapLeft, 1.5) : 0,
+      overlapRatio,
+    };
+  }
+
+  const eruptionYear = dateInfoToYear(sample.eruption_date);
+  if (eruptionYear !== null) {
+    const normalizedBp = Math.max(0, BP_REFERENCE_YEAR - eruptionYear);
+    return buildPointTimeline(
+      normalizedBp,
+      `${formatCalendarYear(eruptionYear)} (${formatBp(normalizedBp)})`,
+    );
+  }
+
+  return { kind: 'none' };
+};
 
 interface SampleDetailsPanelProps {
   /** The selected sample to display */
@@ -84,6 +222,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
     { name: 'K₂O (wt%)', value: oxides['K2O'] },
     { name: 'TiO₂ (wt%)', value: oxides['TIO2'] },
   ].filter(oxide => oxide.value !== undefined) : [];
+  const temporalTimeline = getTemporalTimeline(sample);
 
   return (
     <div className="absolute top-4 right-4 z-20 w-80 bg-white rounded-lg shadow-2xl overflow-hidden">
@@ -413,72 +552,144 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                               
                               {/* Temporal Score Explanation */}
                               {c.key === 'ti' && showTemporalExplanation && (
-                                  <div className="mt-1 pl-2 text-xs bg-white p-2 rounded border border-blue-200">
+                                <div className="mt-1 pl-2 text-xs bg-white p-2 rounded border border-blue-200">
                                   <p className="font-semibold mb-1">Temporal Score Calculation:</p>
-                                    {(() => {
-                                      const tiMeta = getMatchingScoreMeta(scores, 'ti');
-                                      const evidenceValue = tiMeta.evidence_value;
-                                      const finalScore = c.value;
-                                      const storedValueLabel = typeof evidenceValue === 'string' && evidenceValue.includes('BP')
-                                        ? 'Stored age value'
-                                        : 'Stored age label';
+                                  {(() => {
+                                    const tiMeta = getMatchingScoreMeta(scores, 'ti');
+                                    const evidenceValue = tiMeta.evidence_value;
+                                    const finalScore = c.value;
+                                    const displayedAgeValue = evidenceValue ?? (
+                                      temporalTimeline.kind !== 'none' ? temporalTimeline.ageLabel : undefined
+                                    );
+                                    const timelineMaxLabel = `${formatBp(TIMELINE_MAX_BP)}${temporalTimeline.kind !== 'none' && temporalTimeline.clippedOlder ? '+' : ''}`;
 
-                                      return (
-                                        <>
-                                          <p className="mb-2">
-                                            The temporal score asks one question: is the sample age compatible
-                                            with Holocene volcanism? The backend uses the Holocene window from
-                                            0 to 11,700 years BP and stores only the direct final score.
-                                          </p>
+                                    return (
+                                      <>
+                                        <p className="mb-2">
+                                          The temporal score asks one question: is the sample age compatible
+                                          with Holocene volcanism? The backend uses the Holocene window from
+                                          0 to 11,700 years BP and stores only the direct final score.
+                                        </p>
 
-                                          <div className="bg-gray-50 p-2 rounded border border-gray-300 mb-2 space-y-1">
-                                            <p className="font-semibold text-gray-700">Quantitative rule used first:</p>
-                                            <p className="mb-1">For dated intervals, the backend computes:</p>
-                                            <p className="font-mono text-blue-600 mb-2">
-                                              overlap_ratio = overlap_with_holocene / sample_interval_width
+                                        {temporalTimeline.kind !== 'none' && (
+                                          <div className="bg-gray-50 p-2 rounded border border-gray-300 mb-2 space-y-2">
+                                            <p className="font-semibold text-gray-700">Visual timeline for this sample:</p>
+                                            <div className="flex flex-wrap gap-2 text-[10px] text-gray-600">
+                                              <span className="inline-flex items-center gap-1">
+                                                <span className="h-2 w-2 rounded-sm border border-slate-400 bg-slate-300" />
+                                                Outside Holocene
+                                              </span>
+                                              <span className="inline-flex items-center gap-1">
+                                                <span className="h-2 w-2 rounded-sm border border-blue-300 bg-blue-200" />
+                                                Holocene window
+                                              </span>
+                                              <span className="inline-flex items-center gap-1">
+                                                <span className={`h-2 w-2 rounded-sm border ${temporalTimeline.kind === 'interval' ? 'border-green-600 bg-green-400' : 'border-emerald-600 bg-emerald-400'}`} />
+                                                {temporalTimeline.kind === 'interval' ? 'Overlap used for score' : 'Stored point age'}
+                                              </span>
+                                            </div>
+                                            <p className="text-[11px] text-gray-500">
+                                              Holocene window = <span className="font-mono text-gray-700">0 to 11.7 ka BP</span>
                                             </p>
-                                            <ul className="list-disc ml-4 space-y-0.5">
-                                              <li><strong>Overlap ratio &gt;= 0.8</strong> = 1.0</li>
-                                              <li><strong>Overlap ratio &gt; 0</strong> = 0.5</li>
-                                              <li><strong>No overlap</strong> = 0.0</li>
-                                              <li><strong>Point ages</strong> do not use a ratio: they are simply inside or outside the Holocene window.</li>
-                                            </ul>
-                                          </div>
-
-                                          <div className="bg-gray-50 p-2 rounded border border-gray-300 mb-2 space-y-1">
-                                            <p className="font-semibold text-gray-700">Textual fallback when no quantitative age exists:</p>
-                                            <ul className="list-disc ml-4 space-y-0.5">
-                                              <li><strong>Holocene / Recent</strong> = 0.7</li>
-                                              <li><strong>Pleistocene</strong> = 0.5</li>
-                                              <li><strong>Other textual ages</strong> = 0.0</li>
-                                            </ul>
-                                          </div>
-
-                                          <p className="text-[11px] text-gray-500 mb-2">
-                                            Ages are normalized in years BP with 1950 as the reference year.
-                                          </p>
-
-                                          <p className="text-[11px] text-gray-500 mb-2">
-                                            No precision or modifier is applied anymore: the stored final temporal
-                                            score is the direct output of the rule above.
-                                          </p>
-
-                                          {(evidenceValue !== undefined || finalScore !== undefined) && (
-                                            <div className="bg-blue-50 p-2 rounded border border-blue-300 mt-2 space-y-1">
-                                              <p className="font-semibold text-gray-700">Backend values stored for this sample:</p>
-                                              {evidenceValue !== undefined && (
-                                                <p className="font-mono text-sm">
-                                                  {storedValueLabel} = <span className="text-blue-700">{evidenceValue}</span>
+                                            <div className="relative h-6 overflow-hidden rounded-md border border-gray-300 bg-slate-200">
+                                              <div
+                                                className="absolute inset-y-0 border-l border-blue-300 bg-blue-200"
+                                                style={{
+                                                  left: `${HOLOCENE_LEFT_PERCENT}%`,
+                                                  width: `${100 - HOLOCENE_LEFT_PERCENT}%`,
+                                                }}
+                                              />
+                                              {temporalTimeline.kind === 'interval' ? (
+                                                <>
+                                                  <div
+                                                    className="absolute top-1/2 h-3 -translate-y-1/2 rounded-full border border-amber-500 bg-amber-300/90"
+                                                    style={{
+                                                      left: `${temporalTimeline.intervalLeft}%`,
+                                                      width: `${temporalTimeline.intervalWidth}%`,
+                                                    }}
+                                                  />
+                                                  {temporalTimeline.overlapWidth > 0 && (
+                                                    <div
+                                                      className="absolute top-1/2 h-3 -translate-y-1/2 rounded-full border border-green-600 bg-green-400/90"
+                                                      style={{
+                                                        left: `${temporalTimeline.overlapLeft}%`,
+                                                        width: `${temporalTimeline.overlapWidth}%`,
+                                                      }}
+                                                    />
+                                                  )}
+                                                </>
+                                              ) : (
+                                                <div
+                                                  className={`absolute top-1/2 h-3 w-3 -translate-y-1/2 -ml-1.5 rounded-full border border-white shadow-sm ${temporalTimeline.pointInHolocene ? 'bg-emerald-500' : 'bg-slate-600'}`}
+                                                  style={{ left: `${temporalTimeline.pointLeft}%` }}
+                                                />
+                                              )}
+                                            </div>
+                                            <div className="flex justify-between text-[10px] text-gray-500">
+                                              <span>{timelineMaxLabel}</span>
+                                              <span>0 BP</span>
+                                            </div>
+                                            <div className="space-y-1">
+                                              <p className="text-[11px] text-gray-700">
+                                                {temporalTimeline.kind === 'interval' ? 'Stored interval' : 'Age plotted'} = <span className="font-mono text-gray-800">{temporalTimeline.ageLabel}</span>
+                                              </p>
+                                              {temporalTimeline.kind === 'interval' && (
+                                                <p className="text-[11px] text-gray-700">
+                                                  Holocene overlap = <span className="font-mono text-gray-800">{formatOverlapRatio(temporalTimeline.overlapRatio)}</span>
                                                 </p>
                                               )}
-                                              <p className="font-mono text-sm font-semibold text-blue-700">
-                                                Stored final temporal score = {(finalScore * 100).toFixed(1)}%
+                                              <p className="text-[11px] text-gray-600">
+                                                {temporalTimeline.summary}
                                               </p>
                                             </div>
-                                          )}
-                                        </>
-                                      );
-                                    })()}
+                                          </div>
+                                        )}
+
+                                        <div className="bg-gray-50 p-2 rounded border border-gray-300 mb-2 space-y-1">
+                                          <p className="font-semibold text-gray-700">Quantitative rule used first:</p>
+                                          <p className="mb-1">For dated intervals, the backend computes:</p>
+                                          <p className="font-mono text-blue-600 mb-2">
+                                            overlap_ratio = overlap_with_holocene / sample_interval_width
+                                          </p>
+                                          <ul className="list-disc ml-4 space-y-0.5">
+                                            <li><strong>Overlap ratio &gt;= 0.8</strong> = 1.0</li>
+                                            <li><strong>Overlap ratio &gt; 0</strong> = 0.5</li>
+                                            <li><strong>No overlap</strong> = 0.0</li>
+                                            <li><strong>Point ages</strong> do not use a ratio: they are simply inside or outside the Holocene window.</li>
+                                          </ul>
+                                        </div>
+
+                                        <div className="bg-gray-50 p-2 rounded border border-gray-300 mb-2 space-y-1">
+                                          <p className="font-semibold text-gray-700">Textual fallback when no quantitative age exists:</p>
+                                          <ul className="list-disc ml-4 space-y-0.5">
+                                            <li><strong>Holocene / Recent</strong> = 0.7</li>
+                                            <li><strong>Pleistocene</strong> = 0.5</li>
+                                            <li><strong>Other textual ages</strong> = 0.0</li>
+                                          </ul>
+                                        </div>
+
+                                        <p className="text-[11px] text-gray-500 mb-2">
+                                          Ages are normalized in years BP with 1950 as the reference year.
+                                        </p>
+
+                                        {(displayedAgeValue !== undefined || finalScore !== undefined) && (
+                                          <div className="bg-blue-50 p-2 rounded border border-blue-300 mt-2 space-y-1">
+                                            <p className="font-semibold text-gray-700">This sample:</p>
+                                            {displayedAgeValue !== undefined && (
+                                              <p className="font-mono text-sm">
+                                                Age used = <span className="text-blue-700">{displayedAgeValue}</span>
+                                              </p>
+                                            )}
+                                            {finalScore !== undefined && (
+                                              <p className="font-mono text-sm font-semibold text-blue-700">
+                                                Temporal score = {(finalScore * 100).toFixed(1)}%
+                                              </p>
+                                            )}
+                                          </div>
+                                        )}
+                                      </>
+                                    );
+                                  })()}
                                 </div>
                               )}
                             </div>

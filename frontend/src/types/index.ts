@@ -31,6 +31,8 @@ export interface DateInfo {
 export interface GeologicalAge {
   age?: string;  // e.g., "ARCHEAN", "HOLOCENE", "PLEISTOCENE"
   age_prefix?: string;  // e.g., "NEO", "EARLY", "LATE"
+  age_min?: number;
+  age_max?: number;
 }
 
 // Chemical composition types
