@@ -46,7 +46,8 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
   
   if (!sample) return null;
 
-  const { sample_id, db, petro, tecto, geometry, oxides, matching_metadata, references } = sample;
+  const { sample_id, sample_code, db, petro, tecto, geometry, oxides, matching_metadata, references } = sample;
+  const displaySampleCode = sample_code?.trim() || sample_id;
   const rock_type = petro?.rock_type;
   const [longitude, latitude] = geometry.coordinates;
 
@@ -105,9 +106,9 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
           <div className="flex items-start gap-2">
             <Database className="w-4 h-4 text-volcano-600 mt-0.5 flex-shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-gray-500">Sample ID</p>
-              <p className="text-sm font-medium truncate" title={sample_id}>
-                {sample_id}
+              <p className="text-xs text-gray-500">Sample Code</p>
+              <p className="text-sm font-medium truncate" title={displaySampleCode}>
+                {displaySampleCode}
               </p>
             </div>
           </div>
@@ -414,56 +415,68 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                               {c.key === 'ti' && showTemporalExplanation && (
                                   <div className="mt-1 pl-2 text-xs bg-white p-2 rounded border border-blue-200">
                                   <p className="font-semibold mb-1">Temporal Score Calculation:</p>
-                                    <p className="mb-1">
-                                      The backend temporal score tests whether the sample is compatible with
-                                      Holocene volcanism, using 0 to 11,700 years BP as the reference window.
-                                    </p>
-                                    <ul className="list-disc ml-4 space-y-0.5 mb-2">
-                                      <li><strong>Quantitative ages first:</strong> dated eruptions or age intervals are scored from their overlap with the Holocene window.</li>
-                                      <li><strong>Textual fallback:</strong> Holocene/Recent = 1.0, Pleistocene = 0.7, Neogene = 0.3, older = 0.0.</li>
-                                      <li><strong>Precision modifier:</strong> backend precision slightly adjusts the base score, but textual fallback is capped to avoid overconfidence.</li>
-                                    </ul>
-                                    <p className="text-[11px] text-gray-500">
-                                      Ages are normalized in years BP using the backend 1950 reference, not the current calendar year.
-                                    </p>
-
                                     {(() => {
                                       const tiMeta = getMatchingScoreMeta(scores, 'ti');
-                                      const base = tiMeta.base;
-                                      const precision = tiMeta.precision;
-                                      const modifier = tiMeta.modifier;
-                                      const finalScore = c.value!;
-
-                                      if (
-                                        base === undefined &&
-                                        precision === undefined &&
-                                        modifier === undefined
-                                      ) {
-                                        return null;
-                                      }
+                                      const evidenceValue = tiMeta.evidence_value;
+                                      const finalScore = c.value;
+                                      const storedValueLabel = typeof evidenceValue === 'string' && evidenceValue.includes('BP')
+                                        ? 'Stored age value'
+                                        : 'Stored age label';
 
                                       return (
-                                        <div className="bg-blue-50 p-2 rounded border border-blue-300 mt-2 space-y-1">
-                                          <p className="font-semibold text-gray-700">Backend values stored for this sample:</p>
-                                          {base !== undefined && (
-                                            <p className="font-mono text-sm">
-                                              Base score = <span className="text-blue-700">{(base * 100).toFixed(1)}%</span>
-                                            </p>
-                                          )}
-                                          {precision !== undefined && (
-                                            <p className="font-mono text-sm">
-                                              Precision = <span className="text-blue-700">{precision.toFixed(3)}</span>
-                                            </p>
-                                          )}
-                                          {modifier !== undefined && (
-                                            <p className="font-mono text-sm">
-                                              Modifier = <span className="text-blue-700">{modifier.toFixed(3)}</span>
-                                            </p>
-                                          )}
-                                          <p className="font-mono text-sm font-semibold text-blue-700">
-                                            Final temporal score = {(finalScore * 100).toFixed(1)}%
+                                        <>
+                                          <p className="mb-2">
+                                            The temporal score asks one question: is the sample age compatible
+                                            with Holocene volcanism? The backend uses the Holocene window from
+                                            0 to 11,700 years BP and stores only the direct final score.
                                           </p>
-                                        </div>
+
+                                          <div className="bg-gray-50 p-2 rounded border border-gray-300 mb-2 space-y-1">
+                                            <p className="font-semibold text-gray-700">Quantitative rule used first:</p>
+                                            <p className="mb-1">For dated intervals, the backend computes:</p>
+                                            <p className="font-mono text-blue-600 mb-2">
+                                              overlap_ratio = overlap_with_holocene / sample_interval_width
+                                            </p>
+                                            <ul className="list-disc ml-4 space-y-0.5">
+                                              <li><strong>Overlap ratio &gt;= 0.8</strong> = 1.0</li>
+                                              <li><strong>Overlap ratio &gt; 0</strong> = 0.5</li>
+                                              <li><strong>No overlap</strong> = 0.0</li>
+                                              <li><strong>Point ages</strong> do not use a ratio: they are simply inside or outside the Holocene window.</li>
+                                            </ul>
+                                          </div>
+
+                                          <div className="bg-gray-50 p-2 rounded border border-gray-300 mb-2 space-y-1">
+                                            <p className="font-semibold text-gray-700">Textual fallback when no quantitative age exists:</p>
+                                            <ul className="list-disc ml-4 space-y-0.5">
+                                              <li><strong>Holocene / Recent</strong> = 0.7</li>
+                                              <li><strong>Pleistocene</strong> = 0.5</li>
+                                              <li><strong>Other textual ages</strong> = 0.0</li>
+                                            </ul>
+                                          </div>
+
+                                          <p className="text-[11px] text-gray-500 mb-2">
+                                            Ages are normalized in years BP with 1950 as the reference year.
+                                          </p>
+
+                                          <p className="text-[11px] text-gray-500 mb-2">
+                                            No precision or modifier is applied anymore: the stored final temporal
+                                            score is the direct output of the rule above.
+                                          </p>
+
+                                          {(evidenceValue !== undefined || finalScore !== undefined) && (
+                                            <div className="bg-blue-50 p-2 rounded border border-blue-300 mt-2 space-y-1">
+                                              <p className="font-semibold text-gray-700">Backend values stored for this sample:</p>
+                                              {evidenceValue !== undefined && (
+                                                <p className="font-mono text-sm">
+                                                  {storedValueLabel} = <span className="text-blue-700">{evidenceValue}</span>
+                                                </p>
+                                              )}
+                                              <p className="font-mono text-sm font-semibold text-blue-700">
+                                                Stored final temporal score = {(finalScore * 100).toFixed(1)}%
+                                              </p>
+                                            </div>
+                                          )}
+                                        </>
                                       );
                                     })()}
                                 </div>

@@ -73,9 +73,7 @@ export interface TectonicScoreDetail {
 }
 
 export interface TemporalScoreDetail {
-  base?: number;
-  precision?: number;
-  modifier?: number;
+  evidence_value?: string;
   final: number;
 }
 
