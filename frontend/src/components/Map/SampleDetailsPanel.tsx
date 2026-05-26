@@ -15,10 +15,12 @@ import { getMatchingScoreMeta, getMatchingScoreValue } from '../../utils/matchin
 
 const BP_REFERENCE_YEAR = 1950;
 const HOLOCENE_MAX_BP = 11700;
-const TIMELINE_MAX_BP = 40000;
-const HOLOCENE_LEFT_PERCENT = ((TIMELINE_MAX_BP - HOLOCENE_MAX_BP) / TIMELINE_MAX_BP) * 100;
+const PLEISTOCENE_MAX_BP = 40000;
+const TIMELINE_LEFT_LABEL = '>40ka BP';
+const PERIOD_WIDTH_PERCENT = 100 / 3;
 const TIMELINE_MIN_WIDTH_PERCENT = 1;
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const TIMELINE_LABEL_MIN_PERCENT = 12;
+const TIMELINE_LABEL_MAX_PERCENT = 88;
 const HATCHED_FILL = 'repeating-linear-gradient(135deg, rgba(15, 23, 42, 0.18) 0, rgba(15, 23, 42, 0.18) 4px, transparent 4px, transparent 8px)';
 
 type CalendarDate = {
@@ -28,41 +30,73 @@ type CalendarDate = {
 };
 
 type DatePrecision = 'year' | 'month' | 'day';
+type TimelineTickAlign = 'left' | 'center' | 'right';
 
-type QualitativeBucket = 'holocene' | 'pleistocene' | 'other';
+type TimelinePeriod = 'others' | 'pleistocene' | 'holocene';
 
-const QUALITATIVE_BUCKETS: Array<{
-  key: QualitativeBucket;
+const TIMELINE_PERIODS: Array<{
+  key: TimelinePeriod;
   label: string;
   color: string;
+  hatchColor: string;
+  startPercent: number;
+  widthPercent: number;
 }> = [
-  { key: 'holocene', label: 'Holocene / Recent', color: 'rgba(96, 165, 250, 0.35)' },
-  { key: 'pleistocene', label: 'Pleistocene', color: 'rgba(251, 191, 36, 0.35)' },
-  { key: 'other', label: 'Other', color: 'rgba(203, 213, 225, 0.5)' },
+  {
+    key: 'others',
+    label: 'OTHERS',
+    color: 'rgba(226, 232, 240, 0.95)',
+    hatchColor: 'rgba(148, 163, 184, 0.32)',
+    startPercent: 0,
+    widthPercent: PERIOD_WIDTH_PERCENT,
+  },
+  {
+    key: 'pleistocene',
+    label: 'PLEISTOCENE',
+    color: 'rgba(254, 240, 138, 0.95)',
+    hatchColor: 'rgba(245, 158, 11, 0.22)',
+    startPercent: PERIOD_WIDTH_PERCENT,
+    widthPercent: PERIOD_WIDTH_PERCENT,
+  },
+  {
+    key: 'holocene',
+    label: 'HOLOCENE / RECENT',
+    color: 'rgba(191, 219, 254, 0.95)',
+    hatchColor: 'rgba(59, 130, 246, 0.22)',
+    startPercent: PERIOD_WIDTH_PERCENT * 2,
+    widthPercent: PERIOD_WIDTH_PERCENT,
+  },
+];
+
+const TIMELINE_TICKS: Array<{ left: number; label: string; align: TimelineTickAlign }> = [
+  { left: 0, label: TIMELINE_LEFT_LABEL, align: 'left' as const },
+  { left: PERIOD_WIDTH_PERCENT, label: '40 ka BP', align: 'center' as const },
+  { left: PERIOD_WIDTH_PERCENT * 2, label: '11.7 ka BP', align: 'center' as const },
+  { left: 100, label: 'Present', align: 'right' as const },
 ];
 
 type QuantitativeTemporalTimeline = {
   kind: 'dated-interval' | 'geological-interval';
   sourceKindLabel: string;
   sourceValueLabel: string;
-  derivedIntervalLabel: string;
-  legendLabel: string;
+  derivedIntervalLabel?: string;
   summary: string;
   clippedOlder: boolean;
-  intervalLeft: number;
-  intervalWidth: number;
-  overlapLeft: number;
-  overlapWidth: number;
-  overlapRatio: number;
+  markerKind: 'point' | 'interval';
+  markerLeft: number;
+  markerWidth: number;
+  labelLeft: number;
+  overlapRatio?: number;
+  coveredPeriods: TimelinePeriod[];
 };
 
 type QualitativeTemporalTimeline = {
   kind: 'geological-label';
   sourceKindLabel: string;
   sourceValueLabel: string;
-  category: QualitativeBucket;
+  category: TimelinePeriod;
   categoryLabel: string;
-  fallbackScore: number;
+  fallbackScore?: number;
   summary: string;
 };
 
@@ -72,6 +106,22 @@ type TemporalTimeline =
   | {
       kind: 'none';
     };
+
+type QuantitativeTimelineInput = {
+  kind: QuantitativeTemporalTimeline['kind'];
+  olderBp: number;
+  youngerBp: number;
+  sourceKindLabel: string;
+  sourceValueLabel: string;
+  derivedIntervalLabel?: string;
+  intro: string;
+  markerKind: QuantitativeTemporalTimeline['markerKind'];
+};
+
+type TemporalTimelineVisualizationProps = {
+  quantitativeTimeline: QuantitativeTemporalTimeline | null;
+  qualitativeTimeline: QualitativeTemporalTimeline | null;
+};
 
 const isFiniteNumber = (value: unknown): value is number => (
   typeof value === 'number' && Number.isFinite(value)
@@ -92,20 +142,132 @@ const formatBp = (value: number) => {
   return `${Math.round(normalized)} BP`;
 };
 
-const formatCalendarYear = (year: number) => (
-  year < 0 ? `${Math.abs(year)} BCE` : `${year} CE`
-);
-
-const formatOverlapRatio = (value: number) => `${(value * 100).toFixed(1)}%`;
-
 const createHatchedFill = (backgroundColor: string): React.CSSProperties => ({
   backgroundColor,
   backgroundImage: HATCHED_FILL,
 });
 
-const toTimelinePercent = (ageBp: number) => (
-  ((TIMELINE_MAX_BP - clamp(ageBp, 0, TIMELINE_MAX_BP)) / TIMELINE_MAX_BP) * 100
+const getTimelinePeriodByKey = (period: TimelinePeriod) => (
+  TIMELINE_PERIODS.find(entry => entry.key === period)
 );
+
+const getTimelinePeriodLabel = (period: TimelinePeriod) => (
+  getTimelinePeriodByKey(period)?.label ?? period
+);
+
+const formatCoveredPeriods = (periods: TimelinePeriod[]) => (
+  periods.map(getTimelinePeriodLabel).join(' -> ')
+);
+
+const toTimelinePercent = (ageBp: number) => {
+  const normalized = Math.max(0, ageBp);
+
+  if (normalized > PLEISTOCENE_MAX_BP) {
+    return 0;
+  }
+
+  if (normalized > HOLOCENE_MAX_BP) {
+    const fraction = (PLEISTOCENE_MAX_BP - normalized) / (PLEISTOCENE_MAX_BP - HOLOCENE_MAX_BP);
+    return PERIOD_WIDTH_PERCENT + (fraction * PERIOD_WIDTH_PERCENT);
+  }
+
+  const fraction = (HOLOCENE_MAX_BP - normalized) / HOLOCENE_MAX_BP;
+  return (PERIOD_WIDTH_PERCENT * 2) + (fraction * PERIOD_WIDTH_PERCENT);
+};
+
+const toTimelinePointPercent = (ageBp: number) => (
+  clamp(toTimelinePercent(ageBp), 0.75, 99.25)
+);
+
+const getMarkerLabelLeft = (markerLeft: number, markerWidth = 0) => (
+  clamp(markerLeft + (markerWidth / 2), TIMELINE_LABEL_MIN_PERCENT, TIMELINE_LABEL_MAX_PERCENT)
+);
+
+const getTimelinePeriod = (ageBp: number): TimelinePeriod => {
+  const normalized = Math.max(0, ageBp);
+
+  if (normalized > PLEISTOCENE_MAX_BP) {
+    return 'others';
+  }
+
+  if (normalized > HOLOCENE_MAX_BP) {
+    return 'pleistocene';
+  }
+
+  return 'holocene';
+};
+
+const getCoveredPeriods = (olderBp: number, youngerBp: number): TimelinePeriod[] => {
+  const normalizedOlderBp = Math.max(olderBp, youngerBp);
+  const normalizedYoungerBp = Math.min(olderBp, youngerBp);
+  const periods: TimelinePeriod[] = [];
+
+  if (normalizedOlderBp > PLEISTOCENE_MAX_BP) {
+    periods.push('others');
+  }
+
+  if (normalizedOlderBp > HOLOCENE_MAX_BP && normalizedYoungerBp <= PLEISTOCENE_MAX_BP) {
+    periods.push('pleistocene');
+  }
+
+  if (normalizedYoungerBp <= HOLOCENE_MAX_BP) {
+    periods.push('holocene');
+  }
+
+  return periods;
+};
+
+const getDateTimelineIntro = (precision: DatePrecision) => {
+  if (precision === 'year') {
+    return 'Year-only dates are expanded to the full calendar year.';
+  }
+
+  if (precision === 'month') {
+    return 'Month-only dates are expanded to the full calendar month.';
+  }
+
+  return 'Exact dates keep their original precision.';
+};
+
+const getTickTransform = (align: TimelineTickAlign): React.CSSProperties['transform'] => {
+  if (align === 'center') {
+    return 'translateX(-50%)';
+  }
+
+  if (align === 'right') {
+    return 'translateX(-100%)';
+  }
+
+  return undefined;
+};
+
+const getTickMaxWidth = (align: TimelineTickAlign) => (
+  align === 'left' ? '5.5rem' : '4.5rem'
+);
+
+const getTickRuleClass = (align: TimelineTickAlign) => {
+  if (align === 'center') {
+    return 'mx-auto';
+  }
+
+  if (align === 'right') {
+    return 'ml-auto';
+  }
+
+  return '';
+};
+
+const getTickTextClass = (align: TimelineTickAlign) => {
+  if (align === 'center') {
+    return 'text-center';
+  }
+
+  if (align === 'right') {
+    return 'text-right';
+  }
+
+  return '';
+};
 
 const isLeapYear = (year: number) => {
   const astronomicalYear = year < 0 ? year + 1 : year;
@@ -143,10 +305,6 @@ const getDayOfYear = (date: CalendarDate) => {
   return total;
 };
 
-const formatCalendarDate = (date: CalendarDate) => (
-  `${date.day} ${MONTH_NAMES[date.month - 1]} ${formatCalendarYear(date.year)}`
-);
-
 const calendarDateToBp = (date: CalendarDate, boundary: 'start' | 'end') => {
   const dayOfYear = getDayOfYear(date);
   const daysInYear = isLeapYear(date.year) ? 366 : 365;
@@ -158,57 +316,52 @@ const calendarDateToBp = (date: CalendarDate, boundary: 'start' | 'end') => {
   return Math.max(0, BP_REFERENCE_YEAR - decimalYear);
 };
 
-const buildQuantitativeTimeline = (
-  kind: QuantitativeTemporalTimeline['kind'],
-  olderBp: number,
-  youngerBp: number,
-  sourceKindLabel: string,
-  sourceValueLabel: string,
-  derivedIntervalLabel: string,
-  legendLabel: string,
-  intro: string,
-): QuantitativeTemporalTimeline => {
+const buildQuantitativeTimeline = ({
+  kind,
+  olderBp,
+  youngerBp,
+  sourceKindLabel,
+  sourceValueLabel,
+  intro,
+  markerKind,
+}: QuantitativeTimelineInput): QuantitativeTemporalTimeline => {
   const normalizedOlderBp = Math.max(olderBp, youngerBp);
   const normalizedYoungerBp = Math.min(olderBp, youngerBp);
-  const clippedOlder = normalizedOlderBp > TIMELINE_MAX_BP;
-  const intervalLeft = toTimelinePercent(normalizedOlderBp);
-  const intervalRight = toTimelinePercent(normalizedYoungerBp);
-  const overlapOlderBp = Math.min(normalizedOlderBp, HOLOCENE_MAX_BP);
-  const overlapYoungerBp = Math.max(normalizedYoungerBp, 0);
-  const overlapBp = Math.max(0, overlapOlderBp - overlapYoungerBp);
-  const overlapLeft = toTimelinePercent(overlapOlderBp);
-  const overlapRight = toTimelinePercent(overlapYoungerBp);
-  const intervalBp = Math.max(normalizedOlderBp - normalizedYoungerBp, 0);
-  const overlapRatio = intervalBp > 0
-    ? overlapBp / intervalBp
-    : (normalizedOlderBp <= HOLOCENE_MAX_BP ? 1 : 0);
+  const clippedOlder = normalizedOlderBp > PLEISTOCENE_MAX_BP;
 
-  let summary: string;
-  if (overlapRatio >= 0.8) {
-    summary = `${intro} Holocene overlap covers ${formatOverlapRatio(overlapRatio)} of the derived interval, which clears the 80% threshold for the full tier.`;
-  } else if (overlapRatio > 0) {
-    summary = `${intro} Holocene overlap covers ${formatOverlapRatio(overlapRatio)} of the derived interval, so it falls in the partial-overlap tier.`;
-  } else {
-    summary = `${intro} No part of the derived interval overlaps the Holocene window, so the temporal score drops to 0.`;
-  }
+  const representativeBp = (normalizedOlderBp + normalizedYoungerBp) / 2;
+  const markerLeft = markerKind === 'point'
+    ? toTimelinePointPercent(representativeBp)
+    : toTimelinePercent(normalizedOlderBp);
+  const markerRight = markerKind === 'interval'
+    ? toTimelinePercent(normalizedYoungerBp)
+    : markerLeft;
+  const markerWidth = markerKind === 'interval'
+    ? Math.max(markerRight - markerLeft, TIMELINE_MIN_WIDTH_PERCENT)
+    : 0;
+  const coveredPeriods = markerKind === 'point'
+    ? [getTimelinePeriod(representativeBp)]
+    : getCoveredPeriods(normalizedOlderBp, normalizedYoungerBp);
+
+  let summary = markerKind === 'point'
+    ? `${intro} It is shown as a red arrow in ${formatCoveredPeriods(coveredPeriods)}.`
+    : `${intro} It is shown as a red interval across ${formatCoveredPeriods(coveredPeriods)}.`;
 
   if (clippedOlder) {
-    summary += ` Ages older than ${formatBp(TIMELINE_MAX_BP)} are clipped at the left edge for readability.`;
+    summary += ' Values older than 40 ka BP are clipped at the left edge of the timeline.';
   }
 
   return {
     kind,
     sourceKindLabel,
     sourceValueLabel,
-    derivedIntervalLabel,
-    legendLabel,
     summary,
     clippedOlder,
-    intervalLeft,
-    intervalWidth: Math.max(intervalRight - intervalLeft, TIMELINE_MIN_WIDTH_PERCENT),
-    overlapLeft,
-    overlapWidth: overlapBp > 0 ? Math.max(overlapRight - overlapLeft, TIMELINE_MIN_WIDTH_PERCENT) : 0,
-    overlapRatio,
+    markerKind,
+    markerLeft,
+    markerWidth,
+    labelLeft: getMarkerLabelLeft(markerLeft, markerWidth),
+    coveredPeriods,
   };
 };
 
@@ -279,7 +432,7 @@ const getGeologicalLabel = (sample: Sample, fallbackLabel?: string) => {
   return fallbackLabel?.trim() || undefined;
 };
 
-const buildDateTimeline = (eruptionDate: DateInfo): TemporalTimeline => {
+const buildDateTimeline = (eruptionDate: DateInfo, evidenceValueLabel?: string): TemporalTimeline => {
   const expanded = expandDatePrecisionWindow(eruptionDate);
   if (!expanded) {
     return { kind: 'none' };
@@ -287,22 +440,19 @@ const buildDateTimeline = (eruptionDate: DateInfo): TemporalTimeline => {
 
   const olderBp = calendarDateToBp(expanded.start, 'start');
   const youngerBp = calendarDateToBp(expanded.end, 'end');
-  const intro = expanded.precision === 'year'
-    ? 'Year-only dates are expanded to the full calendar year before overlap is computed.'
-    : expanded.precision === 'month'
-      ? 'Month-only dates are expanded to the full calendar month before overlap is computed.'
-      : 'Day-precision dates remain one-day intervals before overlap is computed.';
+  const markerKind = expanded.precision === 'day' ? 'point' : 'interval';
+  const intro = getDateTimelineIntro(expanded.precision);
+  const sourceValueLabel = evidenceValueLabel?.trim() || expanded.sourceValueLabel;
 
-  return buildQuantitativeTimeline(
-    'dated-interval',
+  return buildQuantitativeTimeline({
+    kind: 'dated-interval',
     olderBp,
     youngerBp,
-    expanded.sourceKindLabel,
-    expanded.sourceValueLabel,
-    `${formatCalendarDate(expanded.start)} -> ${formatCalendarDate(expanded.end)}`,
-    'Derived date interval',
+    sourceKindLabel: expanded.sourceKindLabel,
+    sourceValueLabel,
     intro,
-  );
+    markerKind,
+  });
 };
 
 const buildGeologicalIntervalTimeline = (sample: Sample, fallbackLabel?: string): TemporalTimeline => {
@@ -318,23 +468,23 @@ const buildGeologicalIntervalTimeline = (sample: Sample, fallbackLabel?: string)
   const youngerBp = Math.min(firstAge, secondAge);
   const olderBp = Math.max(firstAge, secondAge);
   const hasTwoBounds = isFiniteNumber(ageMin) && isFiniteNumber(ageMax) && Math.abs(ageMax - ageMin) > 1e-6;
+  const markerKind = hasTwoBounds ? 'interval' : 'point';
   const sourceValueLabel = getGeologicalLabel(sample, fallbackLabel) ?? (hasTwoBounds
     ? `${formatBp(olderBp)} -> ${formatBp(youngerBp)}`
     : formatBp(olderBp));
   const intro = hasTwoBounds
-    ? 'Numeric geological bounds are shown as a hatched interval.'
-    : 'Only one numeric geological bound is available, so the geological age is shown as a narrow hatched marker.';
+    ? 'Numeric geological bounds stay as an interval.'
+    : 'A single numeric geological age keeps its original precision.';
 
-  return buildQuantitativeTimeline(
-    'geological-interval',
+  return buildQuantitativeTimeline({
+    kind: 'geological-interval',
     olderBp,
     youngerBp,
-    'Geological interval',
+    sourceKindLabel: 'Geological interval',
     sourceValueLabel,
-    hasTwoBounds ? `${formatBp(olderBp)} -> ${formatBp(youngerBp)}` : formatBp(olderBp),
-    'Geological interval',
     intro,
-  );
+    markerKind,
+  });
 };
 
 const buildGeologicalLabelTimeline = (sourceValueLabel: string): TemporalTimeline => {
@@ -346,9 +496,8 @@ const buildGeologicalLabelTimeline = (sourceValueLabel: string): TemporalTimelin
       sourceKindLabel: 'Geological label',
       sourceValueLabel,
       category: 'holocene',
-      categoryLabel: 'Holocene / Recent',
-      fallbackScore: 0.7,
-      summary: 'No numeric age bounds are available, so this is shown as a qualitative hatched band instead of a metric interval. Holocene / Recent maps to the textual fallback tier of 0.7.',
+      categoryLabel: 'HOLOCENE / RECENT',
+      summary: 'This text label is shown as a hatched band across HOLOCENE / RECENT.',
     };
   }
 
@@ -358,9 +507,8 @@ const buildGeologicalLabelTimeline = (sourceValueLabel: string): TemporalTimelin
       sourceKindLabel: 'Geological label',
       sourceValueLabel,
       category: 'pleistocene',
-      categoryLabel: 'Pleistocene',
-      fallbackScore: 0.5,
-      summary: 'No numeric age bounds are available, so this is shown as a qualitative hatched band instead of a metric interval. Pleistocene maps to the textual fallback tier of 0.5.',
+      categoryLabel: 'PLEISTOCENE',
+      summary: 'This text label is shown as a hatched band across PLEISTOCENE.',
     };
   }
 
@@ -368,10 +516,9 @@ const buildGeologicalLabelTimeline = (sourceValueLabel: string): TemporalTimelin
     kind: 'geological-label',
     sourceKindLabel: 'Geological label',
     sourceValueLabel,
-    category: 'other',
-    categoryLabel: 'Other geological age',
-    fallbackScore: 0,
-    summary: 'No numeric age bounds are available, so this is shown as a qualitative hatched band instead of a metric interval. Other geological labels map to the textual fallback tier of 0.0.',
+    category: 'others',
+    categoryLabel: 'OTHERS',
+    summary: 'This text label is shown as a hatched band across OTHERS.',
   };
 };
 
@@ -381,7 +528,7 @@ const getTemporalTimeline = (sample: Sample, fallbackLabel?: string): TemporalTi
   }
 
   if (sample.eruption_date && (sample.eruption_date.year || sample.eruption_date.year === 0)) {
-    return buildDateTimeline(sample.eruption_date);
+    return buildDateTimeline(sample.eruption_date, fallbackLabel);
   }
 
   const geologicalLabel = getGeologicalLabel(sample, fallbackLabel);
@@ -390,6 +537,161 @@ const getTemporalTimeline = (sample: Sample, fallbackLabel?: string): TemporalTi
   }
 
   return { kind: 'none' };
+};
+
+const TemporalTimelineVisualization: React.FC<TemporalTimelineVisualizationProps> = ({
+  quantitativeTimeline,
+  qualitativeTimeline,
+}) => {
+  const activeQualitativePeriod = qualitativeTimeline
+    ? getTimelinePeriodByKey(qualitativeTimeline.category)
+    : undefined;
+
+  return (
+    <div className="bg-gray-50 p-2 rounded border border-gray-300 mb-2 space-y-2">
+      <p className="font-semibold text-gray-700">Three-period timeline for this sample:</p>
+      <div className="flex flex-wrap gap-2 text-[10px] text-gray-600">
+        {TIMELINE_PERIODS.map((period) => (
+          <span key={period.key} className="inline-flex items-center gap-1">
+            <span
+              className="h-2 w-2 rounded-sm border border-slate-400"
+              style={{ backgroundColor: period.color }}
+            />
+            <span>{period.label}</span>
+          </span>
+        ))}
+
+        {quantitativeTimeline && (
+          <span className="inline-flex items-center gap-1">
+            <span className="h-2 w-3 rounded-full border border-red-700 bg-red-500/85" />
+            <span>Numeric evidence</span>
+          </span>
+        )}
+
+        {qualitativeTimeline && activeQualitativePeriod && (
+          <span className="inline-flex items-center gap-1">
+            <span
+              className="h-2 w-3 rounded-sm border border-slate-500"
+              style={createHatchedFill(activeQualitativePeriod.hatchColor)}
+            />
+            <span>Textual evidence</span>
+          </span>
+        )}
+      </div>
+
+      <div className="grid grid-cols-3 gap-1 text-[10px] font-semibold tracking-wide text-gray-600">
+        {TIMELINE_PERIODS.map((period) => (
+          <div key={period.key} className="text-center">
+            {period.label}
+          </div>
+        ))}
+      </div>
+
+      <div className="relative pt-6">
+        {quantitativeTimeline && (
+          <div
+            className="absolute top-0 z-10 max-w-40 -translate-x-1/2 text-center text-[10px] font-medium leading-tight text-red-700"
+            style={{ left: `${quantitativeTimeline.labelLeft}%` }}
+          >
+            <span className="inline-block rounded border border-red-200 bg-white/95 px-1.5 py-0.5 shadow-sm">
+              {quantitativeTimeline.sourceValueLabel}
+            </span>
+          </div>
+        )}
+
+        <div className="relative h-8 overflow-hidden rounded-md border border-gray-300">
+          {TIMELINE_PERIODS.map((period, index) => (
+            <div
+              key={period.key}
+              className={`absolute inset-y-0 ${index < TIMELINE_PERIODS.length - 1 ? 'border-r border-white/70' : ''}`}
+              style={{
+                left: `${period.startPercent}%`,
+                width: `${period.widthPercent}%`,
+                backgroundColor: period.color,
+              }}
+            />
+          ))}
+
+          {qualitativeTimeline && activeQualitativePeriod && (
+            <div
+              className="absolute inset-y-1 rounded-sm border border-slate-600/60"
+              style={{
+                left: `${activeQualitativePeriod.startPercent}%`,
+                width: `${activeQualitativePeriod.widthPercent}%`,
+                ...createHatchedFill(activeQualitativePeriod.hatchColor),
+              }}
+            />
+          )}
+
+          {quantitativeTimeline?.markerKind === 'interval' && (
+            <div
+              className="absolute top-1/2 h-3 -translate-y-1/2 rounded-full border border-red-700 bg-red-500/85"
+              style={{
+                left: `${quantitativeTimeline.markerLeft}%`,
+                width: `${quantitativeTimeline.markerWidth}%`,
+              }}
+            />
+          )}
+
+          {quantitativeTimeline?.markerKind === 'point' && (
+            <div
+              className="absolute inset-y-0 z-10"
+              style={{
+                left: `${quantitativeTimeline.markerLeft}%`,
+                transform: 'translateX(-50%)',
+              }}
+            >
+              <div className="absolute top-1 bottom-2 w-0.5 bg-red-700" />
+              <div className="absolute bottom-1 left-1/2 h-0 w-0 -translate-x-1/2 border-x-[5px] border-x-transparent border-t-[7px] border-t-red-700" />
+            </div>
+          )}
+        </div>
+
+        <div className="relative mt-2 h-8 text-[10px] text-gray-500">
+          {TIMELINE_TICKS.map((tick) => (
+            <div
+              key={tick.label}
+              className="absolute top-0"
+              style={{
+                left: `${tick.left}%`,
+                transform: getTickTransform(tick.align),
+                maxWidth: getTickMaxWidth(tick.align),
+              }}
+            >
+              <div className={`h-1 w-px bg-gray-400 ${getTickRuleClass(tick.align)}`} />
+              <div className={`${getTickTextClass(tick.align)} leading-tight`}>
+                {tick.label}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        {quantitativeTimeline && (
+          <>
+            <p className="text-[11px] text-gray-700">
+              Marker = <span className="font-mono text-gray-800">{quantitativeTimeline.markerKind === 'point' ? 'Red arrow' : 'Red interval'}</span>
+            </p>
+            <p className="text-[11px] text-gray-600">
+              {quantitativeTimeline.summary}
+            </p>
+          </>
+        )}
+
+        {qualitativeTimeline && (
+          <>
+            <p className="text-[11px] text-gray-700">
+              Displayed period = <span className="font-mono text-gray-800">{qualitativeTimeline.categoryLabel}</span>
+            </p>
+            <p className="text-[11px] text-gray-600">
+              {qualitativeTimeline.summary}
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  );
 };
 
 interface SampleDetailsPanelProps {
@@ -434,8 +736,8 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
 
   // Extract tectonic setting display value (support both legacy string and new nested structure)
   const tectonicSettingDisplay = typeof tecto === 'object' 
-    ? tecto?.ui || 'Unknown'
-    : tecto || 'Unknown';
+    ? tecto?.ui ?? 'Unknown'
+    : tecto ?? 'Unknown';
 
   // Format coordinates to 4 decimal places
   const formatCoordinate = (coord: number, isLat: boolean) => {
@@ -468,7 +770,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
   const temporalTimeline = getTemporalTimeline(sample, temporalEvidenceValue);
 
   return (
-    <div className="absolute top-4 right-4 z-20 w-80 bg-white rounded-lg shadow-2xl overflow-hidden">
+    <div className="absolute top-4 right-4 z-20 w-[22rem] max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-2xl overflow-hidden">
       {/* Header */}
       <div className="bg-volcano-600 text-white p-4 flex items-center justify-between">
         <h3 className="font-semibold text-lg">Sample Details</h3>
@@ -644,7 +946,11 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                                       score = exp(-distance_km / decay_constant)
                                     </p>
                                     
-                                    {distance !== undefined ? (
+                                    {distance === undefined ? (
+                                      <p className="mt-1 text-gray-500 italic">
+                                        Distance data not available
+                                      </p>
+                                    ) : (
                                       <div className="bg-blue-50 p-2 rounded border border-blue-300 space-y-1">
                                         <p className="font-semibold text-gray-700">For this sample:</p>
                                         <p className="font-mono text-sm">
@@ -657,10 +963,6 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                                           score = exp(-{distance.toFixed(2)} / {decay}) = {(finalScore * 100).toFixed(1)}%
                                         </p>
                                       </div>
-                                    ) : (
-                                      <p className="mt-1 text-gray-500 italic">
-                                        Distance data not available
-                                      </p>
                                     )}
                                   </div>
                                 );
@@ -707,7 +1009,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                                         <div className="text-center bg-green-100">1.0</div>
                                       </div>
                                       <p className="text-[10px] text-gray-600 mt-1">
-                                        * 0.7 for plume–ridge systems (Iceland, Azores, Afar)
+                                        * 0.7 for plume–ridge systems (Afar, etc.)
                                       </p>
                                       <p className="text-[10px] text-gray-600 mt-1">
                                         • Unknown regime: 0.5 (partial confidence based on crust only)
@@ -735,7 +1037,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                                         </p>
                                         <p className="font-mono text-sm">
                                           Crust modifier = <span className="text-blue-700">{crustModifier.toFixed(2)}</span>
-                                          {crustModifier === 1.0 && <span className="text-gray-500 text-[10px]"> (same crust type)</span>}
+                                          {crustModifier === 1 && <span className="text-gray-500 text-[10px]"> (same crust type)</span>}
                                           {crustModifier === 0.85 && <span className="text-gray-500 text-[10px]"> (unknown crust)</span>}
                                           {crustModifier === 0.75 && <span className="text-gray-500 text-[10px]"> (different crust type)</span>}
                                         </p>
@@ -743,7 +1045,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                                           score = {regimeScore.toFixed(2)} × {crustModifier.toFixed(2)} = {(finalScore * 100).toFixed(1)}%
                                         </p>
                                         
-                                        {regimeScore === 0.0 && (
+                                        {regimeScore === 0 && (
                                           <p className="text-red-600 text-[10px] mt-1">
                                             ⚠️ Incompatible tectonic regimes (geodynamically inconsistent)
                                           </p>
@@ -807,161 +1109,41 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                                     const qualitativeTimeline = temporalTimeline.kind === 'geological-label'
                                       ? temporalTimeline
                                       : null;
-                                    const timelineMaxLabel = quantitativeTimeline
-                                      ? `${formatBp(TIMELINE_MAX_BP)}${quantitativeTimeline.clippedOlder ? '+' : ''}`
-                                      : undefined;
-                                    const sourceValueLabel = temporalTimeline.kind !== 'none'
-                                      ? temporalTimeline.sourceValueLabel
-                                      : undefined;
+                                    const sourceValueLabel = temporalTimeline.kind === 'none'
+                                      ? undefined
+                                      : temporalTimeline.sourceValueLabel;
                                     const shouldShowStoredValue = evidenceValue !== undefined
                                       && evidenceValue !== sourceValueLabel
-                                      && evidenceValue !== quantitativeTimeline?.derivedIntervalLabel;
-                                    const sampleIntervalStyle = quantitativeTimeline?.kind === 'geological-interval'
-                                      ? createHatchedFill('rgba(252, 211, 77, 0.85)')
-                                      : undefined;
-                                    const overlapIntervalStyle = quantitativeTimeline?.kind === 'geological-interval'
-                                      ? createHatchedFill('rgba(74, 222, 128, 0.85)')
-                                      : undefined;
+                                      && evidenceValue.trim() !== sourceValueLabel?.trim();
 
                                     return (
                                       <>
                                         <p className="mb-2">
-                                          The temporal score asks one question: is the sample age compatible
-                                          with Holocene volcanism? The backend uses the Holocene window from
-                                          0 to 11,700 years BP and stores only the direct final score.
+                                          This timeline shows the temporal evidence used for this sample.
+                                          In this dataset, that evidence is usually an exact date, a partial date,
+                                          a year or BCE year, a single age in Ma, or a geological label. Dates
+                                          and numeric ages are shown in red. Textual geological ages are shown as
+                                          a hatched band on the matching period.
                                         </p>
 
-                                        {quantitativeTimeline && (
-                                          <div className="bg-gray-50 p-2 rounded border border-gray-300 mb-2 space-y-2">
-                                            <p className="font-semibold text-gray-700">Visual timeline for this sample:</p>
-                                            <div className="flex flex-wrap gap-2 text-[10px] text-gray-600">
-                                              <span className="inline-flex items-center gap-1">
-                                                <span className="h-2 w-2 rounded-sm border border-slate-400 bg-slate-300" />
-                                                Outside Holocene
-                                              </span>
-                                              <span className="inline-flex items-center gap-1">
-                                                <span className="h-2 w-2 rounded-sm border border-blue-300 bg-blue-200" />
-                                                Holocene window
-                                              </span>
-                                              <span className="inline-flex items-center gap-1">
-                                                <span
-                                                  className={`h-2 w-2 rounded-sm border ${quantitativeTimeline.kind === 'geological-interval' ? 'border-amber-600' : 'border-amber-500 bg-amber-300'}`}
-                                                  style={sampleIntervalStyle}
-                                                />
-                                                {quantitativeTimeline.legendLabel}
-                                              </span>
-                                              <span className="inline-flex items-center gap-1">
-                                                <span
-                                                  className={`h-2 w-2 rounded-sm border ${quantitativeTimeline.kind === 'geological-interval' ? 'border-green-700' : 'border-green-600 bg-green-400'}`}
-                                                  style={overlapIntervalStyle}
-                                                />
-                                                Overlap used for score
-                                              </span>
-                                            </div>
-                                            <p className="text-[11px] text-gray-500">
-                                              Holocene window = <span className="font-mono text-gray-700">0 to 11.7 ka BP</span>
-                                            </p>
-                                            <div className="relative h-6 overflow-hidden rounded-md border border-gray-300 bg-slate-200">
-                                              <div
-                                                className="absolute inset-y-0 border-l border-blue-300 bg-blue-200"
-                                                style={{
-                                                  left: `${HOLOCENE_LEFT_PERCENT}%`,
-                                                  width: `${100 - HOLOCENE_LEFT_PERCENT}%`,
-                                                }}
-                                              />
-                                              <div
-                                                className={`absolute top-1/2 h-3 -translate-y-1/2 rounded-full border ${quantitativeTimeline.kind === 'geological-interval' ? 'border-amber-600' : 'border-amber-500 bg-amber-300/90'}`}
-                                                style={{
-                                                  left: `${quantitativeTimeline.intervalLeft}%`,
-                                                  width: `${quantitativeTimeline.intervalWidth}%`,
-                                                  ...sampleIntervalStyle,
-                                                }}
-                                              />
-                                              {quantitativeTimeline.overlapWidth > 0 && (
-                                                <div
-                                                  className={`absolute top-1/2 h-3 -translate-y-1/2 rounded-full border ${quantitativeTimeline.kind === 'geological-interval' ? 'border-green-700' : 'border-green-600 bg-green-400/90'}`}
-                                                  style={{
-                                                    left: `${quantitativeTimeline.overlapLeft}%`,
-                                                    width: `${quantitativeTimeline.overlapWidth}%`,
-                                                    ...overlapIntervalStyle,
-                                                  }}
-                                                />
-                                              )}
-                                            </div>
-                                            <div className="flex justify-between text-[10px] text-gray-500">
-                                              <span>{timelineMaxLabel}</span>
-                                              <span>0 BP</span>
-                                            </div>
-                                            <div className="space-y-1">
-                                              <p className="text-[11px] text-gray-700">
-                                                {quantitativeTimeline.kind === 'dated-interval' ? 'Derived interval' : 'Numeric interval'} = <span className="font-mono text-gray-800">{quantitativeTimeline.derivedIntervalLabel}</span>
-                                              </p>
-                                              <p className="text-[11px] text-gray-700">
-                                                Holocene overlap = <span className="font-mono text-gray-800">{formatOverlapRatio(quantitativeTimeline.overlapRatio)}</span>
-                                              </p>
-                                              <p className="text-[11px] text-gray-600">
-                                                {quantitativeTimeline.summary}
-                                              </p>
-                                            </div>
-                                          </div>
-                                        )}
+                                        <p className="mb-2 text-[11px] text-gray-500">
+                                          The temporal score below is the value returned by the backend.
+                                        </p>
 
-                                        {qualitativeTimeline && (
-                                          <div className="bg-gray-50 p-2 rounded border border-gray-300 mb-2 space-y-2">
-                                            <p className="font-semibold text-gray-700">Qualitative fallback band for this sample:</p>
-                                            <div className="grid grid-cols-3 gap-1 text-[10px]">
-                                              {QUALITATIVE_BUCKETS.map((bucket) => {
-                                                const isActive = bucket.key === qualitativeTimeline.category;
-
-                                                return (
-                                                  <div
-                                                    key={bucket.key}
-                                                    className={`relative overflow-hidden rounded border px-1 py-2 text-center leading-tight ${isActive ? 'border-blue-500 text-gray-800' : 'border-gray-300 bg-white text-gray-500'}`}
-                                                    style={isActive ? createHatchedFill(bucket.color) : undefined}
-                                                  >
-                                                    {bucket.label}
-                                                  </div>
-                                                );
-                                              })}
-                                            </div>
-                                            <div className="space-y-1">
-                                              <p className="text-[11px] text-gray-700">
-                                                Geological label = <span className="font-mono text-gray-800">{qualitativeTimeline.sourceValueLabel}</span>
-                                              </p>
-                                              <p className="text-[11px] text-gray-700">
-                                                Fallback bucket = <span className="font-mono text-gray-800">{qualitativeTimeline.categoryLabel}</span>
-                                              </p>
-                                              <p className="text-[11px] text-gray-600">
-                                                {qualitativeTimeline.summary}
-                                              </p>
-                                            </div>
-                                          </div>
+                                        {(quantitativeTimeline || qualitativeTimeline) && (
+                                          <TemporalTimelineVisualization
+                                            quantitativeTimeline={quantitativeTimeline}
+                                            qualitativeTimeline={qualitativeTimeline}
+                                          />
                                         )}
 
                                         <div className="bg-gray-50 p-2 rounded border border-gray-300 mb-2 space-y-1">
-                                          <p className="font-semibold text-gray-700">Quantitative rule used first:</p>
-                                          <p className="mb-1">For dates and numeric age intervals, the backend computes:</p>
-                                          <p className="font-mono text-blue-600 mb-2">
-                                            overlap_ratio = overlap_with_holocene / sample_interval_width
-                                          </p>
+                                          <p className="font-semibold text-gray-700">How this display works:</p>
                                           <ul className="list-disc ml-4 space-y-0.5">
-                                            <li><strong>Year-only dates</strong> expand to 1 Jan → 31 Dec before overlap is computed.</li>
-                                            <li><strong>Month-only dates</strong> expand to the full calendar month before overlap is computed.</li>
-                                            <li><strong>Day-precision dates</strong> remain one-day intervals.</li>
-                                            <li><strong>Overlap ratio &gt;= 0.8</strong> = 1.0</li>
-                                            <li><strong>Overlap ratio &gt; 0</strong> = 0.5</li>
-                                            <li><strong>No overlap</strong> = 0.0</li>
-                                            <li><strong>Single numeric ages</strong> only check whether they land inside or outside the Holocene window.</li>
-                                          </ul>
-                                        </div>
-
-                                        <div className="bg-gray-50 p-2 rounded border border-gray-300 mb-2 space-y-1">
-                                          <p className="font-semibold text-gray-700">Textual fallback when no numeric interval exists:</p>
-                                          <ul className="list-disc ml-4 space-y-0.5">
-                                            <li><strong>Holocene / Recent</strong> = 0.7</li>
-                                            <li><strong>Pleistocene</strong> = 0.5</li>
-                                            <li><strong>Other textual ages</strong> = 0.0</li>
-                                            <li><strong>Pure geological labels</strong> stay qualitative here unless numeric bounds are available.</li>
+                                            <li><strong>Exact dates</strong> and <strong>single numeric ages</strong> are shown as red arrows.</li>
+                                            <li><strong>Month-only</strong> and <strong>year-only</strong> dates are shown as red intervals because their precision is broader.</li>
+                                            <li><strong>Geological labels</strong> such as HOLOCENE or PLEISTOCENE are shown as hatched bands.</li>
+                                            <li><strong>Values older than 40 ka BP</strong> are clipped at the left edge for readability.</li>
                                           </ul>
                                         </div>
 
@@ -982,14 +1164,9 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                                                 Input value = <span className="text-blue-700">{sourceValueLabel}</span>
                                               </p>
                                             )}
-                                            {quantitativeTimeline && (
-                                              <p className="font-mono text-sm">
-                                                {quantitativeTimeline.kind === 'dated-interval' ? 'Derived interval' : 'Numeric interval'} = <span className="text-blue-700">{quantitativeTimeline.derivedIntervalLabel}</span>
-                                              </p>
-                                            )}
                                             {qualitativeTimeline && (
                                               <p className="font-mono text-sm">
-                                                Fallback bucket = <span className="text-blue-700">{qualitativeTimeline.categoryLabel} ({qualitativeTimeline.fallbackScore.toFixed(1)})</span>
+                                                Displayed period = <span className="text-blue-700">{qualitativeTimeline.categoryLabel}</span>
                                               </p>
                                             )}
                                             {shouldShowStoredValue && (
@@ -1109,7 +1286,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                 )}
 
                 {/* Score Gap */}
-                {quality && quality.gap !== undefined && (
+                {quality?.gap !== undefined && (
                   <div className="flex items-start gap-2">
                     <div className="relative group flex-shrink-0">
                       <button
@@ -1131,8 +1308,8 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                           </p>
                           <ul className="list-disc ml-4 space-y-0.5">
                             <li><strong>Gap &lt; 10%:</strong> backend treats the result as ambiguous unless explicit literature support exists.</li>
-                            <li><strong>Gap ≥ 20%:</strong> can support medium confidence when score and coverage are also sufficient.</li>
-                            <li><strong>Gap ≥ 30%:</strong> can support high confidence when the rest of the evidence is strong enough.</li>
+                            <li><strong>Gap ≥ 10%:</strong> can support medium confidence when score and coverage are also sufficient.</li>
+                            <li><strong>Gap ≥ 20%:</strong> can support high confidence when the rest of the evidence is strong enough.</li>
                           </ul>
                           <p className="mt-1 text-gray-500 italic">
                             A large gap helps confidence, but gap alone does not determine the final label.
@@ -1184,7 +1361,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                             <li>• <strong>Coverage ≥ 30%</strong></li>
                           </ul>
                           <p className="text-[11px] text-gray-600 mt-1">
-                            If either condition fails, the backend keeps the sample unmatched. This is a valid result, not an error.
+                            If either condition fails, the backend keeps the sample unmatched.
                           </p>
                         </div>
 
@@ -1192,7 +1369,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                         <div className="bg-white p-2 rounded border border-blue-300">
                           <p className="font-semibold text-blue-800 mb-1">Stage 1: Data Sufficiency (blocking)</p>
                           <ul className="text-[11px] space-y-0.5 ml-3">
-                            <li>• <strong>Coverage &lt; 40%</strong> → <span className="text-red-600 font-semibold">Low confidence</span> (cannot be raised)</li>
+                            <li>• <strong>Coverage &lt; 40%</strong> → <span className="text-orange-700 font-semibold">Low confidence</span> (cannot be raised)</li>
                             <li className="text-gray-600">→ Missing too many dimensions prevents reliable assessment</li>
                           </ul>
                         </div>
@@ -1201,10 +1378,10 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                         <div className="bg-white p-2 rounded border border-blue-300">
                           <p className="font-semibold text-blue-800 mb-1">Stage 2: Ambiguity Check (blocking)</p>
                           <ul className="text-[11px] space-y-0.5 ml-3">
-                            <li>• <strong>Score Gap &lt; 10%</strong> → <span className="text-orange-600 font-semibold">Low confidence</span> (unless literature)</li>
+                            <li>• <strong>Score Gap &lt; 10%</strong> → <span className="text-orange-700 font-semibold">Low confidence</span> (unless literature)</li>
                             <li className="text-gray-600">→ Multiple similar candidates = uncertain match</li>
-                            <li>• <strong>Spatial uncertainty &gt; 70% and coverage &lt; 60%</strong> → <span className="text-orange-600 font-semibold">Low confidence</span></li>
-                            <li className="text-gray-600">→ Unreliable location weakens other evidence</li>
+                            <li>• <strong>Spatial uncertainty &gt; 70% and coverage &lt; 60%</strong> → <span className="text-orange-700 font-semibold">Low confidence</span></li>
+                            <li className="text-gray-600">→ Spatial uncertainty is computed as <span className="font-mono">min(distance_to_best_match / decay_constant, 1.0)</span>.</li>
                           </ul>
                         </div>
 
@@ -1214,11 +1391,11 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                           <p className="text-[11px] text-gray-600 mb-1">Only evaluated if data is sufficient and unambiguous:</p>
                           <ul className="text-[11px] space-y-1 ml-3">
                             <li>
-                              <strong className="text-green-700">High:</strong> Score ≥80%, Coverage ≥70%, Gap ≥30%
+                              <strong className="text-green-700">High:</strong> Score ≥80%, Coverage ≥70%, Gap ≥20%
                               <div className="text-gray-600 ml-3">→ Strong multi-dimensional evidence</div>
                             </li>
                             <li>
-                              <strong className="text-blue-700">Medium:</strong> Score ≥50%, Coverage ≥40%, Gap ≥20%
+                              <strong className="text-blue-700">Medium:</strong> Score ≥50%, Coverage ≥40%, Gap ≥10%
                               <div className="text-gray-600 ml-3">→ Reasonable but incomplete evidence</div>
                             </li>
                             <li>
@@ -1231,11 +1408,9 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                         {/* Literature Evidence */}
                         <div className="bg-indigo-50 p-2 rounded border border-indigo-300">
                           <p className="font-semibold text-indigo-800 mb-1">📚 Literature Evidence</p>
-                          <ul className="text-[11px] space-y-0.5 ml-3">
-                            <li>• Can <strong>raise confidence by one level</strong> (Low→Medium or Medium→High)</li>
-                            <li>• <strong>Cannot override</strong> missing data or ambiguity blocks</li>
-                            <li className="text-gray-600">→ It supports confidence only; it does not change the geological score.</li>
-                          </ul>
+                          <p className="text-[11px] text-gray-700">
+                            If the name of the volcano appears in the title of the reference, then we <strong>raise confidence by one level</strong> (Low→Medium or Medium→High)
+                          </p>
                         </div>
 
                         {/* Why This Matters */}
@@ -1245,18 +1420,14 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                             A sample with <strong>Score=85%</strong> might still be <strong>Low confidence</strong> if:
                           </p>
                           <ul className="text-[11px] ml-3 mt-1">
-                            <li>• Too little weighted evidence is available (coverage &lt;40%)</li>
+                            <li>• Too little evidence is available(coverage &lt;40%); e.g. only the spatial data is available</li>
                             <li>• Another volcano scores 82% (ambiguous, gap=3%)</li>
-                            <li>• Spatial data is highly uncertain</li>
+                            <li>• The spatial uncertainty is &gt;70%</li>
                           </ul>
                           <p className="text-[11px] text-gray-700 mt-1">
                             <strong>Confidence reflects reliability, not just strength.</strong>
                           </p>
                         </div>
-
-                        <p className="text-[10px] text-gray-500 italic mt-2">
-                          Confidence reflects reliability of the assignment, not just the size of the score.
-                        </p>
                       </div>
                     )}
                   </div>
