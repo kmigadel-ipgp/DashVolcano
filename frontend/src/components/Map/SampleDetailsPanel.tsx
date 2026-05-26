@@ -16,7 +16,7 @@ import { getMatchingScoreMeta, getMatchingScoreValue } from '../../utils/matchin
 const BP_REFERENCE_YEAR = 1950;
 const HOLOCENE_MAX_BP = 11700;
 const PLEISTOCENE_MAX_BP = 40000;
-const TIMELINE_LEFT_LABEL = '>40ka BP';
+const TIMELINE_LEFT_LABEL = '~6.5Ga';
 const PERIOD_WIDTH_PERCENT = 100 / 3;
 const TIMELINE_MIN_WIDTH_PERCENT = 1;
 const TIMELINE_LABEL_MIN_PERCENT = 12;
@@ -70,8 +70,8 @@ const TIMELINE_PERIODS: Array<{
 
 const TIMELINE_TICKS: Array<{ left: number; label: string; align: TimelineTickAlign }> = [
   { left: 0, label: TIMELINE_LEFT_LABEL, align: 'left' as const },
-  { left: PERIOD_WIDTH_PERCENT, label: '40 ka BP', align: 'center' as const },
-  { left: PERIOD_WIDTH_PERCENT * 2, label: '11.7 ka BP', align: 'center' as const },
+  { left: PERIOD_WIDTH_PERCENT, label: '40ka', align: 'center' as const },
+  { left: PERIOD_WIDTH_PERCENT * 2, label: '11.7ka', align: 'center' as const },
   { left: 100, label: 'Present', align: 'right' as const },
 ];
 
@@ -136,7 +136,7 @@ const formatBp = (value: number) => {
 
   if (normalized >= 1000) {
     const scaled = normalized / 1000;
-    return `${scaled.toFixed(Number.isInteger(scaled) ? 0 : 1)} ka BP`;
+    return `${scaled.toFixed(Number.isInteger(scaled) ? 0 : 1)}ka`;
   }
 
   return `${Math.round(normalized)} BP`;
@@ -348,7 +348,7 @@ const buildQuantitativeTimeline = ({
     : `${intro} It is shown as a red interval across ${formatCoveredPeriods(coveredPeriods)}.`;
 
   if (clippedOlder) {
-    summary += ' Values older than 40 ka BP are clipped at the left edge of the timeline.';
+    summary += ' Values older than 40ka are clipped at the left edge of the timeline.';
   }
 
   return {
@@ -1137,14 +1137,45 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                                           />
                                         )}
 
-                                        <div className="bg-gray-50 p-2 rounded border border-gray-300 mb-2 space-y-1">
-                                          <p className="font-semibold text-gray-700">How this display works:</p>
-                                          <ul className="list-disc ml-4 space-y-0.5">
-                                            <li><strong>Exact dates</strong> and <strong>single numeric ages</strong> are shown as red arrows.</li>
-                                            <li><strong>Month-only</strong> and <strong>year-only</strong> dates are shown as red intervals because their precision is broader.</li>
-                                            <li><strong>Geological labels</strong> such as HOLOCENE or PLEISTOCENE are shown as hatched bands.</li>
-                                            <li><strong>Values older than 40 ka BP</strong> are clipped at the left edge for readability.</li>
-                                          </ul>
+                                        <div className="bg-gray-50 p-2 rounded border border-gray-300 mb-2 space-y-2">
+                                          <table className="w-full table-fixed text-left text-[10px] text-gray-600">
+                                            <thead className="bg-gray-100 text-gray-700">
+                                              <tr>
+                                                <th className="px-2 py-1.5 font-semibold">Evidence case</th>
+                                                <th className="w-12 px-2 py-1.5 font-semibold">Score</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-200">
+                                              <tr className="align-top">
+                                                <td className="px-2 py-1.5">
+                                                  Precise numeric date / age clearly placed in HOLOCENE / RECENT period.
+                                                </td>
+                                                <td className="px-2 py-1.5 font-mono font-semibold text-gray-800">1.0</td>
+                                              </tr>
+                                              <tr className="align-top">                                                  
+                                                <td className="px-2 py-1.5">
+                                                  HOLOCENE / RECENT label, used only when no numeric age is available.
+                                                </td>
+                                                <td className="px-2 py-1.5 font-mono font-semibold text-gray-800">0.7</td>
+                                              </tr>
+                                              <tr className="align-top">                                                  
+                                                <td className="px-2 py-1.5">
+                                                  Numeric age or text placed in PLEISTOCENE period.
+                                                </td>
+                                                <td className="px-2 py-1.5 font-mono font-semibold text-gray-800">0.5</td>
+                                              </tr>
+                                              <tr className="align-top">
+                                                <td className="px-2 py-1.5">
+                                                  Numeric age or text pointing to an older period outside HOLOCENE / RECENT and PLEISTOCENE.
+                                                </td>
+                                                <td className="px-2 py-1.5 font-mono font-semibold text-gray-800">0.0</td>
+                                              </tr>
+                                            </tbody>
+                                          </table>
+
+                                          <p className="text-[11px] text-gray-500">
+                                            If no temporal evidence exists, the backend returns no temporal component instead of a zero score.
+                                          </p>
                                         </div>
 
                                         <p className="text-[11px] text-gray-500 mb-2">
