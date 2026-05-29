@@ -7,3 +7,4 @@ export * from './dateFormatters';
 export * from './numberFormatters';
 export * from './colors';
 export * from './geojson';
+export * from './volcanoAutocomplete';

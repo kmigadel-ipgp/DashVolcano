@@ -22,6 +22,29 @@ from backend.main import app
 client = TestClient(app)
 
 
+def _chemical_analysis_samples(data):
+    return data.get("samples", [])
+
+
+def _tas_samples(data):
+    return [
+        sample for sample in _chemical_analysis_samples(data)
+        if sample.get("SIO2") is not None
+        and sample.get("NA2O") is not None
+        and sample.get("K2O") is not None
+    ]
+
+
+def _afm_samples(data):
+    return [
+        sample for sample in _chemical_analysis_samples(data)
+        if sample.get("FEOT") is not None
+        and sample.get("MGO") is not None
+        and sample.get("NA2O") is not None
+        and sample.get("K2O") is not None
+    ]
+
+
 def normalize_confidence(sample):
     metadata = sample.get("matching_metadata") or {}
     quality = metadata.get("quality") or {}
@@ -707,7 +730,7 @@ class TestRockTypeDistributionEndpoint:
         distribution = response.json()
         manual_counts = {}
 
-        for sample in chemical_response.json().get("all_samples", []):
+        for sample in chemical_response.json().get("samples", []):
             if sample.get("material") != "WR":
                 continue
             if normalize_confidence(sample) not in {"high", "medium"}:
@@ -732,7 +755,7 @@ class TestRockTypeDistributionEndpoint:
 
 
 class TestChemicalAnalysisEndpoint:
-    """Test chemical analysis endpoint for TAS/AFM data."""
+    """Test compact chemical analysis endpoint payload."""
     
     def test_get_chemical_analysis_popa(self):
         """Test chemical analysis for Popa volcano (275080)."""
@@ -743,55 +766,35 @@ class TestChemicalAnalysisEndpoint:
         # Validate structure
         assert "volcano_name" in data
         assert "volcano_number" in data
-        assert "tas_data" in data
-        assert "afm_data" in data
+        assert "samples" in data
         assert "samples_count" in data
+        assert isinstance(data["samples"], list)
         
         assert data["volcano_number"] == 275080
     
-    def test_chemical_analysis_tas_data(self):
-        """Test TAS data structure in chemical analysis."""
+    def test_chemical_analysis_samples_include_oxide_fields(self):
+        """Chemical analysis samples should preserve flattened oxide fields."""
         response = client.get("/api/volcanoes/275080/chemical-analysis?limit=50")
         assert response.status_code == 200
         data = response.json()
-        
-        tas_data = data["tas_data"]
-        
-        # Should be array of data points
-        assert isinstance(tas_data, list)
-        
-        # Each point should have SiO2 and Na2O+K2O
-        if len(tas_data) > 0:
-            point = tas_data[0]
-            assert "SiO2" in point
-            assert "Na2O_K2O" in point
-            
-            # Values should be reasonable percentages
-            assert 30 <= point["SiO2"] <= 90
-            assert 0 <= point["Na2O_K2O"] <= 20
-    
-    def test_chemical_analysis_afm_data(self):
-        """Test AFM data structure in chemical analysis."""
-        response = client.get("/api/volcanoes/275080/chemical-analysis?limit=50")
-        assert response.status_code == 200
-        data = response.json()
-        
-        afm_data = data["afm_data"]
-        
-        # Should be array of data points
-        assert isinstance(afm_data, list)
-        
-        # Each point should have A, F, M values
-        if len(afm_data) > 0:
-            point = afm_data[0]
-            assert "A" in point
-            assert "F" in point
-            assert "M" in point
-            
-            # AFM values should be reasonable percentages (raw values not normalized)
-            assert point["A"] >= 0
-            assert point["F"] >= 0
-            assert point["M"] >= 0
+
+        samples = data["samples"]
+        assert isinstance(samples, list)
+
+        if samples:
+            point = samples[0]
+            assert "sample_id" in point
+            assert "material" in point
+            assert "petro" in point or point.get("petro") is None
+
+        for point in _tas_samples(data):
+            assert 30 <= point["SIO2"] <= 90
+            assert 0 <= point["NA2O"] + point["K2O"] <= 20
+
+        for point in _afm_samples(data):
+            assert point["FEOT"] >= 0
+            assert point["MGO"] >= 0
+            assert point["NA2O"] + point["K2O"] >= 0
     
     def test_chemical_analysis_rock_types(self):
         """Test rock type distribution in chemical analysis."""
@@ -836,7 +839,7 @@ class TestChemicalAnalysisEndpoint:
         limited_data = limited_response.json()
         samples_data = samples_response.json()
 
-        assert default_data["samples_count"] == len(default_data["all_samples"])
+        assert default_data["samples_count"] == len(default_data["samples"])
         assert default_data["samples_count"] == samples_data["total"]
         assert default_data["samples_count"] == samples_data["count"]
 
@@ -855,25 +858,24 @@ class TestChemicalAnalysisEndpoint:
         
         # Should return gracefully with empty data
         assert data["samples_count"] == 0
-        assert len(data["tas_data"]) == 0
-        assert len(data["afm_data"]) == 0
+        assert data["samples"] == []
     
     def test_chemical_analysis_oxide_completeness(self):
-        """Test only samples with complete oxides are included."""
+        """TAS/AFM-compatible samples should be derivable from the compact payload."""
         response = client.get("/api/volcanoes/275080/chemical-analysis?limit=50")
         assert response.status_code == 200
         data = response.json()
-        
-        # TAS data should only include samples with SiO2, Na2O, K2O
-        for point in data["tas_data"]:
-            assert point["SiO2"] is not None
-            assert point["Na2O_K2O"] is not None
-        
-        # AFM data should only include samples with Na2O, K2O, FeOT, MgO
-        for point in data["afm_data"]:
-            assert point["A"] is not None
-            assert point["F"] is not None
-            assert point["M"] is not None
+
+        for point in _tas_samples(data):
+            assert point["SIO2"] is not None
+            assert point["NA2O"] is not None
+            assert point["K2O"] is not None
+
+        for point in _afm_samples(data):
+            assert point["FEOT"] is not None
+            assert point["MGO"] is not None
+            assert point["NA2O"] is not None
+            assert point["K2O"] is not None
 
 
 class TestAnalyticsCaching:
@@ -914,7 +916,7 @@ class TestAnalyticsIntegration:
     """Test analytics endpoints integration with other data."""
     
     def test_tas_data_matches_polygons(self):
-        """Test TAS data from samples matches TAS polygon definitions."""
+        """Compact samples should still project into TAS polygon axes."""
         # Get TAS polygon definitions
         polygons_response = client.get("/api/analytics/tas-polygons")
         assert polygons_response.status_code == 200
@@ -930,11 +932,12 @@ class TestAnalyticsIntegration:
         x_range = tas_axes["x"]["range"]
         y_range = tas_axes["y"]["range"]
         
-        for point in analysis_data["tas_data"]:
+        for point in _tas_samples(analysis_data):
             # Most points should be within plot ranges (allow some outliers)
-            if x_range[0] <= point["SiO2"] <= x_range[1]:
+            if x_range[0] <= point["SIO2"] <= x_range[1]:
                 assert True  # Point within X range
-            if y_range[0] <= point["Na2O_K2O"] <= y_range[1]:
+            alkali = point["NA2O"] + point["K2O"]
+            if y_range[0] <= alkali <= y_range[1]:
                 assert True  # Point within Y range
     
     def test_afm_data_values_valid(self):
@@ -943,11 +946,11 @@ class TestAnalyticsIntegration:
         assert response.status_code == 200
         data = response.json()
         
-        # AFM values should be non-negative (raw percentages)
-        for point in data["afm_data"]:
-            assert point["A"] >= 0
-            assert point["F"] >= 0
-            assert point["M"] >= 0
+        # AFM-compatible oxide values should be non-negative
+        for point in _afm_samples(data):
+            assert point["NA2O"] + point["K2O"] >= 0
+            assert point["FEOT"] >= 0
+            assert point["MGO"] >= 0
     
     def test_multiple_volcanoes_analytics(self):
         """Test analytics endpoints work for multiple volcanoes."""

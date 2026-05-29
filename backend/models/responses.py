@@ -128,13 +128,13 @@ class VEIDistribution(BaseModel):
 
 
 class ChemicalAnalysis(BaseModel):
-    """Chemical analysis data for plotting."""
+    """Compact chemical analysis data for plotting and filtering."""
     volcano_number: int
     volcano_name: str
     samples_count: int
-    tas_data: List[Dict[str, float]]  # List of {SiO2, Na2O+K2O, sample_id}
-    afm_data: Optional[List[Dict[str, float]]] = None  # List of {A, F, M, sample_id}
+    samples: List[Dict[str, Any]]
     rock_types: Dict[str, int]  # Rock type distribution
+    rock_types_wr: Dict[str, int]  # WR-only rock type distribution
     
     model_config = ConfigDict(
         json_schema_extra={
@@ -142,13 +142,27 @@ class ChemicalAnalysis(BaseModel):
                 "volcano_number": 283001,
                 "volcano_name": "Abu",
                 "samples_count": 150,
-                "tas_data": [
-                    {"SiO2": 54.5, "Na2O_K2O": 3.2, "sample_id": "SAMPLE_001"},
-                    {"SiO2": 58.3, "Na2O_K2O": 4.1, "sample_id": "SAMPLE_002"}
+                "samples": [
+                    {
+                        "sample_id": "SAMPLE_001",
+                        "sample_code": "SAMPLE_001",
+                        "db": "GEOROC",
+                        "material": "WR",
+                        "petro": {"rock_type": "Basalt"},
+                        "SIO2": 54.5,
+                        "NA2O": 2.1,
+                        "K2O": 1.1,
+                        "FEOT": 8.4,
+                        "MGO": 4.2,
+                    }
                 ],
                 "rock_types": {
                     "Basalt": 80,
                     "Andesite": 70
+                },
+                "rock_types_wr": {
+                    "Basalt": 65,
+                    "Andesite": 55
                 }
             }
         }

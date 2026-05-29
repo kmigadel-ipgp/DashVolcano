@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Mountain, Download } from 'lucide-react';
 import { VEIBarChart } from '../components/Charts/VEIBarChart';
 import { fetchVolcanoVEIDistribution, fetchVolcanoRockTypes } from '../api/volcanoes';
@@ -7,6 +7,12 @@ import { showError, showSuccess } from '../utils/toast';
 import { useKeyboardShortcuts, commonShortcuts } from '../hooks/useKeyboardShortcuts';
 import { CardSkeleton, ChartSkeleton } from '../components/LoadingSkeleton';
 import { EmptyState } from '../components/EmptyState';
+import {
+  createVolcanoAutocompleteOptions,
+  filterVolcanoAutocompleteOptions,
+  type VolcanoAutocompleteOption,
+  type VolcanoAutocompleteSource,
+} from '../utils/volcanoAutocomplete';
 import type { VEIDistribution, RockType } from '../types';
 
 interface VolcanoVEISelection {
@@ -21,8 +27,7 @@ interface VolcanoVEISelection {
 const VOLCANO_COLORS = ['#DC2626', '#2563EB', '#16A34A']; // red, blue, green
 
 const CompareVEIPage = () => {
-  const [volcanoNames, setVolcanoNames] = useState<string[]>([]);
-  const [volcanoes, setVolcanoes] = useState<Array<{ volcano_number: number; volcano_name: string }>>([]);
+  const [volcanoes, setVolcanoes] = useState<VolcanoAutocompleteSource[]>([]);
   const [searchInputs, setSearchInputs] = useState<string[]>(['', '']);
   const [showSuggestions, setShowSuggestions] = useState<boolean[]>([false, false]);
   
@@ -38,11 +43,6 @@ const CompareVEIPage = () => {
         const response = await fetch('/api/volcanoes/summary');
         const data = await response.json();
         setVolcanoes(data.data || []);
-        const names = (data.data as Array<{volcano_name: string}>)
-          .map(v => v.volcano_name)
-          .filter(Boolean)
-          .sort((a, b) => a.localeCompare(b));
-        setVolcanoNames(names);
       } catch (err) {
         console.error('Failed to load volcanoes:', err);
       }
@@ -50,12 +50,21 @@ const CompareVEIPage = () => {
     loadVolcanoes();
   }, []);
 
-  const handleVolcanoSelect = async (index: number, volcanoName: string, volcanoNumber: number) => {
+  const volcanoOptions = useMemo(
+    () => createVolcanoAutocompleteOptions(volcanoes),
+    [volcanoes],
+  );
+
+  const handleVolcanoSelect = async (index: number, volcano: VolcanoAutocompleteOption) => {
+    const newInputs = [...searchInputs];
+    newInputs[index] = volcano.label;
+    setSearchInputs(newInputs);
+
     // Update selection and set loading state
     setSelections((prev) =>
       prev.map((sel, i) =>
         i === index
-          ? { name: volcanoName, number: volcanoNumber, data: null, rockTypes: null, loading: true, error: null }
+          ? { name: volcano.volcano_name, number: volcano.volcano_number, data: null, rockTypes: null, loading: true, error: null }
           : sel
       )
     );
@@ -63,8 +72,8 @@ const CompareVEIPage = () => {
     try {
       // Fetch both VEI distribution and rock types in parallel
       const [data, rockTypesData] = await Promise.all([
-        fetchVolcanoVEIDistribution(volcanoNumber),
-        fetchVolcanoRockTypes(volcanoNumber)
+        fetchVolcanoVEIDistribution(volcano.volcano_number),
+        fetchVolcanoRockTypes(volcano.volcano_number)
       ]);
       
       setSelections((prev) =>
@@ -77,7 +86,7 @@ const CompareVEIPage = () => {
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to fetch data';
-      showError(`Failed to load ${volcanoName}: ${errorMessage}`);
+      showError(`Failed to load ${volcano.volcano_name}: ${errorMessage}`);
       setSelections((prev) =>
         prev.map((sel, i) =>
           i === index
@@ -228,31 +237,23 @@ const CompareVEIPage = () => {
                 />
                 {showSuggestions[index] && searchInputs[index] && (
                   <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                    {volcanoNames
-                      .filter(name => name.toLowerCase().includes(searchInputs[index].toLowerCase()))
+                    {filterVolcanoAutocompleteOptions(volcanoOptions, searchInputs[index])
                       .slice(0, 10)
-                      .map((name) => {
-                        const volcano = volcanoes.find(v => v.volcano_name === name);
-                        return (
-                          <button
-                            key={name}
-                            onClick={() => {
-                              if (volcano) {
-                                handleVolcanoSelect(index, name, volcano.volcano_number);
-                                const newInputs = [...searchInputs];
-                                newInputs[index] = name;
-                                setSearchInputs(newInputs);
-                                const newShow = [...showSuggestions];
-                                newShow[index] = false;
-                                setShowSuggestions(newShow);
-                              }
-                            }}
-                            className="w-full px-4 py-2 text-left hover:bg-blue-50 transition-colors"
-                          >
-                            {name}
-                          </button>
-                        );
-                      })}
+                      .map((volcano) => (
+                        <button
+                          key={volcano.volcano_number}
+                          type="button"
+                          onClick={() => {
+                            handleVolcanoSelect(index, volcano);
+                            const newShow = [...showSuggestions];
+                            newShow[index] = false;
+                            setShowSuggestions(newShow);
+                          }}
+                          className="w-full px-4 py-2 text-left hover:bg-blue-50 transition-colors"
+                        >
+                          {volcano.label}
+                        </button>
+                      ))}
                   </div>
                 )}
               </div>
