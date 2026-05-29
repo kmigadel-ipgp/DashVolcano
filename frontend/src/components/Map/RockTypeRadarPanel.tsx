@@ -5,6 +5,10 @@ import { RockTypeRadarChart } from '../Charts';
 import { fetchRockTypeDistribution } from '../../api/analytics';
 import { fetchVolcanoes } from '../../api/volcanoes';
 import { calculateRockTypeDistribution, filterSamplesByConfidence } from '../../utils/confidence';
+import {
+  createVolcanoAutocompleteOptions,
+  filterVolcanoAutocompleteOptions,
+} from '../../utils/volcanoAutocomplete';
 import type {
   BBox,
   ComparisonVolcanoOption,
@@ -13,7 +17,6 @@ import type {
   RockTypeRadarSeries,
   Sample,
   SampleFilters,
-  Volcano,
 } from '../../types';
 import type { ConfidenceLevel } from '../../utils/confidence';
 
@@ -84,7 +87,7 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
   const [globalComparisonLoading, setGlobalComparisonLoading] = useState(false);
   const [globalComparisonError, setGlobalComparisonError] = useState<string | null>(null);
   const [volcanoOptions, setVolcanoOptions] = useState<ComparisonVolcanoOption[]>([]);
-  const [volcanoSearch, setVolcanoSearch] = useState(comparisonVolcano?.volcano_name ?? '');
+  const [volcanoSearch, setVolcanoSearch] = useState(comparisonVolcano?.label ?? comparisonVolcano?.volcano_name ?? '');
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const primarySamples = useMemo(
@@ -194,14 +197,12 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
       return volcanoOptions.slice(0, 10);
     }
 
-    return volcanoOptions
-      .filter(volcano => volcano.volcano_name.toLowerCase().includes(volcanoSearch.toLowerCase()))
-      .slice(0, 10);
+    return filterVolcanoAutocompleteOptions(volcanoOptions, volcanoSearch).slice(0, 10);
   }, [volcanoOptions, volcanoSearch]);
 
   useEffect(() => {
-    if (comparisonVolcano && volcanoSearch !== comparisonVolcano.volcano_name) {
-      setVolcanoSearch(comparisonVolcano.volcano_name);
+    if (comparisonVolcano && volcanoSearch !== comparisonVolcano.label) {
+      setVolcanoSearch(comparisonVolcano.label);
       return;
     }
 
@@ -224,12 +225,7 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
           return;
         }
 
-        const options = response.data
-          .map((volcano: Volcano) => ({
-            volcano_name: volcano.volcano_name,
-            volcano_number: volcano.volcano_number,
-          }))
-          .sort((left, right) => left.volcano_name.localeCompare(right.volcano_name));
+        const options = createVolcanoAutocompleteOptions(response.data);
 
         setVolcanoOptions(options);
       } catch {
@@ -384,12 +380,12 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
                     type="button"
                     onClick={() => {
                       onComparisonVolcanoChange(volcano);
-                      setVolcanoSearch(volcano.volcano_name);
+                      setVolcanoSearch(volcano.label);
                       setShowSuggestions(false);
                     }}
                     className="w-full text-left px-4 py-2 hover:bg-teal-50 text-sm text-gray-700"
                   >
-                    {volcano.volcano_name}
+                    {volcano.label}
                   </button>
                 ))}
               </div>

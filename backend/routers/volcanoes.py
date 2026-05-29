@@ -17,6 +17,51 @@ router = APIRouter()
 chemical_analysis_cache = TTLCache(maxsize=100, ttl=300)  # 5 minutes
 cache_lock = threading.Lock()
 
+CHEMICAL_ANALYSIS_OXIDES = (
+    "SIO2",
+    "NA2O",
+    "K2O",
+    "FEOT",
+    "MGO",
+    "TIO2",
+    "AL2O3",
+    "CAO",
+    "P2O5",
+    "MNO",
+    "FE2O3",
+)
+
+
+def _extract_chemical_analysis_oxides(sample: dict) -> dict[str, float]:
+    oxides_source = sample.get("oxides") or sample
+    extracted: dict[str, float] = {}
+
+    for oxide in CHEMICAL_ANALYSIS_OXIDES:
+        value = oxides_source.get(oxide)
+        if isinstance(value, (int, float)):
+            extracted[oxide] = round(float(value), 2)
+
+    return extracted
+
+
+def _build_chemical_analysis_sample(sample: dict, oxides: dict[str, float]) -> dict:
+    sample_code = str(sample.get("sample_code", ""))
+
+    sample_entry = {
+        "sample_code": sample_code,
+        "sample_id": sample.get("sample_id", sample_code),
+        "db": sample.get("db", "Unknown"),
+        "petro": sample.get("petro"),
+        "material": sample.get("material", "Unknown"),
+        "tecto": sample.get("tecto"),
+        "geometry": sample.get("geometry"),
+        "matching_metadata": sample.get("matching_metadata"),
+        "references": sample.get("references"),
+    }
+    sample_entry.update(oxides)
+
+    return sample_entry
+
 
 @router.get("/summary")
 async def get_volcanoes_summary(
@@ -25,16 +70,20 @@ async def get_volcanoes_summary(
     region: Optional[str] = Query(None, description="Filter by region"),
     tectonic_setting: Optional[str] = Query(None, description="Filter by tectonic setting (comma-separated for multiple)"),
     volcano_name: Optional[str] = Query(None, description="Filter by volcano name (partial match)"),
+    volcano_number: Optional[int] = Query(None, description="Filter by exact volcano number"),
     limit: Optional[int] = Query(None, description="Maximum number of results to return (default: None = no limit)"),
     offset: int = Query(0, ge=0)
 ):
     """
     Lightweight summary endpoint returning minimal fields for map/list views.
     Used by frontend for volcano selection and map display.
-    Supports filtering by country, region, tectonic_setting, and volcano_name.
+    Supports filtering by country, region, tectonic_setting, volcano_name, and volcano_number.
     """
     # Build query filter
     query = {}
+
+    if volcano_number is not None:
+        query["volcano_number"] = volcano_number
     
     if country:
         query["country"] = country
@@ -219,11 +268,11 @@ async def get_volcano_chemical_analysis(
     limit: Optional[int] = Query(None, ge=1, le=10000)
 ):
     """
-    Get chemical analysis data for a volcano (TAS and AFM diagram data).
-    
-    Returns oxide composition data for samples associated with this volcano.
-    Frontend can use this to generate TAS and AFM plots.
-    
+    Get compact chemical analysis data for a volcano.
+
+    Returns one sample entry per matched sample, with the oxide values and metadata
+    needed by the frontend to derive TAS, AFM, Harker, and rock-type views client-side.
+
     NOTE: Results are cached in memory for 5 minutes to improve performance.
     """
     try:
@@ -242,8 +291,9 @@ async def get_volcano_chemical_analysis(
     if not volcano:
         raise HTTPException(status_code=404, detail="Volcano not found")
     
-    # Get samples for this volcano (via matching_metadata)
-    # Use projection to only fetch needed fields (reduces transfer size by ~50%)
+    # Get samples for this volcano (via matching_metadata).
+    # Keep only the fields needed by the analysis UI to avoid duplicating large
+    # payloads across multiple derived arrays in the response.
     projection = {
         "_id": 0,
         "sample_code": 1,
@@ -255,7 +305,6 @@ async def get_volcano_chemical_analysis(
         "geometry": 1,
         "matching_metadata": 1,
         "references": 1,
-        "geographic_location": 1,
         "oxides": 1  # All oxide fields
     }
     
@@ -273,205 +322,40 @@ async def get_volcano_chemical_analysis(
             "volcano_number": volcano_num,
             "volcano_name": volcano.get("volcano_name", "Unknown"),
             "samples_count": 0,
-            "tas_data": [],
-            "afm_data": [],
+            "samples": [],
             "rock_types": {}
         }
         # Cache empty result too
         with cache_lock:
             chemical_analysis_cache[cache_key] = result
         return result
-    
-    tas_data = []
-    afm_data = []
-    harker_data = []
-    all_samples = []  # Include ALL samples for CSV export
+
+    analysis_samples = []
     rock_types = {}
     rock_types_wr = {}  # Rock types for Whole Rock (WR) samples only
-    
+
     for sample in samples:
-        # Handle both cases: oxides in nested object or at root level
-        oxides = sample.get("oxides", {})
-        if not oxides:
-            # Try to get oxides from root level
-            oxides = sample
-        
-        # Extract oxide values
-        sio2 = oxides.get("SIO2")
-        na2o = oxides.get("NA2O")
-        k2o = oxides.get("K2O")
-        feot = oxides.get("FEOT")
-        mgo = oxides.get("MGO")
-        tio2 = oxides.get("TIO2")
-        al2o3 = oxides.get("AL2O3")
-        cao = oxides.get("CAO")
-        p2o5 = oxides.get("P2O5")
-        mno = oxides.get("MNO")
-        
-        sample_code = str(sample.get("sample_code", ""))
+        oxides = _extract_chemical_analysis_oxides(sample)
+
         # Extract rock_type from petro field
         petro = sample.get("petro", {})
         rock_type = petro.get("rock_type", "Unknown") if isinstance(petro, dict) else "Unknown"
         material = sample.get("material", "Unknown")
-        
+
         # Count rock types (all samples)
         rock_types[rock_type] = rock_types.get(rock_type, 0) + 1
-        
+
         # Count rock types for WR samples only
         if material == "WR":
             rock_types_wr[rock_type] = rock_types_wr.get(rock_type, 0) + 1
-        
-        # Add ALL samples to all_samples array (for complete CSV export)
-        all_sample_entry = {
-            "sample_code": sample_code,
-            "sample_id": sample.get("sample_id", sample_code),
-            "db": sample.get("db", "Unknown"),
-            "petro": sample.get("petro"),
-            "material": sample.get("material", "Unknown"),
-            "tecto": sample.get("tecto"),
-            "geometry": sample.get("geometry"),
-            "matching_metadata": sample.get("matching_metadata"),
-            "references": sample.get("references"),
-            "geographic_location": sample.get("geographic_location"),
-        }
-        # Add all available oxides (even if incomplete)
-        if sio2 is not None:
-            all_sample_entry["SIO2"] = round(sio2, 2)
-        if na2o is not None:
-            all_sample_entry["NA2O"] = round(na2o, 2)
-        if k2o is not None:
-            all_sample_entry["K2O"] = round(k2o, 2)
-        if feot is not None:
-            all_sample_entry["FEOT"] = round(feot, 2)
-        if mgo is not None:
-            all_sample_entry["MGO"] = round(mgo, 2)
-        if tio2 is not None:
-            all_sample_entry["TIO2"] = round(tio2, 2)
-        if al2o3 is not None:
-            all_sample_entry["AL2O3"] = round(al2o3, 2)
-        if cao is not None:
-            all_sample_entry["CAO"] = round(cao, 2)
-        if p2o5 is not None:
-            all_sample_entry["P2O5"] = round(p2o5, 2)
-        if mno is not None:
-            all_sample_entry["MNO"] = round(mno, 2)
-        all_samples.append(all_sample_entry)
-        
-        # TAS data (preserve MongoDB field names and include all metadata)
-        if sio2 is not None and na2o is not None and k2o is not None:
-            tas_entry = {
-                "sample_code": sample_code,
-                "sample_id": sample.get("sample_id", sample_code),
-                "db": sample.get("db", "Unknown"),
-                "petro": sample.get("petro"),
-                "material": sample.get("material", "Unknown"),
-                "tecto": sample.get("tecto"),
-                "geometry": sample.get("geometry"),
-                "matching_metadata": sample.get("matching_metadata"),
-                "references": sample.get("references"),
-                "geographic_location": sample.get("geographic_location"),
-                "SIO2": round(sio2, 2),
-                "NA2O": round(na2o, 2),
-                "K2O": round(k2o, 2)
-            }
-            # Add all other oxides if available
-            if feot is not None:
-                tas_entry["FEOT"] = round(feot, 2)
-            if mgo is not None:
-                tas_entry["MGO"] = round(mgo, 2)
-            if tio2 is not None:
-                tas_entry["TIO2"] = round(tio2, 2)
-            if al2o3 is not None:
-                tas_entry["AL2O3"] = round(al2o3, 2)
-            if cao is not None:
-                tas_entry["CAO"] = round(cao, 2)
-            if p2o5 is not None:
-                tas_entry["P2O5"] = round(p2o5, 2)
-            if mno is not None:
-                tas_entry["MNO"] = round(mno, 2)
-            tas_data.append(tas_entry)
-        
-        # AFM data (preserve MongoDB field names and include all metadata)
-        if feot is not None and na2o is not None and k2o is not None and mgo is not None:
-            afm_entry = {
-                "sample_code": sample_code,
-                "sample_id": sample.get("sample_id", sample_code),
-                "db": sample.get("db", "Unknown"),
-                "petro": sample.get("petro"),
-                "material": sample.get("material", "Unknown"),
-                "tecto": sample.get("tecto"),
-                "geometry": sample.get("geometry"),
-                "matching_metadata": sample.get("matching_metadata"),
-                "references": sample.get("references"),
-                "geographic_location": sample.get("geographic_location"),
-                "FEOT": round(feot, 2),
-                "NA2O": round(na2o, 2),
-                "K2O": round(k2o, 2),
-                "MGO": round(mgo, 2)
-            }
-            # Add other oxides if available
-            if sio2 is not None:
-                afm_entry["SIO2"] = round(sio2, 2)
-            if tio2 is not None:
-                afm_entry["TIO2"] = round(tio2, 2)
-            if al2o3 is not None:
-                afm_entry["AL2O3"] = round(al2o3, 2)
-            if cao is not None:
-                afm_entry["CAO"] = round(cao, 2)
-            if p2o5 is not None:
-                afm_entry["P2O5"] = round(p2o5, 2)
-            if mno is not None:
-                afm_entry["MNO"] = round(mno, 2)
-            afm_data.append(afm_entry)
-        
-        # Harker data - ONLY Whole Rock (WR) samples for accurate geochemical comparison
-        if material == "WR" and sio2 is not None and 35 <= sio2 <= 80:  # Valid SiO2 range
-            harker_point = {
-                "sample_code": sample_code,
-                "sample_id": sample.get("sample_id", sample_code),
-                "db": sample.get("db", "Unknown"),
-                "petro": sample.get("petro"),
-                "material": material,
-                "tecto": sample.get("tecto"),
-                "geometry": sample.get("geometry"),
-                "matching_metadata": sample.get("matching_metadata"),
-                "references": sample.get("references"),
-                "geographic_location": sample.get("geographic_location"),
-                "SIO2": round(sio2, 2)
-            }
-            
-            # Add available oxides (preserve MongoDB field names)
-            if tio2 is not None:
-                harker_point["TIO2"] = round(tio2, 2)
-            if al2o3 is not None:
-                harker_point["AL2O3"] = round(al2o3, 2)
-            if feot is not None:
-                harker_point["FEOT"] = round(feot, 2)
-            if mgo is not None:
-                harker_point["MGO"] = round(mgo, 2)
-            if cao is not None:
-                harker_point["CAO"] = round(cao, 2)
-            if na2o is not None:
-                harker_point["NA2O"] = round(na2o, 2)
-            if k2o is not None:
-                harker_point["K2O"] = round(k2o, 2)
-            if p2o5 is not None:
-                harker_point["P2O5"] = round(p2o5, 2)
-            if mno is not None:
-                harker_point["MNO"] = round(mno, 2)
-            
-            # Only add if at least one other oxide is present
-            if len(harker_point) > 9:  # More than sample_code, sample_id, db, SiO2, rock_type, material, tecto, geometry, matching_metadata
-                harker_data.append(harker_point)
-    
+
+        analysis_samples.append(_build_chemical_analysis_sample(sample, oxides))
+
     result = {
         "volcano_number": volcano_num,
         "volcano_name": volcano.get("volcano_name", "Unknown"),
         "samples_count": len(samples),
-        "tas_data": tas_data,
-        "afm_data": afm_data,
-        "harker_data": harker_data,
-        "all_samples": all_samples,  # All samples with any oxide data for CSV export
+        "samples": analysis_samples,
         "rock_types": rock_types,
         "rock_types_wr": rock_types_wr  # Rock types for WR samples only (used for distribution charts)
     }

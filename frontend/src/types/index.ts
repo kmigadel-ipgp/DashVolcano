@@ -265,12 +265,36 @@ export interface ChemicalSample {
   eruption_date?: DateInfo;
 }
 
+export interface ChemicalAnalysisSample {
+  sample_code: string;
+  sample_id: string;
+  db: string;
+  petro?: Petro;
+  material: string;
+  tecto?: TectonicSettingSample;
+  geometry?: Point;
+  matching_metadata?: MatchingMetadata;
+  references?: string;
+  SIO2?: number;
+  AL2O3?: number;
+  FEOT?: number;
+  FE2O3?: number;
+  MGO?: number;
+  CAO?: number;
+  NA2O?: number;
+  K2O?: number;
+  TIO2?: number;
+  P2O5?: number;
+  MNO?: number;
+}
+
 export interface ChemicalAnalysisResponse {
   volcano_number: number;
   volcano_name: string;
-  total_samples: number;
-  samples: ChemicalSample[];
-  rock_type_distribution?: Record<string, number>;
+  samples_count: number;
+  samples: ChemicalAnalysisSample[];
+  rock_types: Record<string, number>;
+  rock_types_wr: Record<string, number>;
 }
 
 // Filter types
@@ -312,6 +336,7 @@ export type RockTypeComparisonMode = 'none' | 'global' | 'volcano' | 'bbox';
 export interface ComparisonVolcanoOption {
   volcano_name: string;
   volcano_number: number;
+  label: string;
 }
 
 export interface RockTypeRadarSeries {
@@ -327,6 +352,7 @@ export interface VolcanoFilters {
   region?: string;
   tectonic_setting?: string | string[]; // Support multi-select with OR logic
   volcano_name?: string; // For autocomplete search
+  volcano_number?: number;
   limit?: number;
   offset?: number;
 }

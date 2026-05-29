@@ -163,6 +163,13 @@ const MapPage = () => {
   const tectonicBoundaries = boundaries?.features || [];
 
   const selectedVolcano = useMemo(() => {
+    const selectedVolcanoNumber = volcanoFilters.volcano_number;
+
+    if (selectedVolcanoNumber !== undefined && volcanoes.length > 0) {
+      return volcanoes.find((volcano) => volcano.volcano_number === selectedVolcanoNumber)
+        ?? (volcanoes.length === 1 ? volcanoes[0] : null);
+    }
+
     const selectedVolcanoName = volcanoFilters.volcano_name?.trim().toLowerCase();
 
     if (!selectedVolcanoName || volcanoes.length === 0) {
@@ -171,7 +178,7 @@ const MapPage = () => {
 
     return volcanoes.find((volcano) => volcano.volcano_name.trim().toLowerCase() === selectedVolcanoName)
       ?? (volcanoes.length === 1 ? volcanoes[0] : null);
-  }, [volcanoFilters.volcano_name, volcanoes]);
+  }, [volcanoFilters.volcano_name, volcanoFilters.volcano_number, volcanoes]);
 
   // Fetch samples for selected volcano
   useEffect(() => {
@@ -320,11 +327,11 @@ const MapPage = () => {
     if (hasNonLimitFilters && !hasAppliedFilters) {
       // User applied filters - allow fetching
       setHasAppliedFilters(true);
-    } else if (!hasNonLimitFilters && hasAppliedFilters && !currentBbox && !volcanoFilters.volcano_name) {
+    } else if (!hasNonLimitFilters && hasAppliedFilters && !currentBbox && !volcanoFilters.volcano_name && volcanoFilters.volcano_number === undefined) {
       // Filters were cleared AND no bbox/volcano - prevent fetching
       setHasAppliedFilters(false);
     }
-  }, [sampleFilters, hasAppliedFilters, currentBbox, volcanoFilters.volcano_name]);
+  }, [sampleFilters, hasAppliedFilters, currentBbox, volcanoFilters.volcano_name, volcanoFilters.volcano_number]);
 
   // Loading state
   const isLoading = samplesLoading || volcanoesLoading || tectonicLoading;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Clock, Download, TrendingUp } from 'lucide-react';
 import EruptionTimelinePlot from '../components/Charts/EruptionTimelinePlot';
 import EruptionFrequencyChart from '../components/Charts/EruptionFrequencyChart';
@@ -10,6 +10,12 @@ import { exportEruptionsToCSV } from '../utils/csvExport';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { ChartSkeleton, CardSkeleton } from '../components/LoadingSkeleton';
 import { EmptyState } from '../components/EmptyState';
+import {
+  createVolcanoAutocompleteOptions,
+  filterVolcanoAutocompleteOptions,
+  type VolcanoAutocompleteOption,
+  type VolcanoAutocompleteSource,
+} from '../utils/volcanoAutocomplete';
 import type { Eruption, SampleTimelineResponse } from '../types';
 
 /**
@@ -23,9 +29,8 @@ import type { Eruption, SampleTimelineResponse } from '../types';
  * - CSV data export
  */
 const TimelinePage: React.FC = () => {
-  const [volcanoNames, setVolcanoNames] = useState<string[]>([]);
-  const [volcanoes, setVolcanoes] = useState<Array<{ volcano_number: number; volcano_name: string }>>([]);
-  const [selectedVolcano, setSelectedVolcano] = useState<string>('');
+  const [volcanoes, setVolcanoes] = useState<VolcanoAutocompleteSource[]>([]);
+  const [selectedVolcano, setSelectedVolcano] = useState<VolcanoAutocompleteOption | null>(null);
   const [searchInput, setSearchInput] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   
@@ -43,11 +48,6 @@ const TimelinePage: React.FC = () => {
         const response = await fetch('/api/volcanoes/summary');
         const data = await response.json();
         setVolcanoes(data.data || []);
-        const names = (data.data as Array<{ volcano_name: string }>)
-          .map((v) => v.volcano_name)
-          .filter(Boolean)
-          .sort((a, b) => a.localeCompare(b));
-        setVolcanoNames(names);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load volcanoes';
         console.error('Failed to load volcanoes:', err);
@@ -71,16 +71,10 @@ const TimelinePage: React.FC = () => {
       setError(null);
 
       try {
-        // Find volcano number from name
-        const volcano = volcanoes.find((v) => v.volcano_name === selectedVolcano);
-        if (!volcano) {
-          throw new Error('Volcano not found');
-        }
-
         // Fetch both eruptions and sample timeline in parallel
         const [eruptionResponse, sampleTimelineData] = await Promise.all([
-          fetch(`/api/eruptions?volcano_number=${volcano.volcano_number}`),
-          fetchVolcanoSampleTimeline(volcano.volcano_number).catch(() => null) // Don't fail if no samples
+          fetch(`/api/eruptions?volcano_number=${selectedVolcano.volcano_number}`),
+          fetchVolcanoSampleTimeline(selectedVolcano.volcano_number).catch(() => null) // Don't fail if no samples
         ]);
 
         if (!eruptionResponse.ok) {
@@ -93,7 +87,7 @@ const TimelinePage: React.FC = () => {
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An error occurred';
         setError(errorMessage);
-        showError(`Failed to load data for ${selectedVolcano}: ${errorMessage}`);
+        showError(`Failed to load data for ${selectedVolcano.volcano_name}: ${errorMessage}`);
         setEruptions([]);
         setSampleTimeline(null);
       } finally {
@@ -103,7 +97,12 @@ const TimelinePage: React.FC = () => {
     };
 
     loadData();
-  }, [selectedVolcano, volcanoes]);
+  }, [selectedVolcano]);
+
+  const volcanoOptions = useMemo(
+    () => createVolcanoAutocompleteOptions(volcanoes),
+    [volcanoes],
+  );
 
   // Calculate statistics
   const eruptionsWithDates = eruptions.filter((e) => dateInfoToYear(e.start_date) !== null);
@@ -125,17 +124,17 @@ const TimelinePage: React.FC = () => {
 
   // Filter volcano suggestions
   const filteredVolcanoNames = searchInput
-    ? volcanoNames.filter((name) => name.toLowerCase().includes(searchInput.toLowerCase())).slice(0, 10)
+    ? filterVolcanoAutocompleteOptions(volcanoOptions, searchInput).slice(0, 10)
     : [];
 
-  const handleVolcanoSelect = (volcanoName: string) => {
-    setSelectedVolcano(volcanoName);
-    setSearchInput(volcanoName);
+  const handleVolcanoSelect = (volcano: VolcanoAutocompleteOption) => {
+    setSelectedVolcano(volcano);
+    setSearchInput(volcano.label);
     setShowSuggestions(false);
   };
 
   const handleDownloadCSV = () => {
-    exportEruptionsToCSV(eruptions, selectedVolcano);
+    exportEruptionsToCSV(eruptions, selectedVolcano?.volcano_name || 'volcano');
   };
 
   // Keyboard shortcut for CSV export
@@ -188,14 +187,14 @@ const TimelinePage: React.FC = () => {
 
             {showSuggestions && filteredVolcanoNames.length > 0 && (
               <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                {filteredVolcanoNames.map((name) => (
+                {filteredVolcanoNames.map((volcano) => (
                   <button
-                    key={name}
+                    key={volcano.volcano_number}
                     type="button"
-                    onClick={() => handleVolcanoSelect(name)}
+                    onClick={() => handleVolcanoSelect(volcano)}
                     className="w-full text-left px-4 py-2 hover:bg-volcano-50 text-sm text-gray-700"
                   >
-                    {name}
+                    {volcano.label}
                   </button>
                 ))}
               </div>
@@ -286,7 +285,7 @@ const TimelinePage: React.FC = () => {
                 ) : sampleTimeline.has_timeline_data ? (
                   <SampleTimelinePlot
                     data={sampleTimeline.timeline_data}
-                    volcanoName={selectedVolcano}
+                    volcanoName={selectedVolcano.volcano_name}
                   />
                 ) : (
                   <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
@@ -312,7 +311,7 @@ const TimelinePage: React.FC = () => {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Eruption Timeline</h3>
               <div className="h-[450px]">
-                <EruptionTimelinePlot eruptions={eruptions} volcanoName={selectedVolcano} />
+                <EruptionTimelinePlot eruptions={eruptions} volcanoName={selectedVolcano.volcano_name} />
               </div>
             </div>
 
@@ -352,7 +351,7 @@ const TimelinePage: React.FC = () => {
               <div className="h-[450px]">
                 <EruptionFrequencyChart
                   eruptions={eruptions}
-                  volcanoName={selectedVolcano}
+                  volcanoName={selectedVolcano.volcano_name}
                   period={timePeriod}
                 />
               </div>
@@ -363,7 +362,7 @@ const TimelinePage: React.FC = () => {
         {/* Empty State */}
         {!loading && !error && selectedVolcano && eruptions.length === 0 && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-            <p className="text-gray-600">No eruption data found for {selectedVolcano}</p>
+            <p className="text-gray-600">No eruption data found for {selectedVolcano.volcano_name}</p>
           </div>
         )}
 

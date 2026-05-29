@@ -1,7 +1,13 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { X, Filter, RotateCcw } from 'lucide-react';
 import type { SampleFilters, VolcanoFilters } from '../../types';
-import { fetchSampleTectonicSettings, fetchVolcanoTectonicSettings, fetchRockTypes, fetchCountries, fetchRegions, fetchVolcanoNames } from '../../api/metadata';
+import { fetchSampleTectonicSettings, fetchVolcanoTectonicSettings, fetchRockTypes, fetchCountries, fetchRegions } from '../../api/metadata';
+import { fetchVolcanoes } from '../../api/volcanoes';
+import {
+  createVolcanoAutocompleteOptions,
+  filterVolcanoAutocompleteOptions,
+  type VolcanoAutocompleteOption,
+} from '../../utils/volcanoAutocomplete';
 
 interface FilterPanelProps {
   /** Current sample filters */
@@ -53,7 +59,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
   const [rockTypes, setRockTypes] = useState<string[]>([]);
   const [countries, setCountries] = useState<string[]>([]);
   const [regions, setRegions] = useState<string[]>([]);
-  const [volcanoNames, setVolcanoNames] = useState<string[]>([]);
+  const [volcanoOptions, setVolcanoOptions] = useState<VolcanoAutocompleteOption[]>([]);
   const [loadingMetadata, setLoadingMetadata] = useState(true);
 
   // Autocomplete state
@@ -70,20 +76,29 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
   useEffect(() => {
     const loadMetadata = async () => {
       try {
-        const [sampleSettings, volcanoSettings, types, countriesList, regionsList, volcanoes] = await Promise.all([
+        const [sampleSettings, volcanoSettings, types, countriesList, regionsList, volcanoesResponse] = await Promise.all([
           fetchSampleTectonicSettings(),
           fetchVolcanoTectonicSettings(),
           fetchRockTypes(),
           fetchCountries(),
           fetchRegions(),
-          fetchVolcanoNames(),
+          fetchVolcanoes(),
         ]);
         setSampleTectonicSettings(sampleSettings);
         setVolcanoTectonicSettings(volcanoSettings);
         setRockTypes(types);
         setCountries(countriesList);
         setRegions(regionsList);
-        setVolcanoNames(volcanoes);
+        const options = createVolcanoAutocompleteOptions(volcanoesResponse.data);
+        setVolcanoOptions(options);
+        if (localVolcanoFilters.volcano_number !== undefined) {
+          const selectedOption = options.find(
+            (option) => option.volcano_number === localVolcanoFilters.volcano_number,
+          );
+          if (selectedOption) {
+            setVolcanoInput(selectedOption.label);
+          }
+        }
       } catch (error) {
         console.error('Failed to load metadata:', error);
       } finally {
@@ -244,8 +259,8 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
    * Get filtered volcano name suggestions
    */
   const filteredVolcanoNames = volcanoInput
-    ? volcanoNames.filter(v => v.toLowerCase().includes(volcanoInput.toLowerCase()))
-    : volcanoNames;
+    ? filterVolcanoAutocompleteOptions(volcanoOptions, volcanoInput)
+    : volcanoOptions;
 
   if (!isOpen) return null;
 
@@ -439,7 +454,11 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                 value={volcanoInput}
                 onChange={(e) => {
                   setVolcanoInput(e.target.value);
-                  updateVolcanoFilter('volcano_name', e.target.value);
+                  setLocalVolcanoFilters(prev => ({
+                    ...prev,
+                    volcano_name: e.target.value || undefined,
+                    volcano_number: undefined,
+                  }));
                   setShowVolcanoSuggestions(true);
                 }}
                 onFocus={() => setShowVolcanoSuggestions(true)}
@@ -451,16 +470,20 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                 <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                   {filteredVolcanoNames.slice(0, 10).map((volcano) => (
                     <button
-                      key={volcano}
+                      key={volcano.volcano_number}
                       type="button"
                       onClick={() => {
-                        setVolcanoInput(volcano);
-                        updateVolcanoFilter('volcano_name', volcano);
+                        setVolcanoInput(volcano.label);
+                        setLocalVolcanoFilters(prev => ({
+                          ...prev,
+                          volcano_name: volcano.volcano_name,
+                          volcano_number: volcano.volcano_number,
+                        }));
                         setShowVolcanoSuggestions(false);
                       }}
                       className="w-full text-left px-3 py-2 hover:bg-volcano-50 text-sm text-gray-700"
                     >
-                      {volcano}
+                      {volcano.label}
                     </button>
                   ))}
                 </div>

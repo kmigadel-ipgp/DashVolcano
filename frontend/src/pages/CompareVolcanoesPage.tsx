@@ -5,13 +5,25 @@ import { AFMPlot } from '../components/Charts/AFMPlot';
 import { RockTypeDistributionChart } from '../components/Charts/RockTypeDistributionChart';
 import { HarkerDiagrams } from '../components/Charts/HarkerDiagrams';
 import { exportSamplesToCSV } from '../utils/csvExport';
-import { MISSING_SAMPLE_POINT, transformChemicalAnalysisSamples, type ChemicalAnalysisAllSample } from '../utils/chemicalAnalysisSamples';
+import {
+  hasAfmOxides,
+  hasTasOxides,
+  toHarkerDataPoint,
+  transformChemicalAnalysisSamples,
+  type ChemicalAnalysisAllSample,
+} from '../utils/chemicalAnalysisSamples';
 import { useKeyboardShortcuts, commonShortcuts } from '../hooks/useKeyboardShortcuts';
 import { showError } from '../utils/toast';
 import { CardSkeleton } from '../components/LoadingSkeleton';
 import { EmptyState } from '../components/EmptyState';
 import { ConfidenceFilter } from '../components/Filters';
-import type { Sample, MatchingMetadata, TectonicSettingSample, Petro } from '../types';
+import {
+  createVolcanoAutocompleteOptions,
+  filterVolcanoAutocompleteOptions,
+  type VolcanoAutocompleteOption,
+  type VolcanoAutocompleteSource,
+} from '../utils/volcanoAutocomplete';
+import type { Sample } from '../types';
 import type { ConfidenceLevel } from '../utils/confidence';
 import { filterSamplesByConfidence, calculateRockTypeDistribution } from '../utils/confidence';
 
@@ -19,71 +31,8 @@ interface ChemicalAnalysisData {
   volcano_number: number;
   volcano_name: string;
   samples_count: number;
-  tas_data: Array<{
-    sample_code: string;
-    sample_id: string;
-    db: string;
-    petro?: Petro;
-    material: string;
-    tecto?: TectonicSettingSample;
-    geometry?: { type: 'Point'; coordinates: [number, number] };
-    matching_metadata?: MatchingMetadata;
-    references?: string;
-    SIO2: number;
-    NA2O: number;
-    K2O: number;
-    FEOT?: number;
-    MGO?: number;
-    TIO2?: number;
-    AL2O3?: number;
-    CAO?: number;
-    P2O5?: number;
-    MNO?: number;
-  }>;
-  afm_data: Array<{
-    sample_code: string;
-    sample_id: string;
-    db: string;
-    petro?: Petro;
-    material: string;
-    tecto?: TectonicSettingSample;
-    geometry?: { type: 'Point'; coordinates: [number, number] };
-    matching_metadata?: MatchingMetadata;
-    references?: string;
-    FEOT: number;
-    NA2O: number;
-    K2O: number;
-    MGO: number;
-    SIO2?: number;
-    TIO2?: number;
-    AL2O3?: number;
-    CAO?: number;
-    P2O5?: number;
-    MNO?: number;
-  }>;
-  harker_data?: Array<{
-    sample_code: string;
-    sample_id: string;
-    db: string;
-    SIO2: number;
-    petro?: Petro;
-    material: string;
-    tecto?: TectonicSettingSample;
-    geometry?: { type: 'Point'; coordinates: [number, number] };
-    matching_metadata?: MatchingMetadata;
-    references?: string;
-    TIO2?: number;
-    AL2O3?: number;
-    FEOT?: number;
-    MGO?: number;
-    CAO?: number;
-    NA2O?: number;
-    K2O?: number;
-    P2O5?: number;
-    MNO?: number;
-  }>;
-  all_samples?: Array<{
-    } & ChemicalAnalysisAllSample>;
+  samples?: Array<{} & ChemicalAnalysisAllSample>;
+  all_samples?: Array<{} & ChemicalAnalysisAllSample>;
   rock_types: Record<string, number>;
   rock_types_wr: Record<string, number>;  // Rock types for Whole Rock (WR) samples only
 }
@@ -99,93 +48,8 @@ interface VolcanoSelection {
 
 const VOLCANO_COLORS = ['#DC2626', '#2563EB', '#16A34A'];
 
-/**
- * Transform backend chemical analysis data to Sample[] format
- * Now preserves MongoDB field names without conversion
- */
-const transformToSamples = (data: ChemicalAnalysisData): Sample[] => {
-  const sampleMap = new Map<string, Sample>();
-
-  for (const tas of data.tas_data) {
-    const oxides: Record<string, number> = {
-      'SIO2': tas['SIO2'],
-      'NA2O': tas['NA2O'],
-      'K2O': tas['K2O'],
-    };
-    if (tas['FEOT'] !== undefined) oxides['FEOT'] = tas['FEOT'];
-    if (tas['MGO'] !== undefined) oxides['MGO'] = tas['MGO'];
-    if (tas['TIO2'] !== undefined) oxides['TIO2'] = tas['TIO2'];
-    if (tas['AL2O3'] !== undefined) oxides['AL2O3'] = tas['AL2O3'];
-    if (tas['CAO'] !== undefined) oxides['CAO'] = tas['CAO'];
-    if (tas['P2O5'] !== undefined) oxides['P2O5'] = tas['P2O5'];
-    if (tas['MNO'] !== undefined) oxides['MNO'] = tas['MNO'];
-
-    const sample: Sample = {
-      _id: tas.sample_id,
-      sample_id: tas.sample_id,
-      sample_code: tas.sample_code,
-      db: tas.db,
-      material: tas.material,
-      petro: tas.petro,
-      tecto: tas.tecto,
-      geometry: tas.geometry || MISSING_SAMPLE_POINT,
-      matching_metadata: tas.matching_metadata,
-      references: tas.references,
-      oxides,
-    };
-    sampleMap.set(tas.sample_code, sample);
-  }
-
-  for (const afm of data.afm_data) {
-    const existing = sampleMap.get(afm.sample_code);
-    if (existing?.oxides) {
-      existing.oxides['FEOT'] = afm['FEOT'];
-      existing.oxides['MGO'] = afm['MGO'];
-      if (!existing.oxides['NA2O']) existing.oxides['NA2O'] = afm['NA2O'];
-      if (!existing.oxides['K2O']) existing.oxides['K2O'] = afm['K2O'];
-      if (afm['SIO2'] !== undefined && !existing.oxides['SIO2']) existing.oxides['SIO2'] = afm['SIO2'];
-      if (afm['TIO2'] !== undefined && !existing.oxides['TIO2']) existing.oxides['TIO2'] = afm['TIO2'];
-      if (afm['AL2O3'] !== undefined && !existing.oxides['AL2O3']) existing.oxides['AL2O3'] = afm['AL2O3'];
-      if (afm['CAO'] !== undefined && !existing.oxides['CAO']) existing.oxides['CAO'] = afm['CAO'];
-      if (afm['P2O5'] !== undefined && !existing.oxides['P2O5']) existing.oxides['P2O5'] = afm['P2O5'];
-      if (afm['MNO'] !== undefined && !existing.oxides['MNO']) existing.oxides['MNO'] = afm['MNO'];
-    } else {
-      const oxides: Record<string, number> = {
-        'FEOT': afm['FEOT'],
-        'MGO': afm['MGO'],
-        'NA2O': afm['NA2O'],
-        'K2O': afm['K2O'],
-      };
-      if (afm['SIO2'] !== undefined) oxides['SIO2'] = afm['SIO2'];
-      if (afm['TIO2'] !== undefined) oxides['TIO2'] = afm['TIO2'];
-      if (afm['AL2O3'] !== undefined) oxides['AL2O3'] = afm['AL2O3'];
-      if (afm['CAO'] !== undefined) oxides['CAO'] = afm['CAO'];
-      if (afm['P2O5'] !== undefined) oxides['P2O5'] = afm['P2O5'];
-      if (afm['MNO'] !== undefined) oxides['MNO'] = afm['MNO'];
-
-      const sample: Sample = {
-        _id: afm.sample_id,
-        sample_id: afm.sample_id,
-        sample_code: afm.sample_code,
-        db: afm.db,
-        material: afm.material,
-        petro: afm.petro,
-        tecto: afm.tecto,
-        geometry: afm.geometry || MISSING_SAMPLE_POINT,
-        matching_metadata: afm.matching_metadata,
-        references: afm.references,
-        oxides,
-      };
-      sampleMap.set(afm.sample_code, sample);
-    }
-  }
-
-  return Array.from(sampleMap.values());
-};
-
 const CompareVolcanoesPage: React.FC = () => {
-  const [volcanoNames, setVolcanoNames] = useState<string[]>([]);
-  const [volcanoes, setVolcanoes] = useState<Array<{ volcano_number: number; volcano_name: string }>>([]);
+  const [volcanoes, setVolcanoes] = useState<VolcanoAutocompleteSource[]>([]);
   
   const [selections, setSelections] = useState<VolcanoSelection[]>([
     { name: '', number: 0, data: null, samples: [], loading: false, error: null },
@@ -205,11 +69,6 @@ const CompareVolcanoesPage: React.FC = () => {
         const response = await fetch('/api/volcanoes/summary');
         const data = await response.json();
         setVolcanoes(data.data || []);
-        const names = (data.data as Array<{volcano_name: string}>)
-          .map(v => v.volcano_name)
-          .filter(Boolean)
-          .sort((a, b) => a.localeCompare(b));
-        setVolcanoNames(names);
       } catch (err) {
         console.error('Failed to load volcanoes:', err);
       }
@@ -217,13 +76,15 @@ const CompareVolcanoesPage: React.FC = () => {
     loadVolcanoes();
   }, []);
 
-  const handleVolcanoSelect = async (index: number, volcanoName: string) => {
-    const volcano = volcanoes.find(v => v.volcano_name === volcanoName);
-    if (!volcano) return;
+  const volcanoOptions = useMemo(
+    () => createVolcanoAutocompleteOptions(volcanoes),
+    [volcanoes],
+  );
 
+  const handleVolcanoSelect = async (index: number, volcano: VolcanoAutocompleteOption) => {
     // Update search input
     const newSearchInputs = [...searchInputs];
-    newSearchInputs[index] = volcanoName;
+    newSearchInputs[index] = volcano.label;
     setSearchInputs(newSearchInputs);
 
     const newShowSuggestions = [...showSuggestions];
@@ -233,7 +94,7 @@ const CompareVolcanoesPage: React.FC = () => {
     // Update selection with loading state
     const newSelections = [...selections];
     newSelections[index] = {
-      name: volcanoName,
+      name: volcano.volcano_name,
       number: volcano.volcano_number,
       data: null,
       samples: [],
@@ -253,13 +114,13 @@ const CompareVolcanoesPage: React.FC = () => {
       }
 
       const data = await response.json();
-      // Use all_samples if available (includes samples with incomplete oxides)
-      const samples = data.all_samples && data.all_samples.length > 0
-        ? transformChemicalAnalysisSamples(data.all_samples)
-        : transformToSamples(data);
+      const analysisSamples = data.samples && data.samples.length > 0
+        ? data.samples
+        : data.all_samples || [];
+      const samples = transformChemicalAnalysisSamples(analysisSamples);
 
       newSelections[index] = {
-        name: volcanoName,
+        name: volcano.volcano_name,
         number: volcano.volcano_number,
         data,
         samples,
@@ -269,7 +130,7 @@ const CompareVolcanoesPage: React.FC = () => {
       setSelections([...newSelections]);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-      showError(`Failed to load ${volcanoName}: ${errorMessage}`);
+      showError(`Failed to load ${volcano.volcano_name}: ${errorMessage}`);
       newSelections[index] = {
         ...newSelections[index],
         loading: false,
@@ -291,9 +152,7 @@ const CompareVolcanoesPage: React.FC = () => {
 
   const getFilteredVolcanoNames = (index: number) => {
     if (!searchInputs[index]) return [];
-    return volcanoNames
-      .filter(name => name.toLowerCase().includes(searchInputs[index].toLowerCase()))
-      .slice(0, 10);
+    return filterVolcanoAutocompleteOptions(volcanoOptions, searchInputs[index]).slice(0, 10);
   };
 
   const handleDownloadCSV = () => {
@@ -338,12 +197,15 @@ const CompareVolcanoesPage: React.FC = () => {
 
   const harkerChartData = useMemo(() => {
     return selections
-      .filter((v: VolcanoSelection) => v.data?.harker_data && v.data.harker_data.length > 0)
+      .filter((v: VolcanoSelection) => v.samples.length > 0)
       .map((v: VolcanoSelection, idx: number) => ({
         volcanoName: v.name,
-        harkerData: filterSamplesByConfidence(v.data!.harker_data!, selectedConfidenceLevels),
+        harkerData: filterSamplesByConfidence(v.samples, selectedConfidenceLevels)
+          .map(sample => toHarkerDataPoint(sample, v.name))
+          .filter((sample): sample is NonNullable<typeof sample> => sample !== null),
         color: VOLCANO_COLORS[idx]
-      }));
+      }))
+      .filter(v => v.harkerData.length > 0);
   }, [selections, selectedConfidenceLevels]);
 
   // Memoize sampled data for TAS/AFM plots to improve performance with large datasets
@@ -437,14 +299,14 @@ const CompareVolcanoesPage: React.FC = () => {
                 
                 {showSuggestions[index] && getFilteredVolcanoNames(index).length > 0 && (
                   <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                    {getFilteredVolcanoNames(index).map((name) => (
+                    {getFilteredVolcanoNames(index).map((volcano) => (
                       <button
-                        key={name}
+                        key={volcano.volcano_number}
                         type="button"
-                        onClick={() => handleVolcanoSelect(index, name)}
+                        onClick={() => handleVolcanoSelect(index, volcano)}
                         className="w-full text-left px-4 py-2 hover:bg-volcano-50 text-sm text-gray-700"
                       >
-                        {name}
+                        {volcano.label}
                       </button>
                     ))}
                   </div>
@@ -463,8 +325,10 @@ const CompareVolcanoesPage: React.FC = () => {
 
               {selection.data && (() => {
                 const filteredSamples = filterSamplesByConfidence(selection.samples, selectedConfidenceLevels);
-                const tasCount = filteredSamples.filter(s => s.oxides?.['SIO2'] && s.oxides?.['NA2O'] && s.oxides?.['K2O']).length;
-                const afmCount = filteredSamples.filter(s => s.oxides?.['FEOT'] && s.oxides?.['MGO'] && s.oxides?.['NA2O'] && s.oxides?.['K2O']).length;
+                const tasCount = filteredSamples.filter(hasTasOxides).length;
+                const afmCount = filteredSamples.filter(hasAfmOxides).length;
+                const totalTasCount = selection.samples.filter(hasTasOxides).length;
+                const totalAfmCount = selection.samples.filter(hasAfmOxides).length;
                 return (
                   <div className="mt-4 grid grid-cols-3 gap-3">
                     <div className="bg-gray-50 rounded p-2">
@@ -482,7 +346,7 @@ const CompareVolcanoesPage: React.FC = () => {
                         {tasCount}
                       </p>
                       {filteredSamples.length < selection.samples.length && (
-                        <p className="text-xs text-gray-500">of {selection.data.tas_data.length}</p>
+                        <p className="text-xs text-gray-500">of {totalTasCount}</p>
                       )}
                     </div>
                     <div className="bg-gray-50 rounded p-2">
@@ -491,7 +355,7 @@ const CompareVolcanoesPage: React.FC = () => {
                         {afmCount}
                       </p>
                       {filteredSamples.length < selection.samples.length && (
-                        <p className="text-xs text-gray-500">of {selection.data.afm_data.length}</p>
+                        <p className="text-xs text-gray-500">of {totalAfmCount}</p>
                       )}
                     </div>
                   </div>
@@ -558,19 +422,19 @@ const CompareVolcanoesPage: React.FC = () => {
                     <div className="bg-gray-50 rounded p-3">
                       <p className="text-xs text-gray-600 mb-1">TAS Data</p>
                       <p className="text-xl font-bold" style={{ color: VOLCANO_COLORS[index] }}>
-                        {selection.sampledSamples.filter(s => s.oxides?.['SIO2'] && s.oxides?.['NA2O'] && s.oxides?.['K2O']).length}
+                        {selection.sampledSamples.filter(hasTasOxides).length}
                       </p>
                       {selection.sampledSamples.length < selection.samples.length && (
-                        <p className="text-xs text-gray-500">of {selection.data?.tas_data.length || 0} total</p>
+                        <p className="text-xs text-gray-500">of {selection.samples.filter(hasTasOxides).length} total</p>
                       )}
                     </div>
                     <div className="bg-gray-50 rounded p-3">
                       <p className="text-xs text-gray-600 mb-1">AFM Data</p>
                       <p className="text-xl font-bold" style={{ color: VOLCANO_COLORS[index] }}>
-                        {selection.sampledSamples.filter(s => s.oxides?.['FEOT'] && s.oxides?.['MGO'] && s.oxides?.['NA2O'] && s.oxides?.['K2O']).length}
+                        {selection.sampledSamples.filter(hasAfmOxides).length}
                       </p>
                       {selection.sampledSamples.length < selection.samples.length && (
-                        <p className="text-xs text-gray-500">of {selection.data?.afm_data.length || 0} total</p>
+                        <p className="text-xs text-gray-500">of {selection.samples.filter(hasAfmOxides).length} total</p>
                       )}
                     </div>
                   </div>
