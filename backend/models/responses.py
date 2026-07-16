@@ -287,7 +287,7 @@ class RockTypeDistributionResponse(BaseModel):
     sample_count: int
     rock_types: Dict[str, int]
     material: Optional[str] = None
-    confidence_levels: Optional[List[str]] = None
+    match_methods: Optional[List[str]] = None
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -299,7 +299,7 @@ class RockTypeDistributionResponse(BaseModel):
                     "Rhyolite": 30
                 },
                 "material": "WR",
-                "confidence_levels": ["high", "medium"]
+                "match_methods": ["literature", "nearest"]
             }
         }
     )

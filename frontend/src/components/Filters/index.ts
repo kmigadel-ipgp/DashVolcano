@@ -1,2 +1,2 @@
 export { FilterPanel } from './FilterPanel';
-export { ConfidenceFilter } from './ConfidenceFilter';
+export { MatchMethodFilter } from './MatchMethodFilter';

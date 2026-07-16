@@ -4,7 +4,7 @@ import { Globe2, Map as MapIcon, X } from 'lucide-react';
 import { RockTypeRadarChart } from '../Charts';
 import { fetchRockTypeDistribution } from '../../api/analytics';
 import { fetchVolcanoes } from '../../api/volcanoes';
-import { calculateRockTypeDistribution, filterSamplesByConfidence } from '../../utils/confidence';
+import { calculateRockTypeDistribution, filterSamplesByMethod } from '../../utils/matchMethod';
 import {
   createVolcanoAutocompleteOptions,
   filterVolcanoAutocompleteOptions,
@@ -18,12 +18,12 @@ import type {
   Sample,
   SampleFilters,
 } from '../../types';
-import type { ConfidenceLevel } from '../../utils/confidence';
+import type { MatchMethod } from '../../utils/matchMethod';
 
 interface RockTypeRadarPanelProps {
   samples: Sample[];
   sampleFilters: SampleFilters;
-  selectedConfidenceLevels: ConfidenceLevel[];
+  selectedMatchMethods: MatchMethod[];
   primaryDatasetLabel: string;
   comparisonBbox?: BBox | null;
   isDrawingComparisonBbox?: boolean;
@@ -51,7 +51,7 @@ const MODE_COLORS: Record<Exclude<RockTypeComparisonMode, 'none'>, string> = {
 
 const buildDistributionFilters = (
   sampleFilters: SampleFilters,
-  selectedConfidenceLevels: ConfidenceLevel[]
+  selectedMatchMethods: MatchMethod[]
 ) => ({
   database: sampleFilters.database,
   rock_type: sampleFilters.rock_type,
@@ -59,7 +59,7 @@ const buildDistributionFilters = (
   min_sio2: sampleFilters.min_sio2,
   max_sio2: sampleFilters.max_sio2,
   material: 'WR',
-  confidence_levels: selectedConfidenceLevels,
+  match_methods: selectedMatchMethods,
 });
 
 const formatBboxLabel = (bbox: BBox) => (
@@ -69,7 +69,7 @@ const formatBboxLabel = (bbox: BBox) => (
 export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
   samples,
   sampleFilters,
-  selectedConfidenceLevels,
+  selectedMatchMethods,
   primaryDatasetLabel,
   comparisonBbox = null,
   isDrawingComparisonBbox = false,
@@ -91,8 +91,8 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const primarySamples = useMemo(
-    () => filterSamplesByConfidence(samples, selectedConfidenceLevels).filter(sample => sample.material === 'WR'),
-    [samples, selectedConfidenceLevels]
+    () => filterSamplesByMethod(samples, selectedMatchMethods).filter(sample => sample.material === 'WR'),
+    [samples, selectedMatchMethods]
   );
 
   const primaryRockTypes = useMemo(
@@ -257,7 +257,7 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
       setGlobalComparisonError(null);
 
       try {
-        const filters = buildDistributionFilters(sampleFilters, selectedConfidenceLevels);
+        const filters = buildDistributionFilters(sampleFilters, selectedMatchMethods);
         const response = await fetchRockTypeDistribution({
           ...filters,
         });
@@ -287,7 +287,7 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [comparisonMode, sampleFilters, selectedConfidenceLevels]);
+  }, [comparisonMode, sampleFilters, selectedMatchMethods]);
 
   return (
     <div className="space-y-4">
@@ -339,7 +339,7 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
         </div>
 
         <div className="text-sm text-gray-600">
-          Baseline comparisons reuse the active non-spatial filters and current confidence selection. Radar counts include <strong>WR samples only</strong>.
+          Baseline comparisons reuse the active non-spatial filters and current association-method selection. Radar counts include <strong>WR samples only</strong>.
         </div>
 
         {comparisonMode === 'volcano' && (
@@ -430,7 +430,7 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
 
       {primarySeries.sampleCount === 0 ? (
         <div className="border rounded-lg p-6 bg-gray-50 text-gray-600 text-center">
-          No whole-rock samples remain after applying the current confidence filter.
+          No whole-rock samples remain after applying the current association-method filter.
         </div>
       ) : (
         <RockTypeRadarChart series={radarSeries} />

@@ -11,9 +11,9 @@ from typing import List, Dict, Any, Optional
 from backend.dependencies import get_database
 from backend.models.responses import RockTypeDistributionResponse
 from backend.services.sample_filters import (
-    build_confidence_filter_stages,
+    build_method_filter_stages,
     build_sample_match_query,
-    parse_confidence_levels,
+    parse_match_methods,
 )
 
 router = APIRouter()
@@ -34,14 +34,14 @@ async def get_rock_type_distribution(
         pattern=r"^-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?$",
     ),
     material: Optional[str] = Query("WR", description="Material filter (defaults to WR for whole-rock comparison)"),
-    confidence_levels: Optional[str] = Query(
+    match_methods: Optional[str] = Query(
         None,
-        description="Confidence levels to include (comma-separated: high,medium,low,unknown)",
+        description="Association methods to include (comma-separated: literature,nearest,no_match)",
     ),
 ):
     """Return a rock type distribution for the filtered sample set."""
 
-    selected_confidence_levels = parse_confidence_levels(confidence_levels)
+    selected_match_methods = parse_match_methods(match_methods)
     query = build_sample_match_query(
         rock_type=rock_type,
         database=database,
@@ -54,7 +54,7 @@ async def get_rock_type_distribution(
     )
 
     pipeline: List[Dict[str, Any]] = [{"$match": query}]
-    pipeline.extend(build_confidence_filter_stages(selected_confidence_levels))
+    pipeline.extend(build_method_filter_stages(selected_match_methods))
     pipeline.extend([
         {"$match": {"petro.rock_type": {"$exists": True, "$nin": [None, ""]}}},
         {"$group": {"_id": "$petro.rock_type", "count": {"$sum": 1}}},
@@ -72,7 +72,7 @@ async def get_rock_type_distribution(
         "sample_count": sum(rock_types.values()),
         "rock_types": rock_types,
         "material": material,
-        "confidence_levels": selected_confidence_levels,
+        "match_methods": selected_match_methods,
     }
 
 

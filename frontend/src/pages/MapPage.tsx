@@ -11,7 +11,7 @@ import { useSelectionStore } from '../store';
 import { Loader } from '../components/Common/Loader';
 import { ErrorMessage } from '../components/Common/ErrorMessage';
 import { exportSamplesToCSV } from '../utils/csvExport';
-import { filterSamplesByConfidence } from '../utils/confidence';
+import { filterSamplesByMethod } from '../utils/matchMethod';
 import { useKeyboardShortcuts, commonShortcuts } from '../hooks/useKeyboardShortcuts';
 import { formatBboxForAPI } from '../hooks/useBboxDraw';
 import { fetchSamples } from '../api/samples';
@@ -24,7 +24,7 @@ import type {
   Volcano,
   VolcanoFilters,
 } from '../types';
-import type { ConfidenceLevel } from '../utils/confidence';
+import type { MatchMethod } from '../utils/matchMethod';
 
 const INITIAL_VIEWPORT = {
   longitude: 0,
@@ -79,7 +79,7 @@ const MapPage = () => {
 
   // Chart panel state
   const [chartPanelOpen, setChartPanelOpen] = useState(false);
-  const [selectedConfidenceLevels, setSelectedConfidenceLevels] = useState<ConfidenceLevel[]>(['high', 'medium', 'low', 'unknown']);
+  const [selectedMatchMethods, setSelectedMatchMethods] = useState<MatchMethod[]>(['literature', 'nearest', 'no_match']);
   const [comparisonMode, setComparisonMode] = useState<RockTypeComparisonMode>('none');
   const [comparisonVolcano, setComparisonVolcano] = useState<ComparisonVolcanoOption | null>(null);
   const [comparisonSamples, setComparisonSamples] = useState<Sample[]>([]);
@@ -351,20 +351,20 @@ const MapPage = () => {
   const chartScopeSamples = selectedSamples.length > 0 ? selectedSamples : samples;
 
   const chartFilteredSamples = useMemo(() => {
-    return filterSamplesByConfidence(chartScopeSamples, selectedConfidenceLevels);
-  }, [chartScopeSamples, selectedConfidenceLevels]);
+    return filterSamplesByMethod(chartScopeSamples, selectedMatchMethods);
+  }, [chartScopeSamples, selectedMatchMethods]);
 
   const filteredPrimarySamples = useMemo(() => {
-    return filterSamplesByConfidence(samples, selectedConfidenceLevels);
-  }, [samples, selectedConfidenceLevels]);
+    return filterSamplesByMethod(samples, selectedMatchMethods);
+  }, [samples, selectedMatchMethods]);
 
   const visibleSelectedSamples = useMemo(() => {
-    return filterSamplesByConfidence(selectedSamples, selectedConfidenceLevels);
-  }, [selectedSamples, selectedConfidenceLevels]);
+    return filterSamplesByMethod(selectedSamples, selectedMatchMethods);
+  }, [selectedSamples, selectedMatchMethods]);
 
   const filteredComparisonSamples = useMemo(() => {
-    return filterSamplesByConfidence(comparisonSamples, selectedConfidenceLevels);
-  }, [comparisonSamples, selectedConfidenceLevels]);
+    return filterSamplesByMethod(comparisonSamples, selectedMatchMethods);
+  }, [comparisonSamples, selectedMatchMethods]);
 
   const downloadableSamples = chartFilteredSamples;
 
@@ -750,8 +750,8 @@ const MapPage = () => {
         isOpen={chartPanelOpen}
         onToggle={() => setChartPanelOpen(prev => !prev)}
         onClose={() => setChartPanelOpen(false)}
-        selectedConfidenceLevels={selectedConfidenceLevels}
-        onConfidenceLevelsChange={setSelectedConfidenceLevels}
+        selectedMatchMethods={selectedMatchMethods}
+        onMatchMethodsChange={setSelectedMatchMethods}
         sampleFilters={sampleFilters}
         primaryDatasetLabel={chartPanelPrimaryLabel}
         comparisonBbox={comparisonBbox}

@@ -52,7 +52,9 @@ export interface Oxides {
   [key: string]: number | undefined;
 }
 
-// New matching metadata structure (aligned with MongoDB schema)
+// New matching metadata structure (aligned with MongoDB schema).
+// Association is now distance-based (nearest volcano <= 15 km) or literature-based
+// (a volcano explicitly named in the publication overrides distance).
 export interface VolcanoInfo {
   name: string;
   number: string;
@@ -61,38 +63,8 @@ export interface VolcanoInfo {
   petro?: Petro;  // New petrology structure
 }
 
-export interface SpatialScoreDetail {
-  dist_km?: number;
-  decay?: number;
-  final: number;
-}
-
-export interface TectonicScoreDetail {
-  regime_score?: number;
-  crust_modifier?: number;
-  note?: string;
-  final: number;
-}
-
-export interface TemporalScoreDetail {
-  evidence_value?: string;
-  final: number;
-}
-
-export interface PetrologicalScoreDetail {
-  match_type?: string;
-  final: number;
-}
-
-export type MatchingScoreKey = 'sp' | 'te' | 'ti' | 'pe';
-
-export interface MatchingScores {
-  sp?: number | SpatialScoreDetail;
-  te?: number | TectonicScoreDetail;
-  ti?: number | TemporalScoreDetail;
-  pe?: number | PetrologicalScoreDetail;
-  final: number;  // Final weighted score
-}
+/** How a sample was associated with a volcano. */
+export type MatchMethod = 'literature' | 'nearest' | 'no_match';
 
 export interface TectonicSettingSample {
   r?: string;  // Regime: subduction, rift, or intraplate
@@ -114,41 +86,19 @@ export interface Petro {
   ui?: string;  // Display value (for volcanoes)
 }
 
-export interface MatchingQuality {
-  cov: number;  // Coverage (0.0-1.0)
-  unc: number;  // Uncertainty (0.0-1.0)
-  conf: string;  // Confidence: high, medium, low, or none
-  gap?: number;  // Score gap between best and second best match (0.0-1.0)
-}
-
 export interface LiteratureEvidence {
   match: boolean;
-  type: string;  // explicit, partial, regional, or none
+  type: string;  // explicit, partial, or none
   conf: number;  // 0.0-1.0
   src?: string;  // title, abstract, or none
 }
 
-export interface MatchingEvidence {
-  lit: LiteratureEvidence;
-}
-
-export interface MatchingMeta {
-  method: string;  // Matching method
-  ts: string;  // Timestamp (ISO 8601)
-}
-
-// Complete matching metadata for samples
+// Complete matching metadata for samples (distance + literature model)
 export interface MatchingMetadata {
-  volcano?: VolcanoInfo;  // Only present if matched
-  scores?: MatchingScores;  // Only present if matched
-  quality: MatchingQuality;  // Always present
-  evidence: MatchingEvidence;  // Always present
-  meta: MatchingMeta;  // Always present
-  // Legacy fields for backward compatibility (deprecated)
-  volcano_name?: string;
-  volcano_number?: number | string;
-  distance_km?: number;
-  confidence_level?: string | number;
+  volcano?: VolcanoInfo;  // Only present if matched (method !== 'no_match')
+  evid_lit?: LiteratureEvidence;  // Literature evidence (always present)
+  method?: MatchMethod;  // How the association was made
+  ts?: string;  // Timestamp (ISO 8601)
 }
 
 // Main entity types
@@ -307,7 +257,7 @@ export interface SampleFilters {
   max_sio2?: number; // Updated to match backend naming
   bbox?: string; // Bounding box as "min_lon,min_lat,max_lon,max_lat"
   material?: string | string[];
-  confidence_levels?: Array<'high' | 'medium' | 'low' | 'unknown'>;
+  match_methods?: MatchMethod[];
   limit?: number;
   offset?: number;
 }
@@ -316,7 +266,7 @@ export interface RockTypeDistributionResponse {
   sample_count: number;
   rock_types: Record<string, number>;
   material?: string | null;
-  confidence_levels?: Array<'high' | 'medium' | 'low' | 'unknown'> | null;
+  match_methods?: MatchMethod[] | null;
 }
 
 export interface RockTypeDistributionFilters {
@@ -328,7 +278,7 @@ export interface RockTypeDistributionFilters {
   volcano_number?: number | string;
   bbox?: string;
   material?: string;
-  confidence_levels?: Array<'high' | 'medium' | 'low' | 'unknown'>;
+  match_methods?: MatchMethod[];
 }
 
 export type RockTypeComparisonMode = 'none' | 'global' | 'volcano' | 'bbox';

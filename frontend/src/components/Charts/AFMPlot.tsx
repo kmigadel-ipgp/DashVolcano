@@ -3,7 +3,7 @@ import Plot from 'react-plotly.js';
 import type { Sample } from '../../types';
 import { fetchAFMBoundary } from '../../api/analytics';
 import { getRockTypeColor } from '../../utils/colors';
-import { normalizeConfidence, getConfidenceLabel, getVolcanoName } from '../../utils/confidence';
+import { getMatchMethod, getMatchMethodLabel, getVolcanoName } from '../../utils/matchMethod';
 
 interface AFMPlotProps {
   /** Array of samples to plot */
@@ -84,9 +84,9 @@ export const AFMPlot: React.FC<AFMPlotProps> = React.memo(({
         const feot = s.oxides!['FEOT']!;
         const mgo = s.oxides!['MGO']!;
         const alkali = s.oxides!['NA2O']! + s.oxides!['K2O']!;
-        const confidence = normalizeConfidence(s.matching_metadata?.confidence_level, s.matching_metadata);
-        const confidenceLabel = getConfidenceLabel(confidence);
-                
+        const method = getMatchMethod(s.matching_metadata);
+        const methodLabel = getMatchMethodLabel(method);
+
         // Convert to Cartesian coordinates for plotting
         const { x, y } = ternaryToCartesian(alkali, feot, mgo);
         
@@ -101,8 +101,8 @@ export const AFMPlot: React.FC<AFMPlotProps> = React.memo(({
           sample_code: s.sample_code || s.sample_id,
           sample_id: s.sample_id,
           volcano_name: getVolcanoName(s.matching_metadata),
-          confidence: confidence,
-          confidenceLabel: confidenceLabel,
+          method: method,
+          methodLabel: methodLabel,
         };
       });
   };
@@ -288,7 +288,7 @@ export const AFMPlot: React.FC<AFMPlotProps> = React.memo(({
         `MgO: ${s.mgo.toFixed(2)}%<br>` +
         `Alkali: ${s.alkali.toFixed(2)}%<br>`+
         `Volcano: ${s.volcano_name ? s.volcano_name : ''}<br>`+
-        `Confidence: ${s.confidenceLabel}`
+        `Association: ${s.methodLabel}`
       ),
       hoverinfo: 'text',
     });

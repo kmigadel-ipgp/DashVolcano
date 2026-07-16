@@ -14,7 +14,7 @@ import { useKeyboardShortcuts, commonShortcuts } from '../hooks/useKeyboardShort
 import { showError } from '../utils/toast';
 import { CardSkeleton, ChartSkeleton } from '../components/LoadingSkeleton';
 import { EmptyState } from '../components/EmptyState';
-import { ConfidenceFilter } from '../components/Filters';
+import { MatchMethodFilter } from '../components/Filters';
 import {
   createVolcanoAutocompleteOptions,
   filterVolcanoAutocompleteOptions,
@@ -22,8 +22,8 @@ import {
   type VolcanoAutocompleteSource,
 } from '../utils/volcanoAutocomplete';
 import type { Sample } from '../types';
-import type { ConfidenceLevel } from '../utils/confidence';
-import { filterSamplesByConfidence, calculateRockTypeDistribution } from '../utils/confidence';
+import type { MatchMethod } from '../utils/matchMethod';
+import { filterSamplesByMethod, calculateRockTypeDistribution } from '../utils/matchMethod';
 
 interface ChemicalAnalysisData {
   volcano_number: number;
@@ -61,7 +61,7 @@ const AnalyzeVolcanoPage: React.FC = () => {
   const [veiLoading, setVeiLoading] = useState(false);
   
   // Confidence level filter
-  const [selectedConfidenceLevels, setSelectedConfidenceLevels] = useState<ConfidenceLevel[]>(['high', 'medium', 'low', 'unknown']);
+  const [selectedMatchMethods, setSelectedMatchMethods] = useState<MatchMethod[]>(['literature', 'nearest', 'no_match']);
 
   // Load volcano names on mount
   useEffect(() => {
@@ -164,8 +164,8 @@ const AnalyzeVolcanoPage: React.FC = () => {
   };
 
   // Filter samples by confidence level
-  const filteredSamples = filterSamplesByConfidence(samples, selectedConfidenceLevels);
-  const filteredSamplesWithVEI = filterSamplesByConfidence(samplesWithVEI, selectedConfidenceLevels);
+  const filteredSamples = filterSamplesByMethod(samples, selectedMatchMethods);
+  const filteredSamplesWithVEI = filterSamplesByMethod(samplesWithVEI, selectedMatchMethods);
   const totalTasSamples = samples.filter(hasTasOxides).length;
   const totalAfmSamples = samples.filter(hasAfmOxides).length;
   
@@ -241,9 +241,9 @@ const AnalyzeVolcanoPage: React.FC = () => {
 
         {/* Confidence Level Filter */}
         {selectedVolcano && !loading && samples.length > 0 && (
-          <ConfidenceFilter
-            selectedLevels={selectedConfidenceLevels}
-            onChange={setSelectedConfidenceLevels}
+          <MatchMethodFilter
+            selectedMethods={selectedMatchMethods}
+            onChange={setSelectedMatchMethods}
             className="mb-6"
           />
         )}

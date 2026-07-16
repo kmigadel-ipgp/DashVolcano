@@ -7,8 +7,8 @@ from typing import Any, Dict, Optional, Sequence
 from fastapi import HTTPException
 
 
-VALID_CONFIDENCE_LEVELS = ("high", "medium", "low", "unknown")
-ALL_CONFIDENCE_LEVELS = set(VALID_CONFIDENCE_LEVELS)
+VALID_MATCH_METHODS = ("literature", "nearest", "no_match")
+ALL_MATCH_METHODS = set(VALID_MATCH_METHODS)
 
 
 def parse_csv_values(raw: Optional[str]) -> list[str]:
@@ -112,79 +112,37 @@ def build_sample_match_query(
     return query
 
 
-def parse_confidence_levels(raw: Optional[str]) -> Optional[list[str]]:
+def parse_match_methods(raw: Optional[str]) -> Optional[list[str]]:
     if raw is None:
         return None
 
-    levels: list[str] = []
+    methods: list[str] = []
     for value in parse_csv_values(raw):
         normalized = value.lower()
-        if normalized not in ALL_CONFIDENCE_LEVELS:
+        if normalized not in ALL_MATCH_METHODS:
             raise HTTPException(
                 status_code=400,
                 detail=(
-                    "confidence_levels must contain only high, medium, low, or unknown "
+                    "match_methods must contain only literature, nearest, or no_match "
                     f"(received: {value})"
                 ),
             )
-        if normalized not in levels:
-            levels.append(normalized)
+        if normalized not in methods:
+            methods.append(normalized)
 
-    return levels
-
-
-def build_normalized_confidence_expression() -> Dict[str, Any]:
-    return {
-        "$let": {
-            "vars": {
-                "primary": {
-                    "$trim": {
-                        "input": {
-                            "$toLower": {
-                                "$ifNull": ["$matching_metadata.quality.conf", ""]
-                            }
-                        }
-                    }
-                },
-                "legacy": {
-                    "$trim": {
-                        "input": {
-                            "$toLower": {
-                                "$toString": {
-                                    "$ifNull": ["$matching_metadata.confidence_level", ""]
-                                }
-                            }
-                        }
-                    }
-                },
-            },
-            "in": {
-                "$switch": {
-                    "branches": [
-                        {"case": {"$eq": ["$$primary", "high"]}, "then": "high"},
-                        {"case": {"$eq": ["$$primary", "medium"]}, "then": "medium"},
-                        {"case": {"$eq": ["$$primary", "low"]}, "then": "low"},
-                        {"case": {"$eq": ["$$primary", "none"]}, "then": "unknown"},
-                        {"case": {"$in": ["$$legacy", ["high", "1"]]}, "then": "high"},
-                        {"case": {"$in": ["$$legacy", ["medium", "2"]]}, "then": "medium"},
-                        {"case": {"$in": ["$$legacy", ["low", "3"]]}, "then": "low"},
-                    ],
-                    "default": "unknown",
-                }
-            },
-        }
-    }
+    return methods
 
 
-def build_confidence_filter_stages(levels: Optional[Sequence[str]]) -> list[Dict[str, Any]]:
-    if levels is None:
+def build_method_filter_stages(methods: Optional[Sequence[str]]) -> list[Dict[str, Any]]:
+    if methods is None:
         return []
-    if len(levels) == 0:
+    if len(methods) == 0:
         return [{"$match": {"_id": None}}]
-    if set(levels) == ALL_CONFIDENCE_LEVELS:
+    if set(methods) == ALL_MATCH_METHODS:
         return []
 
+    # Documents without an explicit method are treated as unmatched.
     return [
-        {"$addFields": {"normalized_confidence": build_normalized_confidence_expression()}},
-        {"$match": {"normalized_confidence": {"$in": list(levels)}}},
+        {"$addFields": {"normalized_method": {"$ifNull": ["$matching_metadata.method", "no_match"]}}},
+        {"$match": {"normalized_method": {"$in": list(methods)}}},
     ]
