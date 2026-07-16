@@ -1,58 +1,57 @@
 import React from 'react';
-import { Shield } from 'lucide-react';
-import type { ConfidenceLevel } from '../../utils/confidence';
+import { Link2 } from 'lucide-react';
+import type { MatchMethod } from '../../utils/matchMethod';
 
-interface ConfidenceFilterProps {
-  selectedLevels: ConfidenceLevel[];
-  onChange: (levels: ConfidenceLevel[]) => void;
+interface MatchMethodFilterProps {
+  selectedMethods: MatchMethod[];
+  onChange: (methods: MatchMethod[]) => void;
   className?: string;
 }
 
-const CONFIDENCE_OPTIONS: Array<{ value: ConfidenceLevel; label: string; description: string; color: string }> = [
-  { value: 'high', label: 'High', description: 'Strong volcano-sample association', color: 'text-green-700 bg-green-50 border-green-300' },
-  { value: 'medium', label: 'Medium', description: 'Moderate association confidence', color: 'text-yellow-700 bg-yellow-50 border-yellow-300' },
-  { value: 'low', label: 'Low', description: 'Uncertain association', color: 'text-orange-700 bg-orange-50 border-orange-300' },
-  { value: 'unknown', label: 'Unknown', description: 'No confidence metadata available', color: 'text-gray-700 bg-gray-50 border-gray-300' },
+const METHOD_OPTIONS: Array<{ value: MatchMethod; label: string; description: string; color: string }> = [
+  { value: 'literature', label: 'Literature', description: 'Volcano named in the publication', color: 'text-green-700 bg-green-50 border-green-300' },
+  { value: 'nearest', label: 'Nearest', description: 'Nearest volcano within 15 km', color: 'text-blue-700 bg-blue-50 border-blue-300' },
+  { value: 'no_match', label: 'Unmatched', description: 'No volcano within range', color: 'text-gray-700 bg-gray-50 border-gray-300' },
 ];
 
+const ALL_METHODS: MatchMethod[] = ['literature', 'nearest', 'no_match'];
+
 /**
- * ConfidenceFilter Component
- * 
- * Multi-select filter for confidence levels with visual indicators.
- * Allows users to filter samples based on volcano-sample matching confidence.
+ * MatchMethodFilter Component
+ *
+ * Multi-select filter for the volcano-sample association method
+ * (literature match, nearest within 15 km, or unmatched).
  */
-export const ConfidenceFilter: React.FC<ConfidenceFilterProps> = ({
-  selectedLevels,
+export const MatchMethodFilter: React.FC<MatchMethodFilterProps> = ({
+  selectedMethods,
   onChange,
   className = '',
 }) => {
-  const handleToggle = (level: ConfidenceLevel) => {
-    if (selectedLevels.includes(level)) {
-      // Remove if already selected
-      onChange(selectedLevels.filter(l => l !== level));
+  const handleToggle = (method: MatchMethod) => {
+    if (selectedMethods.includes(method)) {
+      onChange(selectedMethods.filter(m => m !== method));
     } else {
-      // Add if not selected
-      onChange([...selectedLevels, level]);
+      onChange([...selectedMethods, method]);
     }
   };
 
   const handleSelectAll = () => {
-    onChange(['high', 'medium', 'low', 'unknown']);
+    onChange([...ALL_METHODS]);
   };
 
   const handleClear = () => {
     onChange([]);
   };
 
-  const allSelected = selectedLevels.length === 4;
-  const noneSelected = selectedLevels.length === 0;
+  const allSelected = selectedMethods.length === ALL_METHODS.length;
+  const noneSelected = selectedMethods.length === 0;
 
   return (
     <div className={`bg-white rounded-lg border border-gray-200 p-4 ${className}`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Shield className="w-5 h-5 text-gray-700" />
-          <h3 className="font-semibold text-gray-900">Confidence Level Filter</h3>
+          <Link2 className="w-5 h-5 text-gray-700" />
+          <h3 className="font-semibold text-gray-900">Association Method Filter</h3>
         </div>
         <div className="flex gap-2">
           <button
@@ -73,21 +72,21 @@ export const ConfidenceFilter: React.FC<ConfidenceFilterProps> = ({
       </div>
 
       <p className="text-sm text-gray-600 mb-3">
-        Filter samples by volcano-sample matching confidence
+        Filter samples by how they were associated with a volcano
       </p>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        {CONFIDENCE_OPTIONS.map(({ value, label, description, color }) => {
-          const isSelected = selectedLevels.includes(value);
-          
+      <div className="grid grid-cols-3 gap-2">
+        {METHOD_OPTIONS.map(({ value, label, description, color }) => {
+          const isSelected = selectedMethods.includes(value);
+
           return (
             <button
               key={value}
               onClick={() => handleToggle(value)}
               className={`
                 relative px-3 py-2 rounded-lg border-2 transition-all text-left
-                ${isSelected 
-                  ? `${color} font-medium` 
+                ${isSelected
+                  ? `${color} font-medium`
                   : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
                 }
               `}
@@ -96,8 +95,8 @@ export const ConfidenceFilter: React.FC<ConfidenceFilterProps> = ({
               <div className="flex items-center gap-2">
                 <div className={`
                   w-4 h-4 rounded border-2 flex items-center justify-center transition-all
-                  ${isSelected 
-                    ? 'border-current bg-current' 
+                  ${isSelected
+                    ? 'border-current bg-current'
                     : 'border-gray-300 bg-white'
                   }
                 `}>
@@ -115,11 +114,11 @@ export const ConfidenceFilter: React.FC<ConfidenceFilterProps> = ({
         })}
       </div>
 
-      {selectedLevels.length > 0 && (
+      {selectedMethods.length > 0 && (
         <div className="mt-3 pt-3 border-t border-gray-200">
           <p className="text-xs text-gray-600">
             Showing samples with: <span className="font-medium text-gray-900">
-              {selectedLevels.map(l => CONFIDENCE_OPTIONS.find(o => o.value === l)?.label).join(', ')}
+              {selectedMethods.map(m => METHOD_OPTIONS.find(o => o.value === m)?.label).join(', ')}
             </span>
           </p>
         </div>

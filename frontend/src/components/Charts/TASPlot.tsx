@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Plot from 'react-plotly.js';
 import type { Sample } from '../../types';
 import { getRockTypeColor, getVEIColor } from '../../utils/colors';
-import { normalizeConfidence, getConfidenceLabel, getVolcanoName } from '../../utils/confidence';
+import { getMatchMethod, getMatchMethodLabel, getVolcanoName } from '../../utils/matchMethod';
 
 interface TASPlotProps {
   /** Array of samples to plot */
@@ -75,9 +75,9 @@ export const TASPlot: React.FC<TASPlotProps> = React.memo(({
     return samples
       .filter(s => s.oxides?.['SIO2'] && s.oxides?.['NA2O'] && s.oxides?.['K2O'])
       .map(s => {
-        const confidence = normalizeConfidence(s.matching_metadata?.confidence_level, s.matching_metadata);
-        const confidenceLabel = getConfidenceLabel(confidence);
-                     
+        const method = getMatchMethod(s.matching_metadata);
+        const methodLabel = getMatchMethodLabel(method);
+
         return {
           sio2: s.oxides!['SIO2']!,
           alkali: s.oxides!['NA2O']! + s.oxides!['K2O']!,
@@ -88,8 +88,8 @@ export const TASPlot: React.FC<TASPlotProps> = React.memo(({
           vei: s.vei,
           eruption_date: s.eruption_date,
           volcano_name: getVolcanoName(s.matching_metadata),
-          confidence: confidence,
-          confidenceLabel: confidenceLabel,
+          method: method,
+          methodLabel: methodLabel,
         };
       });
   };
@@ -225,7 +225,7 @@ export const TASPlot: React.FC<TASPlotProps> = React.memo(({
           `SiO2: ${s.sio2.toFixed(2)}%<br>`+
           `Alkali: ${s.alkali.toFixed(2)}%${s.volcano_name ? `<br>`+
           `Volcano: ${s.volcano_name}` : ''}<br>`+
-          `Confidence: ${s.confidenceLabel}`
+          `Association: ${s.methodLabel}`
         ),
         hoverinfo: 'text',
       });
@@ -286,7 +286,7 @@ export const TASPlot: React.FC<TASPlotProps> = React.memo(({
           `SiO2: ${s.sio2.toFixed(2)}%<br>`+
           `Alkali: ${s.alkali.toFixed(2)}%${s.volcano_name ? `<br>`+
           `Volcano: ${s.volcano_name}` : ''}<br>`+
-          `Confidence: ${s.confidenceLabel}`
+          `Association: ${s.methodLabel}`
         ),
         hoverinfo: 'text',
       });

@@ -5,7 +5,7 @@ These models provide type safety and validation for all API data structures.
 """
 
 from datetime import datetime
-from typing import Optional, List, Any, Dict, Union
+from typing import Optional, List, Any, Dict
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 from enum import Enum
 
@@ -81,47 +81,11 @@ class Oxides(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
-class SpatialScore(BaseModel):
-    """Spatial score with distance information."""
-    dist_km: float = Field(description="Distance in kilometers")
-    decay: float = Field(description="Decay parameter used for scoring")
-    final: float = Field(description="Final spatial score (0.0-1.0)")
-
-
-class TectonicScore(BaseModel):
-    """Tectonic score with regime and crust modifiers."""
-    regime_score: float = Field(description="Base regime match score (0.0-1.0)")
-    crust_modifier: float = Field(description="Crust type modifier (0.0-1.0)")
-    final: float = Field(description="Final tectonic score (0.0-1.0)")
-
-
-class TemporalScore(BaseModel):
-    """Temporal score with precision and modifiers."""
-    base: float = Field(description="Base temporal score (0.0-1.0)")
-    precision: float = Field(description="Precision factor")
-    modifier: float = Field(description="Modifier applied")
-    final: float = Field(description="Final temporal score (0.0-1.0)")
-
-
-class PetrologicalScore(BaseModel):
-    """Petrological score with match type."""
-    match_type: str = Field(description="Type of match: exact, family, or generic")
-    final: float = Field(description="Final petrological score (0.0-1.0)")
-
-
 class VolcanoInfo(BaseModel):
     """Volcano information in matching metadata."""
     name: str
     number: str
-
-
-class MatchingScores(BaseModel):
-    """Multi-dimensional matching scores with detailed breakdowns."""
-    sp: SpatialScore = Field(description="Spatial score with distance details")
-    te: TectonicScore = Field(description="Tectonic score with regime/crust breakdown")
-    ti: TemporalScore = Field(description="Temporal score with precision details")
-    pe: PetrologicalScore = Field(description="Petrological score with match type")
-    final: float = Field(description="Final weighted score (0.0-1.0)")
+    dist_km: Optional[float] = Field(None, description="Distance to the volcano in kilometers")
 
 
 class TectonicSettingData(BaseModel):
@@ -144,59 +108,30 @@ class Petro(BaseModel):
     ui: Optional[str] = Field(None, description="Original UI value (only in volcano documents)")
 
 
-class MatchingQuality(BaseModel):
-    """Quality metrics for the match."""
-    cov: float = Field(description="Coverage - proportion of dimensions evaluated (0.0-1.0)")
-    unc: float = Field(description="Uncertainty level (0.0-1.0)")
-    conf: str = Field(description="Confidence level: high, medium, low, or none")
-    gap: Optional[float] = Field(None, description="Score gap between best and second best match (0.0-1.0)")
-
-
 class LiteratureEvidence(BaseModel):
     """Literature evidence for the match."""
     match: bool = Field(description="Whether literature match was found")
-    type: str = Field(description="Type of match: explicit, partial, regional, or none")
+    type: str = Field(description="Type of match: explicit, partial, or none")
     conf: float = Field(description="Confidence in literature match (0.0-1.0)")
     src: Optional[str] = Field(None, description="Source of match: title, abstract, or none")
 
 
-class MatchingEvidence(BaseModel):
-    """Evidence supporting the match."""
-    lit: LiteratureEvidence
-
-
-class MatchingMeta(BaseModel):
-    """Metadata about the matching process."""
-    method: str = Field(description="Matching method used")
-    ts: str = Field(description="Timestamp of matching (ISO 8601)")
-
-
 class MatchingMetadata(BaseModel):
     """
-    Complete volcano matching metadata for samples.
-    
-    This structure provides transparency about how samples were associated with volcanoes,
-    including scores, quality metrics, evidence, and human-readable explanations.
-    
+    Volcano matching metadata for samples (distance + literature model).
+
+    Association is deliberately simple and explainable: a sample is linked to the
+    nearest volcano within 15 km, unless a volcano is explicitly named in the
+    publication (literature override, at any distance).
+
     Structure variants:
-    - With match: Contains volcano, scores, quality, evidence, expl, meta
-    - Without match: Contains quality, evidence, expl, meta (no volcano/scores)
-    
-    Legacy fields (deprecated, for backward compatibility):
-    - volcano_name, volcano_number, distance_km, confidence_level
+    - Matched (method 'nearest' or 'literature'): contains volcano, evid_lit, method, ts
+    - Unmatched (method 'no_match'): contains evid_lit, method, ts (no volcano)
     """
-    # New nested structure (canonical)
     volcano: Optional[VolcanoInfo] = Field(None, description="Associated volcano (only if matched)")
-    scores: Optional[MatchingScores] = Field(None, description="Matching scores (only if matched)")
-    quality: MatchingQuality = Field(description="Quality metrics (always present)")
-    evidence: MatchingEvidence = Field(description="Evidence supporting the match (always present)")
-    meta: MatchingMeta = Field(description="Metadata about matching process (always present)")
-    
-    # Legacy fields (deprecated, for backward compatibility during transition)
-    volcano_name: Optional[str] = Field(None, description="DEPRECATED: Use volcano.name")
-    volcano_number: Optional[Union[int, str]] = Field(None, description="DEPRECATED: Use volcano.number")
-    distance_km: Optional[float] = Field(None, description="DEPRECATED: Use scores.sp.dist_km")
-    confidence_level: Optional[Union[str, int]] = Field(None, description="DEPRECATED: Use quality.conf")
+    evid_lit: Optional[LiteratureEvidence] = Field(None, description="Literature evidence (always present)")
+    method: Optional[str] = Field(None, description="Association method: nearest, literature, or no_match")
+    ts: Optional[str] = Field(None, description="Timestamp of matching (ISO 8601)")
 
 
 class Rocks(BaseModel):

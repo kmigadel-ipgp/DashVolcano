@@ -45,27 +45,12 @@ def _afm_samples(data):
     ]
 
 
-def normalize_confidence(sample):
+def normalize_match_method(sample):
     metadata = sample.get("matching_metadata") or {}
-    quality = metadata.get("quality") or {}
-    primary = str(quality.get("conf") or "").lower().strip()
-    if primary == "high":
-        return "high"
-    if primary == "medium":
-        return "medium"
-    if primary == "low":
-        return "low"
-    if primary == "none":
-        return "unknown"
-
-    legacy = str(metadata.get("confidence_level") or "").lower().strip()
-    if legacy in {"high", "1"}:
-        return "high"
-    if legacy in {"medium", "2"}:
-        return "medium"
-    if legacy in {"low", "3"}:
-        return "low"
-    return "unknown"
+    method = str(metadata.get("method") or "").lower().strip()
+    if method in {"literature", "nearest", "no_match"}:
+        return method
+    return "no_match"
 
 
 def _get_nested_value(document, path):
@@ -717,10 +702,10 @@ class TestRockTypeDistributionEndpoint:
         assert distribution["rock_types"] == chemical["rock_types_wr"]
         assert distribution["sample_count"] == sum(chemical["rock_types_wr"].values())
 
-    def test_distribution_confidence_filter_matches_manual_wr_filter(self):
+    def test_distribution_method_filter_matches_manual_wr_filter(self):
         response = client.get(
             "/api/analytics/rock-type-distribution",
-            params={"volcano_number": "273030", "confidence_levels": "high,medium"},
+            params={"volcano_number": "273030", "match_methods": "literature,nearest"},
         )
         chemical_response = client.get("/api/volcanoes/273030/chemical-analysis")
 
@@ -733,7 +718,7 @@ class TestRockTypeDistributionEndpoint:
         for sample in chemical_response.json().get("samples", []):
             if sample.get("material") != "WR":
                 continue
-            if normalize_confidence(sample) not in {"high", "medium"}:
+            if normalize_match_method(sample) not in {"literature", "nearest"}:
                 continue
 
             rock_type = (sample.get("petro") or {}).get("rock_type")
@@ -744,14 +729,14 @@ class TestRockTypeDistributionEndpoint:
         assert distribution["rock_types"] == manual_counts
         assert distribution["sample_count"] == sum(manual_counts.values())
 
-    def test_distribution_rejects_invalid_confidence_level(self):
+    def test_distribution_rejects_invalid_match_method(self):
         response = client.get(
             "/api/analytics/rock-type-distribution",
-            params={"volcano_number": "273030", "confidence_levels": "high,invalid"},
+            params={"volcano_number": "273030", "match_methods": "literature,invalid"},
         )
 
         assert response.status_code == 400
-        assert "confidence_levels" in response.json()["detail"]
+        assert "match_methods" in response.json()["detail"]
 
 
 class TestChemicalAnalysisEndpoint:

@@ -28,7 +28,7 @@ export const fetchSamples = async (
         rock_type: joinFilterValue(filters.rock_type),
         tectonic_setting: joinFilterValue(filters.tectonic_setting),
         material: joinFilterValue(filters.material),
-        confidence_levels: filters.confidence_levels?.join(','),
+        match_methods: filters.match_methods?.join(','),
       }
     : undefined;
 

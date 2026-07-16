@@ -1,5 +1,6 @@
 import type { Sample } from '../types';
-import { getMatchingDistance, getMatchingScoreValue } from './matchingMetadata';
+import { getMatchingDistance } from './matchingMetadata';
+import { getMatchMethod, getMatchMethodLabel } from './matchMethod';
 import { showSuccess, showError } from './toast';
 
 /**
@@ -28,21 +29,16 @@ export const exportSamplesToCSV = (samples: Sample[], filename?: string): void =
     'Database',
     'Material',
     'Rock Type',
-    'Rock Family',
     'Tectonic Setting',
     'Latitude',
     'Longitude',
     'Volcano Name',
     'Volcano Number',
     'Distance (km)',
-    'Matching Confidence',
-    'Coverage',
-    'Uncertainty',
-    'Spatial Score',
-    'Tectonic Score',
-    'Temporal Score',
-    'Petrological Score',
-    'Final Score',
+    'Association Method',
+    'Literature Match',
+    'Literature Type',
+    'Literature Confidence',
     'References',
     // Major oxides (wt%)
     'SIO2',
@@ -71,7 +67,6 @@ export const exportSamplesToCSV = (samples: Sample[], filename?: string): void =
       sample.db || '',
       sample.material || '',
       sample.petro?.rock_type || '',
-      sample.petro?.rock_family || '',
       sample.tecto?.volcano_ui || sample.tecto?.ui || '',
       formatCoordinate(latitude),
       formatCoordinate(longitude),
@@ -79,15 +74,11 @@ export const exportSamplesToCSV = (samples: Sample[], filename?: string): void =
       metadata?.volcano?.name || '',
       metadata?.volcano?.number || '',
       formatOptionalNumber(getMatchingDistance(metadata), 2),
-      // Confidence and quality metrics
-      metadata?.quality?.conf || '',
-      formatOptionalNumber(metadata?.quality?.cov, 3),
-      formatOptionalNumber(metadata?.quality?.unc, 3),
-      formatOptionalNumber(getMatchingScoreValue(metadata?.scores, 'sp'), 3),
-      formatOptionalNumber(getMatchingScoreValue(metadata?.scores, 'te'), 3),
-      formatOptionalNumber(getMatchingScoreValue(metadata?.scores, 'ti'), 3),
-      formatOptionalNumber(getMatchingScoreValue(metadata?.scores, 'pe'), 3),
-      formatOptionalNumber(metadata?.scores?.final, 3),
+      // Association method + literature evidence
+      getMatchMethodLabel(getMatchMethod(metadata)),
+      metadata?.evid_lit?.match ? 'yes' : 'no',
+      metadata?.evid_lit?.type && metadata.evid_lit.type !== 'none' ? metadata.evid_lit.type : '',
+      formatOptionalNumber(metadata?.evid_lit?.conf, 3),
       sample.references || '',
       // Oxides (values in wt%)
       formatOptionalNumber(oxides['SIO2'], 2),

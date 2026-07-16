@@ -16,7 +16,7 @@ import { useKeyboardShortcuts, commonShortcuts } from '../hooks/useKeyboardShort
 import { showError } from '../utils/toast';
 import { CardSkeleton } from '../components/LoadingSkeleton';
 import { EmptyState } from '../components/EmptyState';
-import { ConfidenceFilter } from '../components/Filters';
+import { MatchMethodFilter } from '../components/Filters';
 import {
   createVolcanoAutocompleteOptions,
   filterVolcanoAutocompleteOptions,
@@ -24,8 +24,8 @@ import {
   type VolcanoAutocompleteSource,
 } from '../utils/volcanoAutocomplete';
 import type { Sample } from '../types';
-import type { ConfidenceLevel } from '../utils/confidence';
-import { filterSamplesByConfidence, calculateRockTypeDistribution } from '../utils/confidence';
+import type { MatchMethod } from '../utils/matchMethod';
+import { filterSamplesByMethod, calculateRockTypeDistribution } from '../utils/matchMethod';
 
 interface ChemicalAnalysisData {
   volcano_number: number;
@@ -60,7 +60,7 @@ const CompareVolcanoesPage: React.FC = () => {
   const [showSuggestions, setShowSuggestions] = useState<boolean[]>([false, false]);
   
   // Confidence level filter
-  const [selectedConfidenceLevels, setSelectedConfidenceLevels] = useState<ConfidenceLevel[]>(['high', 'medium', 'low', 'unknown']);
+  const [selectedMatchMethods, setSelectedMatchMethods] = useState<MatchMethod[]>(['literature', 'nearest', 'no_match']);
 
   // Load volcano names on mount
   useEffect(() => {
@@ -157,7 +157,7 @@ const CompareVolcanoesPage: React.FC = () => {
 
   const handleDownloadCSV = () => {
     const allSamples = selections.flatMap(s => s.samples);
-    const filteredSamples = filterSamplesByConfidence(allSamples, selectedConfidenceLevels);
+    const filteredSamples = filterSamplesByMethod(allSamples, selectedMatchMethods);
     if (filteredSamples.length === 0) return;
     
     const volcanoNamesStr = selections
@@ -183,7 +183,7 @@ const CompareVolcanoesPage: React.FC = () => {
       .filter((v: VolcanoSelection) => v.samples && v.samples.length > 0)
       .map((v: VolcanoSelection, idx: number) => {
         // Filter by confidence level AND material=WR for accurate rock type comparison
-        const filteredSamples = filterSamplesByConfidence(v.samples, selectedConfidenceLevels);
+        const filteredSamples = filterSamplesByMethod(v.samples, selectedMatchMethods);
         const wrSamples = filteredSamples.filter(s => s.material === 'WR');
         const rockTypes = calculateRockTypeDistribution(wrSamples);
         return {
@@ -193,29 +193,29 @@ const CompareVolcanoesPage: React.FC = () => {
         };
       })
       .filter(v => Object.keys(v.rockTypes).length > 0);
-  }, [selections, selectedConfidenceLevels]);
+  }, [selections, selectedMatchMethods]);
 
   const harkerChartData = useMemo(() => {
     return selections
       .filter((v: VolcanoSelection) => v.samples.length > 0)
       .map((v: VolcanoSelection, idx: number) => ({
         volcanoName: v.name,
-        harkerData: filterSamplesByConfidence(v.samples, selectedConfidenceLevels)
+        harkerData: filterSamplesByMethod(v.samples, selectedMatchMethods)
           .map(sample => toHarkerDataPoint(sample, v.name))
           .filter((sample): sample is NonNullable<typeof sample> => sample !== null),
         color: VOLCANO_COLORS[idx]
       }))
       .filter(v => v.harkerData.length > 0);
-  }, [selections, selectedConfidenceLevels]);
+  }, [selections, selectedMatchMethods]);
 
   // Memoize sampled data for TAS/AFM plots to improve performance with large datasets
   // Apply confidence filtering
   const sampledSelectionsData = useMemo(() => {
     return selections.map(selection => ({
       ...selection,
-      sampledSamples: filterSamplesByConfidence(selection.samples, selectedConfidenceLevels)
+      sampledSamples: filterSamplesByMethod(selection.samples, selectedMatchMethods)
     }));
-  }, [selections, selectedConfidenceLevels]);
+  }, [selections, selectedMatchMethods]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -324,7 +324,7 @@ const CompareVolcanoesPage: React.FC = () => {
               )}
 
               {selection.data && (() => {
-                const filteredSamples = filterSamplesByConfidence(selection.samples, selectedConfidenceLevels);
+                const filteredSamples = filterSamplesByMethod(selection.samples, selectedMatchMethods);
                 const tasCount = filteredSamples.filter(hasTasOxides).length;
                 const afmCount = filteredSamples.filter(hasAfmOxides).length;
                 const totalTasCount = selection.samples.filter(hasTasOxides).length;
@@ -367,9 +367,9 @@ const CompareVolcanoesPage: React.FC = () => {
 
         {/* Confidence Level Filter */}
         {selectedCount >= 2 && !isLoading && allSamples.length > 0 && (
-          <ConfidenceFilter
-            selectedLevels={selectedConfidenceLevels}
-            onChange={setSelectedConfidenceLevels}
+          <MatchMethodFilter
+            selectedMethods={selectedMatchMethods}
+            onChange={setSelectedMatchMethods}
             className="mb-6"
           />
         )}

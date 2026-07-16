@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { ChevronUp, ChevronDown, X } from 'lucide-react';
 import { TASPlot } from '../Charts/TASPlot';
 import { AFMPlot } from '../Charts/AFMPlot';
-import { ConfidenceFilter } from '../Filters';
+import { MatchMethodFilter } from '../Filters';
 import { RockTypeRadarPanel } from './RockTypeRadarPanel';
 import { PublicationsTab } from './PublicationsTab';
-import { filterSamplesByConfidence } from '../../utils/confidence';
+import { filterSamplesByMethod } from '../../utils/matchMethod';
 import type {
   BBox,
   ComparisonVolcanoOption,
@@ -13,7 +13,7 @@ import type {
   Sample,
   SampleFilters,
 } from '../../types';
-import type { ConfidenceLevel } from '../../utils/confidence';
+import type { MatchMethod } from '../../utils/matchMethod';
 
 type ChartTab = 'both' | 'tas' | 'afm' | 'radar' | 'publications';
 
@@ -35,9 +35,9 @@ interface ChartPanelProps {
   /** Callback when panel is closed */
   onClose: () => void;
   /** Selected confidence levels for filtering */
-  selectedConfidenceLevels: ConfidenceLevel[];
+  selectedMatchMethods: MatchMethod[];
   /** Callback when confidence levels change */
-  onConfidenceLevelsChange: (levels: ConfidenceLevel[]) => void;
+  onMatchMethodsChange: (levels: MatchMethod[]) => void;
   /** Active non-spatial sample filters for comparison fetches */
   sampleFilters: SampleFilters;
   /** Label for the primary dataset shown in the radar tab */
@@ -80,8 +80,8 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
   isOpen,
   onToggle,
   onClose,
-  selectedConfidenceLevels,
-  onConfidenceLevelsChange,
+  selectedMatchMethods,
+  onMatchMethodsChange,
   sampleFilters,
   primaryDatasetLabel,
   comparisonBbox = null,
@@ -99,7 +99,7 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
   const [activeTab, setActiveTab] = useState<ChartTab>('both');
 
   // Apply confidence filtering to samples
-  const filteredSamples = filterSamplesByConfidence(samples, selectedConfidenceLevels);
+  const filteredSamples = filterSamplesByMethod(samples, selectedMatchMethods);
 
   // Filter samples with required oxide data
   const tasValidSamples = filteredSamples.filter(
@@ -175,9 +175,9 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
         {/* Confidence Filter */}
         {samples.length > 0 && (
           <div className="px-4 pt-4 pb-2 bg-gray-50 border-b">
-            <ConfidenceFilter
-              selectedLevels={selectedConfidenceLevels}
-              onChange={onConfidenceLevelsChange}
+            <MatchMethodFilter
+              selectedMethods={selectedMatchMethods}
+              onChange={onMatchMethodsChange}
             />
           </div>
         )}
@@ -267,7 +267,7 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
                 <RockTypeRadarPanel
                   samples={samples}
                   sampleFilters={sampleFilters}
-                  selectedConfidenceLevels={selectedConfidenceLevels}
+                  selectedMatchMethods={selectedMatchMethods}
                   primaryDatasetLabel={primaryDatasetLabel}
                   comparisonBbox={comparisonBbox}
                   isDrawingComparisonBbox={isDrawingComparisonBbox}

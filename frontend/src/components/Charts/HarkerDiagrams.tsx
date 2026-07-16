@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Plot from 'react-plotly.js';
-import { normalizeConfidence, getConfidenceLabel } from '../../utils/confidence';
+import { getMatchMethod, getMatchMethodLabel } from '../../utils/matchMethod';
 import type { MatchingMetadata, Petro } from '../../types';
 
 interface HarkerDataPoint {
@@ -19,7 +19,7 @@ interface HarkerDataPoint {
   P2O5?: number;
   volcano_name?: string;
   matching_metadata?: MatchingMetadata;
-  confidenceLabel?: string;
+  methodLabel?: string;
 }
 
 interface VolcanoHarkerData {
@@ -202,7 +202,7 @@ export const HarkerDiagrams: React.FC<HarkerDiagramsProps> = React.memo(({ volca
               customdata: validData.map((d) => [
                 d.petro?.rock_type || 'Unknown', 
                 d.material,
-                d.confidenceLabel || getConfidenceLabel(normalizeConfidence(d.matching_metadata?.confidence_level, d.matching_metadata)),
+                d.methodLabel || getMatchMethodLabel(getMatchMethod(d.matching_metadata)),
                 d.volcano_name || volcano.volcanoName
               ]),
               hovertemplate:
@@ -212,7 +212,7 @@ export const HarkerDiagrams: React.FC<HarkerDiagramsProps> = React.memo(({ volca
                 `${yaxis.replace(/<[^>]*>/g, '')}: %{y:.2f} wt%<br>` +
                 `Rock Type: %{customdata[0]}<br>` +
                 `Material: %{customdata[1]}<br>` +
-                `Confidence: %{customdata[2]}<br>` +
+                `Association: %{customdata[2]}<br>` +
                 `<extra></extra>`
             };
           }).filter(trace => trace !== null);

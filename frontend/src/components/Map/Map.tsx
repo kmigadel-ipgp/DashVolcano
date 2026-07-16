@@ -3,15 +3,15 @@ import DeckGL from '@deck.gl/react';
 import { Map as MapboxMap } from 'react-map-gl/mapbox';
 import { ScatterplotLayer, GeoJsonLayer, IconLayer } from '@deck.gl/layers';
 import type { BBox, Sample, Volcano, TectonicBoundary } from '../../types';
-import { 
-  normalizeConfidence, 
-  getConfidenceColor, 
-  getConfidenceLabel,
-  getConfidenceIcon,
+import {
+  getMatchMethod,
+  getMatchMethodColor,
+  getMatchMethodLabel,
+  getMatchMethodIcon,
   getVolcanoNumber,
   getVolcanoName,
-  type ConfidenceLevel 
-} from '../../utils/confidence';
+  type MatchMethod
+} from '../../utils/matchMethod';
 
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -142,10 +142,9 @@ export const VolcanoMap: React.FC<MapProps> = ({
     boundaryType?: string; 
     tectonic_setting?: string | string[]; 
     references?: string;
-    confidence_level?: ConfidenceLevel;
-    confidence_label?: string;
-    confidence_description?: string;
-    confidence_icon?: string;
+    match_method?: MatchMethod;
+    method_label?: string;
+    method_icon?: string;
     sample_context?: string;
   };
   const [hoverInfo, setHoverInfo] = useState<{
@@ -246,15 +245,14 @@ export const VolcanoMap: React.FC<MapProps> = ({
    * 
    * Color Priority Logic:
    * 1. HIGHEST: Selected volcano samples → Orange fill [255, 140, 0] (always visible)
-   *    - Border/stroke shows confidence: Green (high), Amber (medium), Red (low), Gray (unknown)
-   * 2. SECONDARY: Non-selected samples use confidence-based fill color
-   *    - High: Green (reliable association)
-   *    - Medium: Amber (moderate confidence)
-   *    - Low: Red (uncertain)
-   *    - Unknown: Gray (no metadata)
-   * 
+   *    - Border/stroke shows the association method (see below)
+   * 2. SECONDARY: Non-selected samples use association-method fill color
+   *    - Literature: Green (volcano named in the publication)
+   *    - Nearest: Blue (nearest volcano within 15 km)
+   *    - Unmatched: Gray (no association)
+   *
    * This ensures users can always identify selected volcano samples (orange fill) while
-   * still seeing data quality via the colored border, even for selected samples.
+   * still seeing how each sample was associated via the colored border.
    */
   const samplePointsLayer = useCallback(() => {
     if (!showSamplePoints || samples.length === 0) return null;
@@ -271,16 +269,16 @@ export const VolcanoMap: React.FC<MapProps> = ({
           return [255, 140, 0, 200]; // Orange with higher opacity for selected volcano
         }
         
-        // PRIORITY 2: Use confidence-based coloring for non-selected samples
-        // Provides subtle data quality indication without overwhelming the visualization
-        const confidence = normalizeConfidence(d.matching_metadata?.confidence_level, d.matching_metadata);
-        return getConfidenceColor(confidence);
+        // PRIORITY 2: Use association-method coloring for non-selected samples
+        // (literature = green, nearest = blue, unmatched = gray)
+        const method = getMatchMethod(d.matching_metadata);
+        return getMatchMethodColor(method);
       },
-      // NEW: Line color (stroke/border) always shows confidence level
-      // This allows selected volcano samples to display data quality via border
+      // Line color (stroke/border) always shows the association method,
+      // so selected-volcano samples still expose it via their border.
       getLineColor: (d: Sample) => {
-        const confidence = normalizeConfidence(d.matching_metadata?.confidence_level, d.matching_metadata);
-        const color = getConfidenceColor(confidence);
+        const method = getMatchMethod(d.matching_metadata);
+        const color = getMatchMethodColor(method);
         // Return RGB with full opacity for visible border
         return [color[0], color[1], color[2], 255];
       },
@@ -309,12 +307,12 @@ export const VolcanoMap: React.FC<MapProps> = ({
           onSampleClick(info.object as Sample);
         }
       },
-      // Hover interaction - now includes confidence information
+      // Hover interaction - now includes association-method information
       onHover: (info: any) => {
         if (info.object) {
           const sample = info.object as Sample;
-          const confidence = normalizeConfidence(sample.matching_metadata?.confidence_level, sample.matching_metadata);
-          
+          const method = getMatchMethod(sample.matching_metadata);
+
           setHoverInfo({
             x: info.x,
             y: info.y,
@@ -326,9 +324,9 @@ export const VolcanoMap: React.FC<MapProps> = ({
               latitude: sample.geometry.coordinates[1],
               tectonic_setting: typeof sample.tecto === 'object' ? sample.tecto?.ui : sample.tecto,
               references: sample.references,
-              confidence_level: confidence,
-              confidence_label: getConfidenceLabel(confidence),
-              confidence_icon: getConfidenceIcon(confidence),
+              match_method: method,
+              method_label: getMatchMethodLabel(method),
+              method_icon: getMatchMethodIcon(method),
             } as any,
           });
         } else {
@@ -347,13 +345,13 @@ export const VolcanoMap: React.FC<MapProps> = ({
       getPosition: (d: Sample) => d.geometry.coordinates,
       getRadius: 3200,
       getFillColor: (d: Sample) => {
-        const confidence = normalizeConfidence(d.matching_metadata?.confidence_level, d.matching_metadata);
-        const color = getConfidenceColor(confidence);
+        const method = getMatchMethod(d.matching_metadata);
+        const color = getMatchMethodColor(method);
         return [color[0], color[1], color[2], 140];
       },
       getLineColor: (d: Sample) => {
-        const confidence = normalizeConfidence(d.matching_metadata?.confidence_level, d.matching_metadata);
-        const color = getConfidenceColor(confidence);
+        const method = getMatchMethod(d.matching_metadata);
+        const color = getMatchMethodColor(method);
         return [color[0], color[1], color[2], 255];
       },
       stroked: true,
@@ -371,7 +369,7 @@ export const VolcanoMap: React.FC<MapProps> = ({
       onHover: (info: any) => {
         if (info.object) {
           const sample = info.object as Sample;
-          const confidence = normalizeConfidence(sample.matching_metadata?.confidence_level, sample.matching_metadata);
+          const method = getMatchMethod(sample.matching_metadata);
 
           setHoverInfo({
             x: info.x,
@@ -384,9 +382,9 @@ export const VolcanoMap: React.FC<MapProps> = ({
               latitude: sample.geometry.coordinates[1],
               tectonic_setting: typeof sample.tecto === 'object' ? sample.tecto?.ui : sample.tecto,
               references: sample.references,
-              confidence_level: confidence,
-              confidence_label: getConfidenceLabel(confidence),
-              confidence_icon: getConfidenceIcon(confidence),
+              match_method: method,
+              method_label: getMatchMethodLabel(method),
+              method_icon: getMatchMethodIcon(method),
               sample_context: 'Radar comparison overlay',
             } as any,
           });
@@ -603,15 +601,15 @@ export const VolcanoMap: React.FC<MapProps> = ({
       );
     }
 
-    // Sample tooltip - now includes confidence information
+    // Sample tooltip - now includes association-method information
     if ('type' in object && (object.type === 'sample' || object.type === 'comparison-sample')) {
       const isComparisonSample = object.type === 'comparison-sample';
 
-      // Get confidence color for border accent
-      const confidenceColor = object.confidence_level
-        ? getConfidenceColor(object.confidence_level as ConfidenceLevel)
+      // Get association-method color for border accent
+      const methodColor = object.match_method
+        ? getMatchMethodColor(object.match_method)
         : [156, 163, 175, 140];
-      
+
       return (
         <div
           style={{
@@ -625,7 +623,7 @@ export const VolcanoMap: React.FC<MapProps> = ({
             borderRadius: '4px',
             fontSize: '12px',
             zIndex: 1000,
-            borderLeft: `3px solid rgba(${confidenceColor[0]}, ${confidenceColor[1]}, ${confidenceColor[2]}, ${confidenceColor[3] / 255})`,
+            borderLeft: `3px solid rgba(${methodColor[0]}, ${methodColor[1]}, ${methodColor[2]}, ${methodColor[3] / 255})`,
             minWidth: '200px',
           }}
         >
@@ -646,28 +644,18 @@ export const VolcanoMap: React.FC<MapProps> = ({
             </div>
           )}
           
-          {/* Confidence Score Section */}
-          {object.confidence_level && (
-            <>
-              <div style={{ 
-                borderTop: '1px solid rgba(255, 255, 255, 0.2)', 
-                marginTop: '6px', 
-                paddingTop: '6px' 
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '14px' }}>{object.confidence_icon}</span>
-                  <span style={{ fontWeight: 'bold' }}>{object.confidence_label}</span>
-                </div>
-                <div style={{ 
-                  fontSize: '10px', 
-                  color: 'rgba(255, 255, 255, 0.7)', 
-                  marginTop: '2px',
-                  fontStyle: 'italic' 
-                }}>
-                  {object.confidence_description}
-                </div>
+          {/* Association Method Section */}
+          {object.match_method && (
+            <div style={{
+              borderTop: '1px solid rgba(255, 255, 255, 0.2)',
+              marginTop: '6px',
+              paddingTop: '6px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '14px' }}>{object.method_icon}</span>
+                <span style={{ fontWeight: 'bold' }}>{object.method_label}</span>
               </div>
-            </>
+            </div>
           )}
           
           <div style={{ 

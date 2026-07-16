@@ -8,9 +8,9 @@ from typing import Optional, List
 
 from backend.dependencies import get_database
 from backend.services.sample_filters import (
-    build_confidence_filter_stages,
+    build_method_filter_stages,
     build_sample_match_query,
-    parse_confidence_levels,
+    parse_match_methods,
 )
 
 router = APIRouter()
@@ -31,9 +31,9 @@ async def get_samples(
         pattern=r"^-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?$"
     ),
     material: Optional[str] = Query(None, description="Filter by material (comma-separated for multiple)"),
-    confidence_levels: Optional[str] = Query(
+    match_methods: Optional[str] = Query(
         None,
-        description="Confidence levels to include (comma-separated: high,medium,low,unknown)",
+        description="Association methods to include (comma-separated: literature,nearest,no_match)",
     ),
     limit: Optional[int] = Query(None, ge=1, le=100000, description="Maximum number of results (default: None = no limit, max: 100000)"),
     offset: int = Query(0, ge=0, description="Pagination offset")
@@ -44,7 +44,7 @@ async def get_samples(
     Bounding box format: min_lon,min_lat,max_lon,max_lat
     Example: bbox=-10,35,20,60 (covers Western Europe)
     """
-    selected_confidence_levels = parse_confidence_levels(confidence_levels)
+    selected_match_methods = parse_match_methods(match_methods)
     query = build_sample_match_query(
         rock_type=rock_type,
         database=database,
@@ -55,7 +55,7 @@ async def get_samples(
         bbox=bbox,
         material=material,
     )
-    confidence_stages = build_confidence_filter_stages(selected_confidence_levels)
+    method_stages = build_method_filter_stages(selected_match_methods)
     
     # Project only necessary fields for performance
     # Minimize data transfer by excluding large nested objects unless specifically needed
@@ -100,7 +100,7 @@ async def get_samples(
     }
     
     # Use aggregation pipeline to enrich samples with volcano rock_type via lookup
-    pipeline = [{"$match": query}, *confidence_stages, {"$skip": offset}]
+    pipeline = [{"$match": query}, *method_stages, {"$skip": offset}]
     
     if limit is not None:
         pipeline.append({"$limit": limit})
@@ -162,7 +162,7 @@ async def get_samples(
                 del sample[oxide]
     
     # Get total count for the fully filtered query (useful for pagination)
-    count_pipeline = [{"$match": query}, *confidence_stages, {"$count": "total"}]
+    count_pipeline = [{"$match": query}, *method_stages, {"$count": "total"}]
     count_result = list(db.samples.aggregate(count_pipeline, batchSize=10000))
     total_count = count_result[0]["total"] if count_result else 0
     

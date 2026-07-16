@@ -35,8 +35,13 @@ export const fetchAFMBoundary = async (): Promise<AFMBoundaryResponse> => {
 /**
  * Fetch tectonic plates GeoJSON
  */
-export const fetchTectonicPlates = async (): Promise<TectonicPlatesResponse> => {
-  const response = await apiClient.get<TectonicPlatesResponse>('/spatial/tectonic-plates');
+export const fetchTectonicPlates = async (
+  signal?: AbortSignal
+): Promise<TectonicPlatesResponse> => {
+  const response = await apiClient.get<TectonicPlatesResponse>(
+    '/spatial/tectonic-plates',
+    { signal }
+  );
   return response.data;
 };
 
@@ -44,12 +49,14 @@ export const fetchTectonicPlates = async (): Promise<TectonicPlatesResponse> => 
  * Fetch tectonic boundaries GeoJSON
  */
 export const fetchTectonicBoundaries = async (
-  boundaryType?: 'ridge' | 'trench' | 'transform'
+  boundaryType?: 'ridge' | 'trench' | 'transform',
+  signal?: AbortSignal
 ): Promise<TectonicBoundariesResponse> => {
   const response = await apiClient.get<TectonicBoundariesResponse>(
     '/spatial/tectonic-boundaries',
     {
       params: boundaryType ? { boundary_type: boundaryType } : undefined,
+      signal,
     }
   );
   return response.data;
@@ -89,7 +96,7 @@ export const fetchRockTypeDistribution = async (
         ...filters,
         rock_type: joinFilterValue(filters.rock_type),
         tectonic_setting: joinFilterValue(filters.tectonic_setting),
-        confidence_levels: filters.confidence_levels?.join(','),
+        match_methods: filters.match_methods?.join(','),
       }
     : undefined;
 
