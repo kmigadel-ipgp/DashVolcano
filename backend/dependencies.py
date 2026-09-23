@@ -5,6 +5,7 @@ Provides database connections and shared resources
 from typing import Generator
 from pymongo import MongoClient
 from pymongo.database import Database
+import certifi
 
 from backend.config import settings
 
@@ -17,7 +18,7 @@ def get_mongo_client() -> MongoClient:
     """Get or create MongoDB client singleton"""
     global _mongo_client
     if _mongo_client is None:
-        _mongo_client = MongoClient(settings.mongodb_uri)
+        _mongo_client = MongoClient(settings.mongodb_uri, tlsCAFile=certifi.where())
     return _mongo_client
 
 

@@ -1,4 +1,5 @@
 import pandas as pd
+import certifi
 
 from pymongo import MongoClient
 from functools import cached_property
@@ -10,9 +11,9 @@ class Database:
     def __init__(self):
         """Initialize MongoDB client with the provided config."""
         config = load_config()
-        
+
         uri = f"mongodb+srv://{config['user']}:{config['password']}@{config['cluster']}/?retryWrites=true&w=majority"
-        client = MongoClient(uri)
+        client = MongoClient(uri, tlsCAFile=certifi.where())
         self.db = client[config["db_name"]]
 
         self.match_wr_stage = [{"$match": {"material": "WR"}}]
