@@ -74,10 +74,21 @@ interface MapProps {
 // Mapbox token - you'll need to set this in your environment
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
 
-// Use OpenStreetMap style if no Mapbox token is available
-const MAP_STYLE = MAPBOX_TOKEN 
-  ? 'mapbox://styles/mapbox/dark-v10'
-  : 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+// OpenStreetMap raster basemap, as on VolcashDB. In the dark theme the basemap
+// canvas is inverted by CSS (index.css); deck.gl layers are not affected.
+const MAP_STYLE: React.ComponentProps<typeof MapboxMap>['mapStyle'] = {
+  version: 8,
+  sources: {
+    osm: {
+      type: 'raster',
+      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+      tileSize: 256,
+      maxzoom: 19,
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    },
+  },
+  layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
+};
 
 // Default viewport settings
 const INITIAL_VIEW_STATE: ViewState = {

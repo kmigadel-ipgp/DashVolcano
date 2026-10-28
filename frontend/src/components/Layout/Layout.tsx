@@ -1,10 +1,12 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { Menu, Moon, Sun, X } from 'lucide-react';
 import { useState } from 'react';
+import { useTheme } from '../../hooks/useTheme';
 
 const Layout = () => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
 
   const navLinks = [
     { path: '/map', label: 'Map' },
@@ -15,62 +17,85 @@ const Layout = () => {
     { path: '/about', label: 'About' },
   ];
 
+  const linkClass = (path: string) =>
+    `px-3 py-2 rounded-md text-sm transition-colors duration-200 ${
+      location.pathname === path
+        ? 'bg-accent-soft text-accent-ink font-semibold'
+        : 'text-ink-muted hover:text-ink hover:bg-gray-100'
+    }`;
+
+  const themeLabel = theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme';
+
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
-      <header className="bg-volcano-700 text-white shadow-lg">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <span className="text-3xl">🌋</span>
-              <h1 className="text-2xl font-bold">DashVolcano</h1>
+      <header className="bg-surface border-b border-line">
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center space-x-2.5">
+              <span className="text-2xl" aria-hidden="true">🌋</span>
+              <h1 className="text-xl font-bold tracking-tight text-ink">
+                Dash<span className="text-accent-ink">Volcano</span>
+              </h1>
             </div>
-            {/* Desktop Navigation */}
-            <nav className="hidden md:flex space-x-6">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  className={`px-3 py-2 rounded-lg transition-colors duration-200 ${
-                    location.pathname === link.path
-                      ? 'bg-volcano-800 font-semibold'
-                      : 'hover:bg-volcano-600'
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
 
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-lg hover:bg-volcano-600 transition-colors duration-200"
-              aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
-              aria-expanded={mobileMenuOpen}
-            >
-              {mobileMenuOpen ? (
-                <X className="w-6 h-6" aria-hidden="true" />
-              ) : (
-                <Menu className="w-6 h-6" aria-hidden="true" />
-              )}
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Desktop Navigation */}
+              <nav className="hidden md:flex items-center gap-1" aria-label="Main">
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.path}
+                    to={link.path}
+                    className={linkClass(link.path)}
+                    aria-current={location.pathname === link.path ? 'page' : undefined}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </nav>
+
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className="p-2 rounded-md text-ink-muted hover:text-ink hover:bg-gray-100 transition-colors duration-200"
+                aria-label={themeLabel}
+                title={themeLabel}
+              >
+                {theme === 'light' ? (
+                  <Moon className="w-5 h-5" aria-hidden="true" />
+                ) : (
+                  <Sun className="w-5 h-5" aria-hidden="true" />
+                )}
+              </button>
+
+              {/* Mobile Menu Button */}
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden p-2 rounded-md text-ink-muted hover:text-ink hover:bg-gray-100 transition-colors duration-200"
+                aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+                aria-expanded={mobileMenuOpen}
+              >
+                {mobileMenuOpen ? (
+                  <X className="w-6 h-6" aria-hidden="true" />
+                ) : (
+                  <Menu className="w-6 h-6" aria-hidden="true" />
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Mobile Navigation Menu */}
           {mobileMenuOpen && (
-            <nav className="md:hidden mt-4 pb-4 border-t border-volcano-600 pt-4">
-              <div className="flex flex-col space-y-2">
+            <nav className="md:hidden mt-3 pt-3 pb-2 border-t border-line" aria-label="Main">
+              <div className="flex flex-col gap-1">
                 {navLinks.map((link) => (
                   <Link
                     key={link.path}
                     to={link.path}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`px-4 py-3 rounded-lg transition-all duration-200 ${
-                      location.pathname === link.path
-                        ? 'bg-volcano-800 font-semibold'
-                        : 'hover:bg-volcano-600'
-                    }`}
+                    className={`${linkClass(link.path)} py-3`}
+                    aria-current={location.pathname === link.path ? 'page' : undefined}
                   >
                     {link.label}
                   </Link>
@@ -87,7 +112,7 @@ const Layout = () => {
       </main>
 
       {/* Footer */}
-      <footer className="bg-gray-800 text-white py-3 text-center text-sm">
+      <footer className="bg-surface border-t border-line text-ink-muted py-2.5 text-center text-xs">
         <p>
           © 2025 DashVolcano | Data sources: GEOROC, PetDB, GVP | Built with React + Deck.gl
         </p>
