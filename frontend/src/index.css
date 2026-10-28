@@ -64,6 +64,10 @@
     --teal-100: 204 251 241;
     --teal-200: 153 246 228;
     --teal-300: 94 234 212;
+    --purple-50: 250 245 255;
+    --purple-100: 243 232 255;
+    --purple-200: 233 213 255;
+    --purple-300: 216 180 254;
     --red-text-600: 220 38 38;
     --red-text-700: 185 28 28;
     --red-text-800: 153 27 27;
@@ -149,6 +153,10 @@
     --teal-100: 19 50 52;
     --teal-200: 26 75 78;
     --teal-300: 34 100 104;
+    --purple-50: 34 22 51;
+    --purple-100: 45 29 69;
+    --purple-200: 67 42 102;
+    --purple-300: 90 56 136;
     --red-text-600: 248 113 113;
     --red-text-700: 252 165 165;
     --red-text-800: 254 202 202;
@@ -184,7 +192,8 @@
     font-feature-settings: "cv11", "ss01";
   }
 
-  :focus-visible {
+  /* Form fields keep their own focus ring (focus:ring-*) */
+  :focus-visible:not(input, select, textarea) {
     outline: 2px solid rgb(var(--focus));
     outline-offset: 2px;
   }
@@ -222,4 +231,22 @@
    are not filtered. */
 :root[data-theme="dark"] .mapboxgl-canvas {
   filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9) saturate(0.55);
+}
+
+/* On-screen chart text uses the UI font. Plotly sets fonts inline, hence
+   !important; PNG exports are rendered from the layout and are unchanged. */
+.js-plotly-plot .plotly .main-svg text {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif !important;
+}
+
+/* Phones: charts keep a readable minimum width and scroll horizontally
+   instead of being squeezed (squeezing distorts TAS/AFM field geometry). */
+@media (max-width: 639px) {
+  :has(> .js-plotly-plot) {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .js-plotly-plot {
+    min-width: 560px;
+  }
 }

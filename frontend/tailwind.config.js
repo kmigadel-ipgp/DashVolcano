@@ -11,7 +11,7 @@ const token = (name) => `rgb(var(--${name}) / <alpha-value>)`;
 const tints = (family, shades) =>
   Object.fromEntries(shades.map((shade) => [shade, token(`${family}-${shade}`)]));
 
-const TINT_FAMILIES = ['red', 'blue', 'green', 'yellow', 'emerald', 'indigo', 'teal', 'volcano'];
+const TINT_FAMILIES = ['red', 'blue', 'green', 'yellow', 'emerald', 'indigo', 'teal', 'purple', 'volcano'];
 const TEXT_FAMILIES = ['red', 'blue', 'green', 'yellow', 'emerald', 'indigo', 'volcano'];
 
 export default {
@@ -76,6 +76,9 @@ export default {
       borderColor: {
         gray: tints('gray', [100, 200, 300]),
         ...Object.fromEntries(TINT_FAMILIES.map((f) => [f, tints(f, [200, 300])])),
+      },
+      gradientColorStops: {
+        ...Object.fromEntries(TINT_FAMILIES.map((f) => [f, tints(f, [50, 100])])),
       },
       divideColor: {
         gray: tints('gray', [100, 200, 300]),
