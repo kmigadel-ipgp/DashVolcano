@@ -131,7 +131,7 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 bg-gradient-to-r from-volcano-600 to-volcano-500 text-white">
         <div className="flex items-center gap-4 min-w-0">
-          <h3 className="font-semibold text-lg shrink-0">Chemical and Rock-Type Charts</h3>
+          <h2 className="font-semibold text-lg shrink-0">Chemical and Rock-Type Charts</h2>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {TAB_OPTIONS.map(tab => (
               <button
@@ -194,9 +194,9 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
             {activeTab === 'both' && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="border rounded-lg p-2 bg-gray-50">
-                  <h4 className="text-sm font-semibold text-center mb-2 text-gray-700">
+                  <h3 className="text-sm font-semibold text-center mb-2 text-gray-700">
                     TAS Diagram ({tasValidSamples.length} samples)
-                  </h4>
+                  </h3>
                   {tasValidSamples.length > 0 ? (
                     <div className="h-96">
                       <TASPlot samples={tasValidSamples} />
@@ -208,9 +208,9 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
                   )}
                 </div>
                 <div className="border rounded-lg p-2 bg-gray-50">
-                  <h4 className="text-sm font-semibold text-center mb-2 text-gray-700">
+                  <h3 className="text-sm font-semibold text-center mb-2 text-gray-700">
                     AFM Diagram ({afmValidSamples.length} samples)
-                  </h4>
+                  </h3>
                   {afmValidSamples.length > 0 ? (
                     <div className="h-96">
                       <AFMPlot samples={afmValidSamples} />
@@ -227,9 +227,9 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
             {activeTab === 'tas' && (
               <div className="p-4 w-full">
                 <div className="border rounded-lg p-4 bg-gray-50 w-full">
-                  <h4 className="text-base font-semibold text-left mb-3 text-gray-700">
+                  <h3 className="text-base font-semibold text-left mb-3 text-gray-700">
                     TAS Diagram ({tasValidSamples.length} samples)
-                  </h4>
+                  </h3>
                   {tasValidSamples.length > 0 ? (
                     <div className="h-[600px] w-full">
                       <TASPlot samples={tasValidSamples} />
@@ -246,9 +246,9 @@ export const ChartPanel: React.FC<ChartPanelProps> = ({
             {activeTab === 'afm' && (
               <div className="p-4 w-full">
                 <div className="border rounded-lg p-4 bg-gray-50 w-full">
-                  <h4 className="text-base font-semibold text-left mb-3 text-gray-700">
+                  <h3 className="text-base font-semibold text-left mb-3 text-gray-700">
                     AFM Diagram ({afmValidSamples.length} samples)
-                  </h4>
+                  </h3>
                   {afmValidSamples.length > 0 ? (
                     <div className="h-[600px] w-full">
                       <AFMPlot samples={afmValidSamples} />

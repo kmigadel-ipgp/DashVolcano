@@ -37,7 +37,8 @@ const FOOTER_TEXT = '© 2025 DashVolcano | Data sources: GEOROC, PetDB, GVP | Bu
 const Layout = () => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
+  // Collapsed by default on tablets to leave room for the map
+  const [collapsed, setCollapsed] = useState(() => !window.matchMedia('(min-width: 1024px)').matches);
   const { theme, toggleTheme } = useTheme();
 
   // Close the mobile drawer with Escape
@@ -83,9 +84,10 @@ const Layout = () => {
   const renderBrand = (compact: boolean) => (
     <div className={`flex items-center gap-2.5 ${compact ? 'justify-center' : ''}`}>
       <span className="text-2xl leading-none" aria-hidden="true">🌋</span>
-      <h1 className={`text-lg font-bold tracking-tight text-ink ${compact ? 'sr-only' : ''}`}>
+      {/* Brand only: each page provides its own h1 */}
+      <p className={`text-lg font-bold tracking-tight text-ink ${compact ? 'sr-only' : ''}`}>
         Dash<span className="text-accent-ink">Volcano</span>
-      </h1>
+      </p>
     </div>
   );
 
@@ -94,6 +96,17 @@ const Layout = () => {
 
   return (
     <div className="flex h-screen bg-canvas">
+      <a
+        href="#main-content"
+        onClick={(event) => {
+          // Move focus without changing the URL (keeps router state untouched)
+          event.preventDefault();
+          document.getElementById('main-content')?.focus();
+        }}
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-md focus:bg-surface focus:text-ink focus:shadow-lg"
+      >
+        Skip to content
+      </a>
       {/* Desktop sidebar */}
       <aside
         className={`hidden md:flex flex-col shrink-0 bg-surface border-r border-line transition-[width] duration-200 ${
@@ -159,7 +172,7 @@ const Layout = () => {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-auto">
+        <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto focus:outline-none">
           <Outlet />
         </main>
       </div>
@@ -171,7 +184,7 @@ const Layout = () => {
           <div className="relative flex flex-col w-72 max-w-[85vw] h-full bg-surface shadow-2xl">
             <div className="flex items-center justify-between h-14 px-4 border-b border-line">
               {renderBrand(false)}
-              <button type="button" onClick={() => setMobileMenuOpen(false)} className={iconButtonClass} aria-label="Close menu">
+              <button type="button" onClick={() => setMobileMenuOpen(false)} className={iconButtonClass} aria-label="Close menu" autoFocus>
                 <X className="w-6 h-6" aria-hidden="true" />
               </button>
             </div>

@@ -292,6 +292,7 @@ const CompareVolcanoesPage: React.FC = () => {
                       setShowSuggestions(newShow);
                     }, 200);
                   }}
+                  aria-label={`Search for volcano ${index + 1}`}
                   placeholder="Type to search volcanoes..."
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-volcano-500 focus:border-volcano-500"
                   style={{ borderColor: selection.name ? VOLCANO_COLORS[index] : undefined }}

@@ -518,6 +518,7 @@ const AboutPage = () => {
                 <h3 className="text-xl font-bold text-gray-900">🔸 GEOROC</h3>
                 <a 
                   href={externalLinks.georoc}
+                  aria-label="Open GEOROC website (new tab)"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-volcano-600 hover:text-volcano-700"
@@ -583,6 +584,7 @@ const AboutPage = () => {
                 <h3 className="text-xl font-bold text-gray-900">🔸 PetDB</h3>
                 <a 
                   href="https://search.earthchem.org/"
+                  aria-label="Open PetDB / EarthChem search (new tab)"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-volcano-600 hover:text-volcano-700"
@@ -643,6 +645,7 @@ const AboutPage = () => {
                 <h3 className="text-xl font-bold text-gray-900">🔸 Global Volcanism Program</h3>
                 <a 
                   href={externalLinks.gvp}
+                  aria-label="Open Global Volcanism Program website (new tab)"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-volcano-600 hover:text-volcano-700"

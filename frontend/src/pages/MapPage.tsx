@@ -552,9 +552,10 @@ const MapPage = () => {
 
   return (
     <div ref={mapContainerRef} className="relative w-full h-full">
+      <h1 className="sr-only">Volcano map</h1>
       {/* Error Message */}
       {error && (
-        <div className="absolute top-4 left-20 right-4 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 z-20 sm:max-w-md">
+        <div className="absolute top-4 left-20 right-4 sm:right-auto sm:max-w-md xl:left-1/2 xl:-translate-x-1/2 z-20">
           <ErrorMessage message={error} />
         </div>
       )}
@@ -585,7 +586,7 @@ const MapPage = () => {
             
             <div className="text-center space-y-4">
               <div className="text-volcano-600 text-5xl mb-4">🗺️</div>
-              <h3 className="text-xl font-bold text-gray-800">No Samples Loaded</h3>
+              <h2 className="text-xl font-bold text-gray-800">No Samples Loaded</h2>
               <p className="text-gray-600">
                 To display rock samples on the map, use one of these options:
               </p>

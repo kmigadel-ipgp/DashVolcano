@@ -94,7 +94,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
     <div className="absolute top-4 right-4 z-20 w-[22rem] max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-2xl overflow-hidden">
       {/* Header */}
       <div className="bg-volcano-600 text-white p-4 flex items-center justify-between">
-        <h3 className="font-semibold text-lg">Sample Details</h3>
+        <h2 className="font-semibold text-lg">Sample Details</h2>
         <button
           onClick={onClose}
           className="hover:bg-volcano-700 rounded p-1 transition-colors"
@@ -297,7 +297,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
         {/* Chemical Composition */}
         {majorOxides.length > 0 && (
           <div className="mt-4 pt-4 border-t border-gray-200">
-            <h4 className="text-sm font-semibold text-gray-700 mb-3">Chemical Composition</h4>
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Chemical Composition</h3>
             <div className="grid grid-cols-2 gap-2">
               {majorOxides.map((oxide) => (
                 <div key={oxide.name} className="flex justify-between text-sm">

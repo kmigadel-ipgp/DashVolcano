@@ -106,7 +106,7 @@ export const BboxSearchWidget: React.FC<BboxSearchWidgetProps> = ({
           >
             <div className="flex items-center gap-2">
               <Search className={`w-5 h-5 ${bbox ? 'text-blue-600' : 'text-gray-700'}`} />
-              <h3 className="font-semibold text-gray-900">Spatial Search</h3>
+              <h2 className="font-semibold text-gray-900">Spatial Search</h2>
             </div>
             <ChevronUp className="w-5 h-5 text-gray-500" />
           </div>

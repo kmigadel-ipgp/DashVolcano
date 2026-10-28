@@ -27,7 +27,7 @@
     --gray-100: 241 245 249;
     --gray-200: 226 232 240;
     --gray-300: 203 213 225;
-    --gray-text-500: 100 116 139;
+    --gray-text-500: 95 107 125;
     --gray-text-600: 71 85 105;
     --gray-text-700: 51 65 85;
     --gray-text-800: 30 41 59;
@@ -68,6 +68,15 @@
     --purple-100: 243 232 255;
     --purple-200: 233 213 255;
     --purple-300: 216 180 254;
+    --amber-text-600: 180 83 9;
+    --amber-text-700: 180 83 9;
+    --amber-text-800: 146 64 14;
+    --amber-text-900: 120 53 15;
+    --orange-text-600: 194 65 12;
+    --orange-text-700: 194 65 12;
+    --orange-text-800: 154 52 18;
+    --orange-text-900: 124 45 18;
+    --field-border: 134 146 163;
     --red-text-600: 220 38 38;
     --red-text-700: 185 28 28;
     --red-text-800: 153 27 27;
@@ -76,7 +85,7 @@
     --blue-text-700: 29 78 216;
     --blue-text-800: 30 64 175;
     --blue-text-900: 30 58 138;
-    --green-text-600: 22 163 74;
+    --green-text-600: 21 128 61;
     --green-text-700: 21 128 61;
     --green-text-800: 22 101 52;
     --green-text-900: 20 83 45;
@@ -157,6 +166,15 @@
     --purple-100: 45 29 69;
     --purple-200: 67 42 102;
     --purple-300: 90 56 136;
+    --amber-text-600: 251 191 36;
+    --amber-text-700: 252 211 77;
+    --amber-text-800: 253 230 138;
+    --amber-text-900: 254 243 199;
+    --orange-text-600: 251 146 60;
+    --orange-text-700: 253 186 116;
+    --orange-text-800: 254 215 170;
+    --orange-text-900: 255 237 213;
+    --field-border: 104 117 136;
     --red-text-600: 248 113 113;
     --red-text-700: 252 165 165;
     --red-text-800: 254 202 202;
@@ -190,6 +208,17 @@
   body {
     @apply m-0 min-h-screen bg-canvas text-ink antialiased;
     font-feature-settings: "cv11", "ss01";
+  }
+
+  /* Text fields and selects: boundary contrast >= 3:1 (WCAG 1.4.11). Focus
+     and colour-coded borders (focus:border-*, inline styles) still win. */
+  input:not([type]),
+  input[type="text"],
+  input[type="search"],
+  input[type="number"],
+  select,
+  textarea {
+    border-color: rgb(var(--field-border));
   }
 
   /* Form fields keep their own focus ring (focus:ring-*) */

@@ -48,7 +48,7 @@ export const LayerControls: React.FC<LayerControlsProps> = ({
         aria-expanded={isExpanded}
       >
         <Layers className="w-4 h-4 text-volcano-600" aria-hidden="true" />
-        <h3 className="text-sm font-semibold text-gray-800 flex-1 text-left">Map Layers</h3>
+        <h2 className="text-sm font-semibold text-gray-800 flex-1 text-left">Map Layers</h2>
         {isExpanded ? (
           <ChevronDown className="w-4 h-4 text-gray-600" aria-hidden="true" />
         ) : (
@@ -112,7 +112,7 @@ export const LayerControls: React.FC<LayerControlsProps> = ({
 
       {/* Legend */}
       <div className="mt-4 pt-4 border-t border-gray-200">
-        <h4 className="text-xs font-semibold mb-2 text-gray-600">Legend</h4>
+        <h3 className="text-xs font-semibold mb-2 text-gray-600">Legend</h3>
         <div className="space-y-1 text-xs text-gray-600">
           <div className="flex items-center">
             <svg className="w-3 h-3 mr-2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

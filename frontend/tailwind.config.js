@@ -12,7 +12,7 @@ const tints = (family, shades) =>
   Object.fromEntries(shades.map((shade) => [shade, token(`${family}-${shade}`)]));
 
 const TINT_FAMILIES = ['red', 'blue', 'green', 'yellow', 'emerald', 'indigo', 'teal', 'purple', 'volcano'];
-const TEXT_FAMILIES = ['red', 'blue', 'green', 'yellow', 'emerald', 'indigo', 'volcano'];
+const TEXT_FAMILIES = ['red', 'blue', 'green', 'yellow', 'emerald', 'indigo', 'amber', 'orange', 'volcano'];
 
 export default {
   content: [

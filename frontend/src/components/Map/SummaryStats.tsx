@@ -53,7 +53,7 @@ export const SummaryStats: React.FC<SummaryStatsProps> = ({
   };
 
   return (
-    <div className="absolute bottom-16 sm:bottom-4 left-4 z-10 bg-white/95 backdrop-blur-sm rounded-lg shadow-md border border-line w-[calc(100vw-6.5rem)] sm:w-auto sm:min-w-[280px] md:min-w-[300px]">
+    <div className="absolute bottom-16 sm:bottom-4 left-4 z-10 bg-white/95 backdrop-blur-sm rounded-lg shadow-md border border-line w-[calc(100vw-6.5rem)] sm:w-auto sm:min-w-[280px] lg:min-w-[300px]">
       {/* Header - Always Visible */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
@@ -62,7 +62,7 @@ export const SummaryStats: React.FC<SummaryStatsProps> = ({
         aria-expanded={isExpanded}
       >
         <BarChart3 className="w-4 h-4 text-volcano-600" aria-hidden="true" />
-        <h3 className="font-semibold text-sm text-gray-800 flex-1 text-left">Data Overview</h3>
+        <h2 className="font-semibold text-sm text-gray-800 flex-1 text-left">Data Overview</h2>
         {isExpanded ? (
           <ChevronDown className="w-4 h-4 text-gray-600" aria-hidden="true" />
         ) : (

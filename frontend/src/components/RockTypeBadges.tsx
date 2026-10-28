@@ -47,8 +47,6 @@ export const RockTypeBadges: React.FC<RockTypeBadgesProps> = ({
       <div className="flex flex-wrap gap-2">
         {rockTypes.map((rt, idx) => {
           const isPrimary = rt.rank === 1;
-          const opacity = isPrimary ? '1' : '0.6';
-          
           return (
             <span
               key={idx}
@@ -61,7 +59,6 @@ export const RockTypeBadges: React.FC<RockTypeBadgesProps> = ({
                 backgroundColor: isPrimary 
                   ? color 
                   : `${color}40`, // 40 is hex for 25% opacity
-                opacity: opacity
               }}
               title={`${isPrimary ? 'Primary' : rt.rank === 2 ? 'Secondary' : 'Tertiary'} rock type from GVP`}
             >
