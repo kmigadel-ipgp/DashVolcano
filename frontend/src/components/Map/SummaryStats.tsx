@@ -30,7 +30,8 @@ export const SummaryStats: React.FC<SummaryStatsProps> = ({
   publicationSampleScopeCount = 0,
   loading = false,
 }) => {
-  const [isExpanded, setIsExpanded] = useState(true);
+  // Expanded by default on wide screens, collapsed on phones
+  const [isExpanded, setIsExpanded] = useState(() => window.matchMedia('(min-width: 768px)').matches);
   // Calculate unique values
   const uniqueRockTypes = new Set(
     samples.filter(s => s.petro?.rock_type).map(s => s.petro?.rock_type)
@@ -52,7 +53,7 @@ export const SummaryStats: React.FC<SummaryStatsProps> = ({
   };
 
   return (
-    <div className="absolute bottom-4 left-4 z-10 bg-white/95 backdrop-blur-sm rounded-lg shadow-lg min-w-[280px] md:min-w-[300px]">
+    <div className="absolute bottom-16 sm:bottom-4 left-4 z-10 bg-white/95 backdrop-blur-sm rounded-lg shadow-md border border-line w-[calc(100vw-6.5rem)] sm:w-auto sm:min-w-[280px] md:min-w-[300px]">
       {/* Header - Always Visible */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}

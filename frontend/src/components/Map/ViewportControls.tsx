@@ -34,9 +34,9 @@ export const ViewportControls: React.FC<ViewportControlsProps> = ({
   onResetView,
 }) => {
   return (
-    <div className="absolute bottom-4 right-4 z-10">
+    <div className="absolute bottom-16 sm:bottom-4 right-4 z-10 w-14 sm:w-auto">
       {/* Coordinates display */}
-      <div className="bg-white rounded-lg shadow-lg p-3 mb-2 text-xs text-gray-700">
+      <div className="hidden sm:block bg-white rounded-lg shadow-md border border-line p-3 mb-2 text-xs text-gray-700">
         <div className="font-mono">
           <div>Lat: {viewport.latitude.toFixed(4)}°</div>
           <div>Lon: {viewport.longitude.toFixed(4)}°</div>
@@ -45,7 +45,7 @@ export const ViewportControls: React.FC<ViewportControlsProps> = ({
       </div>
 
       {/* Control buttons */}
-      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+      <div className="bg-white rounded-lg shadow-md border border-line overflow-hidden">
         {/* Zoom in */}
         <button
           onClick={onZoomIn}

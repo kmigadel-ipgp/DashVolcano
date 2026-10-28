@@ -554,7 +554,7 @@ const MapPage = () => {
     <div ref={mapContainerRef} className="relative w-full h-full">
       {/* Error Message */}
       {error && (
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 max-w-md">
+        <div className="absolute top-4 left-20 right-4 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 z-20 sm:max-w-md">
           <ErrorMessage message={error} />
         </div>
       )}
@@ -570,7 +570,7 @@ const MapPage = () => {
             }
           }}
         >
-          <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md relative">
+          <div className="bg-white rounded-xl shadow-2xl border border-line p-6 sm:p-8 w-[calc(100vw-2rem)] max-w-md relative">
             {/* Close button */}
             <button
               onClick={() => setShowNoSamplesMessage(false)}
@@ -770,7 +770,7 @@ const MapPage = () => {
       {/* Filter Button */}
       <button
         onClick={() => setFilterPanelOpen(true)}
-        className="absolute top-4 left-4 z-10 bg-white rounded-lg shadow-lg p-4 hover:bg-gray-50 transition-colors duration-200"
+        className="absolute top-4 left-4 z-10 bg-white rounded-lg shadow-md border border-line p-4 hover:bg-gray-50 transition-colors duration-200"
         title="Open Filters"
         aria-label="Open filter panel"
       >

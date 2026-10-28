@@ -295,7 +295,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
       />
 
       {/* Filter Panel */}
-      <div className="fixed top-0 right-0 h-full w-96 bg-white shadow-2xl z-50 overflow-y-auto">
+      <div className="fixed top-0 right-0 h-full w-full sm:w-96 bg-white shadow-2xl z-50 overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
           <div className="flex items-center gap-2">

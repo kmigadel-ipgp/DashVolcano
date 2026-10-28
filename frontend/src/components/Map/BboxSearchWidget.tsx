@@ -98,7 +98,7 @@ export const BboxSearchWidget: React.FC<BboxSearchWidgetProps> = ({
 
       {/* Expanded: Full panel */}
       {isExpanded && (
-        <div className="bg-white rounded-lg shadow-lg w-80 max-h-[calc(100vh-2rem)] overflow-y-auto">
+        <div className="bg-white rounded-lg shadow-md border border-line w-80 max-w-[calc(100vw-6rem)] max-h-[calc(100vh-2rem)] overflow-y-auto">
           {/* Header */}
           <div
             className="flex items-center justify-between p-3 border-b cursor-pointer hover:bg-gray-50"

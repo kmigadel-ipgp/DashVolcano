@@ -35,10 +35,11 @@ export const LayerControls: React.FC<LayerControlsProps> = ({
   onSamplePointsChange,
   onTectonicsChange,
 }) => {
-  const [isExpanded, setIsExpanded] = useState(true);
+  // Expanded by default on wide screens, collapsed on phones
+  const [isExpanded, setIsExpanded] = useState(() => window.matchMedia('(min-width: 768px)').matches);
 
   return (
-    <div className="absolute top-4 right-4 z-10 bg-white rounded-lg shadow-lg min-w-[200px] max-w-[280px] md:max-w-none">
+    <div className="absolute top-4 right-4 z-10 bg-white rounded-lg shadow-md border border-line min-w-[200px] max-w-[280px] md:max-w-none">
       {/* Header - Always Visible */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
