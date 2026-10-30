@@ -47,7 +47,7 @@ export const MatchMethodFilter: React.FC<MatchMethodFilterProps> = ({
   const noneSelected = selectedMethods.length === 0;
 
   return (
-    <div className={`bg-white rounded-lg border border-gray-200 p-4 ${className}`}>
+    <div className={`card p-4 ${className}`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Link2 className="w-5 h-5 text-gray-700" />
@@ -57,7 +57,7 @@ export const MatchMethodFilter: React.FC<MatchMethodFilterProps> = ({
           <button
             onClick={handleSelectAll}
             disabled={allSelected}
-            className="text-xs px-2 py-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+            className="text-xs px-2 py-1 text-volcano-700 hover:text-volcano-800 hover:bg-volcano-50 rounded disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
           >
             Select All
           </button>
@@ -75,7 +75,7 @@ export const MatchMethodFilter: React.FC<MatchMethodFilterProps> = ({
         Filter samples by how they were associated with a volcano
       </p>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         {METHOD_OPTIONS.map(({ value, label, description, color }) => {
           const isSelected = selectedMethods.includes(value);
 
@@ -83,6 +83,7 @@ export const MatchMethodFilter: React.FC<MatchMethodFilterProps> = ({
             <button
               key={value}
               onClick={() => handleToggle(value)}
+              aria-pressed={isSelected}
               className={`
                 relative px-3 py-2 rounded-lg border-2 transition-all text-left
                 ${isSelected
@@ -108,7 +109,7 @@ export const MatchMethodFilter: React.FC<MatchMethodFilterProps> = ({
                 </div>
                 <span className="text-sm font-medium">{label}</span>
               </div>
-              <p className="text-xs mt-1 opacity-75">{description}</p>
+              <p className="text-xs mt-1">{description}</p>
             </button>
           );
         })}

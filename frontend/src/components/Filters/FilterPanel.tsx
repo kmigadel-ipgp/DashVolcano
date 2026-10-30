@@ -8,6 +8,7 @@ import {
   filterVolcanoAutocompleteOptions,
   type VolcanoAutocompleteOption,
 } from '../../utils/volcanoAutocomplete';
+import { Combobox } from '../Common/Combobox';
 
 interface FilterPanelProps {
   /** Current sample filters */
@@ -66,9 +67,6 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
   const [countryInput, setCountryInput] = useState(volcanoFilters.country || '');
   const [regionInput, setRegionInput] = useState(volcanoFilters.region || '');
   const [volcanoInput, setVolcanoInput] = useState(volcanoFilters.volcano_name || '');
-  const [showCountrySuggestions, setShowCountrySuggestions] = useState(false);
-  const [showRegionSuggestions, setShowRegionSuggestions] = useState(false);
-  const [showVolcanoSuggestions, setShowVolcanoSuggestions] = useState(false);
 
   /**
    * Fetch metadata on mount
@@ -329,7 +327,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                 id="database-select"
                 value={localSampleFilters.database || ''}
                 onChange={(e) => updateSampleFilter('database', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-volcano-500 focus:border-volcano-500"
+                className="field"
               >
                 <option value="">All Databases</option>
                 <option value="GEOROC">GEOROC</option>
@@ -415,7 +413,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                     min="0"
                     max="100"
                     step="0.1"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-volcano-500 focus:border-volcano-500"
+                    className="field"
                   />
                 </div>
                 <div>
@@ -427,7 +425,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                     min="0"
                     max="100"
                     step="0.1"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-volcano-500 focus:border-volcano-500"
+                    className="field"
                   />
                 </div>
               </div>
@@ -448,46 +446,32 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
               <label htmlFor="volcano-input" className="block text-sm font-medium text-gray-700 mb-2">
                 Volcano Name
               </label>
-              <input
+              <Combobox
                 id="volcano-input"
-                type="text"
                 value={volcanoInput}
-                onChange={(e) => {
-                  setVolcanoInput(e.target.value);
+                onValueChange={(value) => {
+                  setVolcanoInput(value);
                   setLocalVolcanoFilters(prev => ({
                     ...prev,
-                    volcano_name: e.target.value || undefined,
+                    volcano_name: value || undefined,
                     volcano_number: undefined,
                   }));
-                  setShowVolcanoSuggestions(true);
                 }}
-                onFocus={() => setShowVolcanoSuggestions(true)}
-                onBlur={() => setTimeout(() => setShowVolcanoSuggestions(false), 200)}
+                options={filteredVolcanoNames.slice(0, 10)}
+                getOptionKey={(volcano) => volcano.volcano_number}
+                getOptionLabel={(volcano) => volcano.label}
+                onSelect={(volcano) => {
+                  setVolcanoInput(volcano.label);
+                  setLocalVolcanoFilters(prev => ({
+                    ...prev,
+                    volcano_name: volcano.volcano_name,
+                    volcano_number: volcano.volcano_number,
+                  }));
+                }}
                 placeholder="Type to search volcano..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-volcano-500 focus:border-volcano-500"
+                inputClassName="field"
+                optionClassName="w-full text-left px-3 py-2 text-sm text-gray-700 cursor-pointer"
               />
-              {showVolcanoSuggestions && filteredVolcanoNames.length > 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                  {filteredVolcanoNames.slice(0, 10).map((volcano) => (
-                    <button
-                      key={volcano.volcano_number}
-                      type="button"
-                      onClick={() => {
-                        setVolcanoInput(volcano.label);
-                        setLocalVolcanoFilters(prev => ({
-                          ...prev,
-                          volcano_name: volcano.volcano_name,
-                          volcano_number: volcano.volcano_number,
-                        }));
-                        setShowVolcanoSuggestions(false);
-                      }}
-                      className="w-full text-left px-3 py-2 hover:bg-volcano-50 text-sm text-gray-700"
-                    >
-                      {volcano.label}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
 
             {/* Country - Autocomplete */}
@@ -495,38 +479,24 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
               <label htmlFor="country-input" className="block text-sm font-medium text-gray-700 mb-2">
                 Country
               </label>
-              <input
+              <Combobox
                 id="country-input"
-                type="text"
                 value={countryInput}
-                onChange={(e) => {
-                  setCountryInput(e.target.value);
-                  updateVolcanoFilter('country', e.target.value);
-                  setShowCountrySuggestions(true);
+                onValueChange={(value) => {
+                  setCountryInput(value);
+                  updateVolcanoFilter('country', value);
                 }}
-                onFocus={() => setShowCountrySuggestions(true)}
-                onBlur={() => setTimeout(() => setShowCountrySuggestions(false), 200)}
+                options={filteredCountries.slice(0, 10)}
+                getOptionKey={(country) => country}
+                getOptionLabel={(country) => country}
+                onSelect={(country) => {
+                  setCountryInput(country);
+                  updateVolcanoFilter('country', country);
+                }}
                 placeholder="Type to search countries..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-volcano-500 focus:border-volcano-500"
+                inputClassName="field"
+                optionClassName="w-full text-left px-3 py-2 text-sm text-gray-700 cursor-pointer"
               />
-              {showCountrySuggestions && filteredCountries.length > 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                  {filteredCountries.slice(0, 10).map((country) => (
-                    <button
-                      key={country}
-                      type="button"
-                      onClick={() => {
-                        setCountryInput(country);
-                        updateVolcanoFilter('country', country);
-                        setShowCountrySuggestions(false);
-                      }}
-                      className="w-full text-left px-3 py-2 hover:bg-volcano-50 text-sm text-gray-700"
-                    >
-                      {country}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
 
             {/* Region - Autocomplete */}
@@ -534,49 +504,40 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
               <label htmlFor="region-input" className="block text-sm font-medium text-gray-700 mb-2">
                 Region
               </label>
-              <input
+              <Combobox
                 id="region-input"
-                type="text"
                 value={regionInput}
-                onChange={(e) => {
-                  setRegionInput(e.target.value);
-                  updateVolcanoFilter('region', e.target.value);
-                  setShowRegionSuggestions(true);
+                onValueChange={(value) => {
+                  setRegionInput(value);
+                  updateVolcanoFilter('region', value);
                 }}
-                onFocus={() => setShowRegionSuggestions(true)}
-                onBlur={() => setTimeout(() => setShowRegionSuggestions(false), 200)}
+                options={filteredRegions.slice(0, 10)}
+                getOptionKey={(region) => region}
+                getOptionLabel={(region) => region}
+                onSelect={(region) => {
+                  setRegionInput(region);
+                  updateVolcanoFilter('region', region);
+                }}
                 placeholder="Type to search regions..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-volcano-500 focus:border-volcano-500"
+                inputClassName="field"
+                optionClassName="w-full text-left px-3 py-2 text-sm text-gray-700 cursor-pointer"
               />
-              {showRegionSuggestions && filteredRegions.length > 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                  {filteredRegions.slice(0, 10).map((region) => (
-                    <button
-                      key={region}
-                      type="button"
-                      onClick={() => {
-                        setRegionInput(region);
-                        updateVolcanoFilter('region', region);
-                        setShowRegionSuggestions(false);
-                      }}
-                      className="w-full text-left px-3 py-2 hover:bg-volcano-50 text-sm text-gray-700"
-                    >
-                      {region}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
 
             {/* Tectonic Setting */}
             <div className="mb-4">
-              <label htmlFor="volcano-tectonic-select" className="block text-sm font-medium text-gray-700 mb-2">
+              {/* A list of checkboxes, not one field: named as a group rather than with <label for> */}
+              <p id="volcano-tectonic-label" className="block text-sm font-medium text-gray-700 mb-2">
                 Tectonic Setting
-              </label>
+              </p>
               {loadingMetadata ? (
                 <div className="text-sm text-gray-500 py-2">Loading...</div>
               ) : (
-                <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-2">
+                <div
+                  role="group"
+                  aria-labelledby="volcano-tectonic-label"
+                  className="space-y-2 max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-2"
+                >
                   {volcanoTectonicSettings.map((setting) => (
                     <label key={setting} className="flex items-center gap-2 hover:bg-gray-50 px-2 py-1 rounded cursor-pointer">
                       <input

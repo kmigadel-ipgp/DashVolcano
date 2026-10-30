@@ -14,7 +14,7 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTheme } from '../../hooks/useTheme';
 
 interface NavLink {
@@ -40,16 +40,54 @@ const Layout = () => {
   // Collapsed by default on tablets to leave room for the map
   const [collapsed, setCollapsed] = useState(() => !window.matchMedia('(min-width: 1024px)').matches);
   const { theme, toggleTheme } = useTheme();
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Close the mobile drawer with Escape
+  // Mobile drawer: Escape closes it, Tab stays inside it, and focus returns
+  // to the menu button when it closes
   useEffect(() => {
     if (!mobileMenuOpen) return;
+    const menuButton = menuButtonRef.current;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMobileMenuOpen(false);
+      if (event.key === 'Escape') {
+        setMobileMenuOpen(false);
+        return;
+      }
+      if (event.key !== 'Tab' || !drawerRef.current) return;
+      const focusable = drawerRef.current.querySelectorAll<HTMLElement>('a[href], button:not([disabled])');
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      menuButton?.focus();
+    };
+  }, [mobileMenuOpen]);
+
+  // Escape hides chart hover labels (WCAG 1.4.13); Plotly redraws them on the next pointer move
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      document.querySelectorAll('.js-plotly-plot .hoverlayer').forEach((layer) => layer.replaceChildren());
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [mobileMenuOpen]);
+  }, []);
+
+  // Each page has its own browser-tab title (WCAG 2.4.2)
+  useEffect(() => {
+    const page = navLinks.find(({ path }) => path === location.pathname);
+    document.title = page ? `${page.label} · DashVolcano` : 'DashVolcano - Interactive Volcano Database';
+  }, [location.pathname]);
 
   const themeLabel = theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme';
   const ThemeIcon = theme === 'light' ? Moon : Sun;
@@ -161,6 +199,7 @@ const Layout = () => {
             </button>
             <button
               type="button"
+              ref={menuButtonRef}
               onClick={() => setMobileMenuOpen(true)}
               className={iconButtonClass}
               aria-label="Open menu"
@@ -181,7 +220,7 @@ const Layout = () => {
       {mobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex" role="dialog" aria-modal="true" aria-label="Main menu">
           <div className="absolute inset-0 bg-black/50" onClick={() => setMobileMenuOpen(false)} aria-hidden="true" />
-          <div className="relative flex flex-col w-72 max-w-[85vw] h-full bg-surface shadow-2xl">
+          <div ref={drawerRef} className="relative flex flex-col w-72 max-w-[85vw] h-full bg-surface shadow-2xl">
             <div className="flex items-center justify-between h-14 px-4 border-b border-line">
               {renderBrand(false)}
               <button type="button" onClick={() => setMobileMenuOpen(false)} className={iconButtonClass} aria-label="Close menu" autoFocus>
