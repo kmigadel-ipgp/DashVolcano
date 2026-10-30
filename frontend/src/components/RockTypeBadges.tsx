@@ -7,6 +7,14 @@ interface RockTypeBadgesProps {
   volcanoName?: string;
 }
 
+/** Dark or white text, whichever reads better on a filled badge of this colour */
+const textOn = (hex: string): string => {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+    .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return luminance > 0.18 ? '#0f141c' : '#ffffff';
+};
+
 /**
  * Display GVP major rock types as colored badges
  * Primary (maj_1) shows as larger badge, secondary/tertiary are smaller
@@ -52,19 +60,20 @@ export const RockTypeBadges: React.FC<RockTypeBadgesProps> = ({
               key={idx}
               className={`px-3 py-1 rounded-full font-medium transition-all ${
                 isPrimary 
-                  ? 'text-white text-sm shadow-sm' 
+                  ? 'text-sm shadow-sm' 
                   : 'text-gray-700 text-xs'
               }`}
               style={{
                 backgroundColor: isPrimary 
                   ? color 
                   : `${color}40`, // 40 is hex for 25% opacity
+                color: isPrimary ? textOn(color) : undefined,
               }}
               title={`${isPrimary ? 'Primary' : rt.rank === 2 ? 'Secondary' : 'Tertiary'} rock type from GVP`}
             >
               {rt.type}
               {!isPrimary && (
-                <span className="ml-1.5 text-xs opacity-70">
+                <span className="ml-1.5 text-xs">
                   (#{rt.rank})
                 </span>
               )}
