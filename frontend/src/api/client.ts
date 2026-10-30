@@ -27,6 +27,10 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Requests aborted on purpose (unmount, superseded query) are not errors
+    if (axios.isCancel(error)) {
+      return Promise.reject(error);
+    }
     if (error.response) {
       // Server responded with error status
       console.error('[API Error]', {
