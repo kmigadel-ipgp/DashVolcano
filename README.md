@@ -7,7 +7,7 @@ Modern web application for exploring volcanic geochemical data with interactive 
 ### Prerequisites
 
 **Backend:**
-- Python 3.11+
+- Python 3.10+
 - MongoDB access (Atlas or local)
 - `uv` package manager (recommended) or `pip`
 
@@ -52,66 +52,46 @@ cd DashVolcano
 
 ## 🔧 Backend Setup
 
-### 1. Navigate to Backend Directory
+### 1. Install Dependencies
 
 ```bash
 cd backend
+uv sync          # or: pip install -e .
+cd ..
 ```
 
-### 2. Install Dependencies
+This creates `backend/.venv`.
 
-**Using uv (recommended):**
-```bash
-uv sync
-```
+### 2. Configure Environment
 
-**Using pip:**
-```bash
-pip install -e .
-```
-
-### 3. Configure Environment
-
-Copy the example environment file and configure your MongoDB credentials:
+The API reads the `.env` file of the directory it is started from, which is the **repository root** (the code is imported as `backend.main`):
 
 ```bash
-cp .env.example .env
+cp backend/.env.example .env
 ```
 
 Edit `.env` with your MongoDB credentials:
 
 ```bash
-# MongoDB Configuration
 MONGO_USER=your_mongodb_username
 MONGO_PASSWORD=your_mongodb_password
 MONGO_CLUSTER=your_cluster.mongodb.net
 MONGO_DB=dashvolcano
-
-# FastAPI Configuration
-API_HOST=0.0.0.0
-API_PORT=8000
-API_WORKERS=4
-DEBUG=true
-
-# CORS Configuration
-CORS_ORIGINS=["http://localhost:5173","http://localhost:3000"]
 ```
+
+The other variables of `.env.example` are optional (see `backend/config.py` for their defaults).
 
 **⚠️ Security Note:** Access to the MongoDB database is required for the application to function. Please request authorized credentials if you need access.
 
-### 4. Run Backend Server
+### 3. Run the Backend
+
+From the repository root:
 
 ```bash
-# From the backend directory
-uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+backend/.venv/bin/uvicorn backend.main:app --reload --reload-dir backend --port 8000
 ```
 
-Or using Python directly:
-```bash
-python -m backend.main
-```
-
-### 5. Verify Backend is Running
+### 4. Verify
 
 - **Health Check:** http://localhost:8000/health
 - **API Documentation (Swagger):** http://localhost:8000/docs
@@ -130,262 +110,172 @@ You should see:
 
 ## 🎨 Frontend Setup
 
-### 1. Navigate to Frontend Directory
+### 1. Install Dependencies
 
 ```bash
-cd ../frontend
-```
-
-### 2. Install Dependencies
-
-```bash
+cd frontend
 npm install
 ```
 
-### 3. Configure Environment (Optional)
+### 2. Configure Environment (Optional)
 
-If your backend is running on a different host/port, create a `.env` file:
+The default backend URL is `http://localhost:8000/api`. To change it, or to set a Mapbox token:
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` if needed:
 ```bash
-# API Configuration
 VITE_API_BASE_URL=http://localhost:8000/api
-
-# Mapbox Token (optional)
 # VITE_MAPBOX_TOKEN=pk.your_mapbox_token_here
 ```
 
-**Note:** The default backend URL is `http://localhost:8000/api`, so this file is optional for local development.
-
-### 4. Run Frontend Development Server
+### 3. Run the Development Server
 
 ```bash
 npm run dev
 ```
 
-The application will be available at **http://localhost:5173** with hot module replacement enabled.
-
-### 5. Build for Production (Optional)
-
-```bash
-# Production build
-NODE_OPTIONS="--max-old-space-size=4096" VITE_API_BASE_URL=/api npx vite build
-```
-
-Built files will be in the `dist/` folder.
-
-**Configuration Note**: DashVolcano uses a unified configuration approach:
-- Single `ecosystem.config.js` for PM2 (works in both modes)
-- Buffer polyfill in `frontend/src/polyfills/buffer.js` is transparent in both modes
+The application is available at **http://localhost:5173** with hot module replacement.
 
 ---
 
-## 🚀 Running DashVolcano
+## 💻 Running Locally
 
-### Full Application (Both Backend and Frontend)
+### Two terminals
 
-**Terminal 1 - Backend:**
 ```bash
-cd backend
-uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+# Terminal 1 - API (from the repository root)
+backend/.venv/bin/uvicorn backend.main:app --reload --reload-dir backend --port 8000
+
+# Terminal 2 - Frontend
+cd frontend && npm run dev
 ```
 
-**Terminal 2 - Frontend:**
+### Or with PM2
+
+`ecosystem.development.config.js` starts both (API with auto-reload, Vite dev server). Its paths are relative to the file, so it works from any clone.
+
 ```bash
-cd frontend
-npm run dev
+npm install -g pm2                              # once
+pm2 start ecosystem.development.config.js
+pm2 logs                                        # follow both logs
+pm2 delete ecosystem.development.config.js      # stop and remove both
 ```
 
-**Access the Application:**
+**Access:**
 - Frontend: http://localhost:5173
 - Backend API: http://localhost:8000
 - API Documentation: http://localhost:8000/docs
 
+⚠️ The development API uses the MongoDB database configured in `.env`. If it is the production database, the development site reads (and could write) production data.
+
 ---
 
-## � Production Deployment with PM2
+## 🚀 Production Deployment
 
-PM2 is a production-ready process manager for Node.js and Python applications. It handles automatic restarts, monitoring, and log management.
+### Architecture
 
-### Prerequisites
+```
+browser ──https──> nginx ──┬── /                      → frontend/dist (static build)
+                           └── /api, /health, /docs,  → 127.0.0.1:8000 (uvicorn, 4 workers,
+                               /redoc, /openapi.json     run by PM2: dashvolcano-api)
+```
 
-**Install PM2 globally:**
+- **nginx** serves the frontend build and proxies the API. It is the only entry point: the API listens on `127.0.0.1` only.
+- **PM2** runs the API (`ecosystem.production.config.js`) and restarts it if it stops. PM2 itself is started at boot by systemd (`pm2-root` service) and restores the list saved by `pm2 save`.
+- **Python**: the production config uses `/usr/bin/python3` (Python 3.10), where the backend dependencies are installed. No virtual environment.
+- **Monitoring**: PM2 restarts the API if it stops (up to 10 failed restarts in a row, then it marks it `errored`). Check with `pm2 ls`.
+- **Configuration**: `/root/DashVolcano/.env` (repository root).
+
+### Routine Deployment
+
+On the server, as root:
+
 ```bash
+cd /root/DashVolcano
+./deploy.sh
+```
+
+`deploy.sh`:
+1. updates `main` (`git pull --ff-only`; it stops if tracked files have local changes);
+2. checks that the backend imports with `/usr/bin/python3` (catches a missing dependency **before** restarting);
+3. builds the frontend in `frontend/dist.new` (running `npm ci` first if `package-lock.json` changed), then swaps it with `frontend/dist`; the previous build is kept in `frontend/dist.prev`;
+4. restarts the API from `ecosystem.production.config.js` (changes to that file are applied);
+5. checks `/health` and a database query; **if a check fails, the previous frontend build is restored** and the command to go back to the previous commit is printed;
+6. runs `pm2 save`.
+
+`./deploy.sh --no-pull` deploys the code already checked out (after installing a dependency, or after going back to a previous commit).
+
+⚠️ `git pull` alone does not update the site: `frontend/dist` is not versioned and must be rebuilt. Always deploy with `deploy.sh`.
+
+**New backend dependency:** when `backend/pyproject.toml` changes, `deploy.sh` prints the change. Install it for the production Python, then deploy again:
+
+```bash
+/usr/bin/python3 -m pip install "certifi>=2024.2.2"   # example
+./deploy.sh --no-pull
+```
+
+### Rollback
+
+- Frontend only: `cd frontend && mv dist dist.bad && mv dist.prev dist` (no restart needed).
+- Code and frontend: `git reset --keep <previous commit> && ./deploy.sh --no-pull` (`deploy.sh` prints the previous commit at the start).
+
+### First Installation (or Migration to This Setup)
+
+```bash
+cd /root/DashVolcano
 npm install -g pm2
+pm2 update                              # if `pm2 ls` reports that the in-memory PM2 is out of date
+git pull --ff-only                      # brings deploy.sh and the PM2 configuration
+./deploy.sh --no-pull
+pm2 startup systemd                     # once: start PM2 at boot
 ```
 
-### Setup Steps
+Run `pm2 startup` from a plain SSH shell: it records the current `PATH` in the systemd service, and a VS Code terminal adds its own paths.
 
-**1. Ensure Backend Virtual Environment is Set Up:**
-```bash
-cd backend
-uv sync  # or pip install -e .
-cd ..
-```
+nginx proxies to the API with `proxy_pass http://127.0.0.1:8000;` (use `127.0.0.1` rather than `localhost`, which may resolve to the IPv6 address `::1` first, where the API does not listen). Test and reload nginx after a change: `nginx -t && systemctl reload nginx`.
 
-**2. Configure Environment Variables:**
-
-Make sure your backend `.env` file is configured for production:
-```bash
-cd backend
-cp .env.example .env
-# Edit .env with production MongoDB credentials and settings
-```
-
-**3. Build Frontend for Production:**
+### PM2 Commands
 
 ```bash
-cd frontend
-NODE_OPTIONS="--max-old-space-size=4096" VITE_API_BASE_URL=/api npx vite build
-cd ..
+pm2 ls                                   # status
+pm2 logs dashvolcano-api --lines 100     # logs
+pm2 restart dashvolcano-api              # restart (same configuration)
+pm2 describe dashvolcano-api             # interpreter, arguments, paths
+pm2 monit                                # CPU and memory
 ```
 
-**Note:** Use `npx vite build` directly instead of `npm run build` to avoid TypeScript type-checking delays.
-
-**4. PM2 Configuration:**
-
-Two PM2 configuration files are available:
-- `ecosystem.development.config.js` - Development mode (API with --reload + Frontend with npm run dev)
-- `ecosystem.production.config.js` - Production mode (API with workers, no frontend)
-
-Production config runs **API only** (frontend is served as static files by nginx):
-```javascript
-{
-  name: 'dashvolcano-api',
-  script: '/usr/local/bin/uvicorn',
-  interpreter: 'python3',
-  args: 'backend.main:app --host 0.0.0.0 --port 8000 --workers 4',
-  // No --reload flag for production stability
-}
-```
-
-**5. Start Application with PM2:**
-```bash
-# Development (starts both API and Frontend)
-pm2 start ecosystem.development.config.js
-
-# Production (API only - frontend served by nginx)
-pm2 start ecosystem.production.config.js
-```
-
-**6. Verify API is Running:**
-```bash
-pm2 status
-```
-
-You should see `dashvolcano-api` online.
-
-**7. Configure Web Server (Production Only):**
-
-For production deployment, use nginx to serve frontend static files and proxy API requests:
-- Serve `frontend/dist/` as document root
-- Proxy `/api/*` requests to `http://localhost:8000`
-- See [DEPLOYMENT_GUIDE.md](./docs/DEPLOYMENT_GUIDE.md) for complete nginx configuration
-
-### PM2 Management Commands
-
-**View Logs:**
-```bash
-# All logs
-pm2 logs
-
-# Specific service logs
-pm2 logs dashvolcano-api
-pm2 logs dashvolcano-frontend
-
-# Last N lines
-pm2 logs --lines 100
-```
-
-**Restart Services:**
-```bash
-# Restart all
-pm2 restart all
-
-# Restart specific service
-pm2 restart dashvolcano-api
-pm2 restart dashvolcano-frontend
-```
-
-**Stop Services:**
-```bash
-# Stop all
-pm2 stop all
-
-# Stop specific service
-pm2 stop dashvolcano-api
-```
-
-**Delete Services:**
-```bash
-# Remove all services from PM2
-pm2 delete all
-
-# Remove specific service
-pm2 delete dashvolcano-api
-```
-
-**Monitor Resources:**
-```bash
-pm2 monit
-```
-
-**Save Configuration (Auto-start on Reboot):**
-```bash
-# Save current PM2 process list
-pm2 save
-
-# Generate startup script
-pm2 startup
-
-# Follow the command output to enable auto-start
-```
+After changing `ecosystem.production.config.js` by hand, apply it with `pm2 restart ecosystem.production.config.js --update-env && pm2 save`.
 
 ### Log Files
 
 Logs are stored in the `logs/` directory:
-- `logs/api-error.log` - Backend error logs
-- `logs/api-out.log` - Backend output logs
-- `logs/api-combined.log` - Combined backend logs
-- `logs/frontend-error.log` - Frontend error logs
-- `logs/frontend-out.log` - Frontend output logs
-- `logs/frontend-combined.log` - Combined frontend logs
+- `logs/api-error.log`, `logs/api-out.log`, `logs/api-combined.log` - API
+- `logs/frontend-*.log` - development frontend (PM2 development config only)
 
-### Troubleshooting PM2 Issues
+They are not rotated automatically. To rotate them: `pm2 install pm2-logrotate`.
 
-**"No module named uvicorn" error:**
-- Ensure the virtual environment is properly set up: `cd backend && uv sync`
-- Verify uvicorn is installed: `./backend/.venv/bin/uvicorn --version`
-- Check the `script` path in `ecosystem.config.js` points to `./backend/.venv/bin/uvicorn`
+### Troubleshooting
 
-**Services keep restarting:**
-- Check logs: `pm2 logs`
-- Verify MongoDB connection in `backend/.env`
-- Ensure ports 8000 and 5173 are available
+**The API does not start** (`pm2 logs dashvolcano-api`):
+- Missing module: install it for the interpreter shown by `pm2 describe dashvolcano-api`.
+- MongoDB errors: check `.env` at the repository root.
+- Port in use: `ss -ltnp | grep :8000`.
+
+**The site shows an old version:** the frontend was not rebuilt. Run `./deploy.sh --no-pull`.
 
 **Frontend build issues:**
-- Install dependencies: `cd frontend && npm install`
+- Install dependencies: `cd frontend && npm ci`
 - Verify Node.js version: `node --version` (should be 20.19+)
-
-### Production Best Practices
-
-For full production deployment with Nginx reverse proxy and SSL, refer to:
-**[DEPLOYMENT_GUIDE.md](./docs/DEPLOYMENT_GUIDE.md)** - Complete production setup guide
 
 ---
 
-## �📚 Documentation
+## 📚 Documentation
 
 - **[Frontend README](./frontend/README.md)** - Complete frontend setup and development guide
 - **[Backend README](./backend/README.md)** - Backend API setup and development guide
-- **[API Examples](./docs/API_EXAMPLES.md)** - Complete API reference with 40+ endpoint examples
-- **[User Guide](./docs/USER_GUIDE.md)** - Complete user workflows and feature documentation
-- **[Deployment Guide](./docs/DEPLOYMENT_GUIDE.md)** - Production deployment guide (nginx + pm2 + SSL)
-- **[Implementation Plan](./docs/DASHVOLCANO_V3_IMPLEMENTATION_PLAN.md)** - Complete development documentation
+- **API reference** - interactive documentation at `/docs` (Swagger) and `/redoc` once the API runs
 
 ---
 
@@ -483,11 +373,9 @@ DashVolcano/
 │   │   └── utils/       # Utility functions
 │   └── dist/            # Built frontend (after npm run build)
 ├── data/                # Static data (tectonic plates)
-├── docs/                # Documentation
-│   ├── API_EXAMPLES.md
-│   ├── USER_GUIDE.md
-│   ├── DEPLOYMENT_GUIDE.md
-│   └── phase*/          # Development phase reports
+├── ecosystem.development.config.js  # PM2: API + Vite dev server
+├── ecosystem.production.config.js   # PM2: production API
+├── deploy.sh            # Production deployment
 └── README.md            # This file
 ```
 
@@ -542,4 +430,4 @@ DashVolcano v3.0 is an internal IPGP project. For questions or contributions, co
 
 All development phases complete. Application is ready for production deployment.
 
-For deployment instructions, see [DEPLOYMENT_GUIDE.md](./docs/DEPLOYMENT_GUIDE.md).
+For deployment instructions, see [Production Deployment](#-production-deployment).

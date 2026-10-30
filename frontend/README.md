@@ -256,7 +256,7 @@ npm run preview
 
 ## 🚀 Deployment
 
-See the [Deployment Guide](../docs/DEPLOYMENT_GUIDE.md) for full production setup instructions.
+See [Production Deployment](../README.md#-production-deployment) in the main README: the production build is made and deployed by `deploy.sh`.
 
 **Quick Deployment Checklist:**
 1. ✅ Backend API is running and accessible
@@ -316,10 +316,7 @@ npm install --save-dev @types/package-name
 
 ## 📚 Additional Documentation
 
-- **[User Guide](../docs/USER_GUIDE.md)** - Complete workflows and feature explanations
-- **[API Examples](../docs/API_EXAMPLES.md)** - Backend API endpoint documentation
-- **[Deployment Guide](../docs/DEPLOYMENT_GUIDE.md)** - Production deployment instructions
-- **[Phase 4 Progress](../docs/phase4/PHASE_4_PROGRESS.md)** - Latest development updates
+- **[Main README](../README.md)** - Setup, development and production deployment
 - **[Backend API Docs](http://localhost:8000/docs)** - Interactive Swagger UI (when backend running)
 
 ## 🤝 Contributing
