@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Clock, Download, TrendingUp } from 'lucide-react';
+import { Clock, Download, Info, TrendingUp } from 'lucide-react';
 import EruptionTimelinePlot from '../components/Charts/EruptionTimelinePlot';
 import EruptionFrequencyChart from '../components/Charts/EruptionFrequencyChart';
 import { SampleTimelinePlot } from '../components/Charts/SampleTimelinePlot';
@@ -17,6 +17,8 @@ import {
   type VolcanoAutocompleteSource,
 } from '../utils/volcanoAutocomplete';
 import type { Eruption, SampleTimelineResponse } from '../types';
+import { Combobox } from '../components/Common/Combobox';
+import { VolcanoSamplesMap } from '../components/Map/VolcanoSamplesMap';
 
 /**
  * TimelinePage - Temporal visualization of volcanic eruption history
@@ -32,7 +34,6 @@ const TimelinePage: React.FC = () => {
   const [volcanoes, setVolcanoes] = useState<VolcanoAutocompleteSource[]>([]);
   const [selectedVolcano, setSelectedVolcano] = useState<VolcanoAutocompleteOption | null>(null);
   const [searchInput, setSearchInput] = useState('');
-  const [showSuggestions, setShowSuggestions] = useState(false);
   
   const [eruptions, setEruptions] = useState<Eruption[]>([]);
   const [sampleTimeline, setSampleTimeline] = useState<SampleTimelineResponse | null>(null);
@@ -130,7 +131,6 @@ const TimelinePage: React.FC = () => {
   const handleVolcanoSelect = (volcano: VolcanoAutocompleteOption) => {
     setSelectedVolcano(volcano);
     setSearchInput(volcano.label);
-    setShowSuggestions(false);
   };
 
   const handleDownloadCSV = () => {
@@ -152,7 +152,7 @@ const TimelinePage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+      <header className="bg-surface border-b border-line">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-3">
             <Clock className="w-8 h-8 text-volcano-600" />
@@ -165,40 +165,23 @@ const TimelinePage: React.FC = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" role="main" aria-label="Eruption timeline content">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Volcano Selection */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="card p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Select Volcano</h2>
 
           <div className="relative max-w-md">
-            <input
-              type="text"
-              aria-label="Search for volcano"
+            <Combobox
               value={searchInput}
-              onChange={(e) => {
-                setSearchInput(e.target.value);
-                setShowSuggestions(true);
-              }}
-              onFocus={() => setShowSuggestions(true)}
-              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+              onValueChange={setSearchInput}
+              options={filteredVolcanoNames}
+              getOptionKey={(volcano) => volcano.volcano_number}
+              getOptionLabel={(volcano) => volcano.label}
+              onSelect={handleVolcanoSelect}
               placeholder="Type to search volcanoes..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-volcano-500 focus:border-volcano-500 transition-all duration-200"
+              ariaLabel="Search for volcano"
+              inputClassName="field"
             />
-
-            {showSuggestions && filteredVolcanoNames.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                {filteredVolcanoNames.map((volcano) => (
-                  <button
-                    key={volcano.volcano_number}
-                    type="button"
-                    onClick={() => handleVolcanoSelect(volcano)}
-                    className="w-full text-left px-4 py-2 hover:bg-volcano-50 text-sm text-gray-700"
-                  >
-                    {volcano.label}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
         </div>
 
@@ -222,7 +205,7 @@ const TimelinePage: React.FC = () => {
         {!loading && !error && selectedVolcano && eruptions.length > 0 && (
           <>
             {/* Statistics Panel */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+            <div className="card p-6 mb-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <TrendingUp className="w-5 h-5 text-volcano-600" />
@@ -230,7 +213,7 @@ const TimelinePage: React.FC = () => {
                 </div>
                 <button
                   onClick={handleDownloadCSV}
-                  aria-label="Download eruption timeline data as CSV"
+                  aria-label="Export CSV of the eruption timeline data"
                   className="flex items-center gap-2 px-4 py-2 bg-volcano-600 text-white rounded-lg hover:bg-volcano-700 transition-all duration-200"
                 >
                   <Download className="w-4 h-4" />
@@ -270,11 +253,17 @@ const TimelinePage: React.FC = () => {
               </div>
             </div>
 
+            {/* Location of the volcano and of its samples */}
+            <section className="card p-4 mb-6" aria-labelledby="timeline-location">
+              <h3 id="timeline-location" className="eyebrow mb-3">Location and Samples</h3>
+              <VolcanoSamplesMap volcanoNumber={selectedVolcano.volcano_number} volcanoName={selectedVolcano.volcano_name} />
+            </section>
+
             {/* Sample Timeline */}
             {sampleTimeline && sampleTimeline.total_samples > 0 && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+              <div className="card p-4 mb-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Sample Collection Overview</h3>
+                  <h3 className="eyebrow">Sample Collection Overview</h3>
                   <div className="text-sm text-gray-600">
                     {sampleTimeline.total_samples} samples
                     {sampleTimeline.has_timeline_data && ` · ${sampleTimeline.samples_with_dates} dated`}
@@ -288,15 +277,11 @@ const TimelinePage: React.FC = () => {
                     volcanoName={selectedVolcano.volcano_name}
                   />
                 ) : (
-                  <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
-                    <div className="flex">
-                      <div className="flex-shrink-0">
-                        <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                      <div className="ml-3">
-                        <p className="text-sm text-blue-700">
+                  <div className="note">
+                    <div className="flex items-start gap-2">
+                      <Info className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
+                      <div>
+                        <p>
                           Timeline visualization not available: eruption date information is missing for this volcano's samples.
                           Samples are available ({sampleTimeline.rock_type_distribution.length} rock types) - use the <strong>Analyze Volcano</strong> tab to explore rock type distribution and geochemistry.
                         </p>
@@ -308,28 +293,24 @@ const TimelinePage: React.FC = () => {
             )}
 
             {/* Timeline Plot */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Eruption Timeline</h3>
-              <div className="h-[450px]">
+            <div className="card p-4 mb-6">
+              <h3 className="eyebrow mb-3">Eruption Timeline</h3>
+              <div className="h-[560px] sm:h-[450px]">
                 <EruptionTimelinePlot eruptions={eruptions} volcanoName={selectedVolcano.volcano_name} />
               </div>
             </div>
 
             {/* Frequency Chart */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
+            <div className="card overflow-hidden mb-6">
               <div className="p-4 border-b border-gray-200">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900">Eruption Frequency</h3>
+                  <h3 className="eyebrow">Eruption Frequency</h3>
                   <div className="flex gap-2">
                     <button
                       onClick={() => setTimePeriod('decade')}
                       aria-label="Group eruptions by decade"
                       aria-pressed={timePeriod === 'decade'}
-                      className={`px-4 py-2 rounded-lg transition-all duration-200 ${
-                        timePeriod === 'decade'
-                          ? 'bg-volcano-600 text-white'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
+                      className="seg-btn"
                     >
                       By Decade
                     </button>
@@ -337,18 +318,14 @@ const TimelinePage: React.FC = () => {
                       onClick={() => setTimePeriod('century')}
                       aria-label="Group eruptions by century"
                       aria-pressed={timePeriod === 'century'}
-                      className={`px-4 py-2 rounded-lg transition-all duration-200 ${
-                        timePeriod === 'century'
-                          ? 'bg-volcano-600 text-white'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
+                      className="seg-btn"
                     >
                       By Century
                     </button>
                   </div>
                 </div>
               </div>
-              <div className="h-[450px]">
+              <div className="h-[450px] p-4">
                 <EruptionFrequencyChart
                   eruptions={eruptions}
                   volcanoName={selectedVolcano.volcano_name}
@@ -361,7 +338,7 @@ const TimelinePage: React.FC = () => {
 
         {/* Empty State */}
         {!loading && !error && selectedVolcano && eruptions.length === 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+          <div className="card p-12 text-center">
             <p className="text-gray-600">No eruption data found for {selectedVolcano.volcano_name}</p>
           </div>
         )}
@@ -374,7 +351,7 @@ const TimelinePage: React.FC = () => {
             description="Select a volcano to view its eruption timeline"
           />
         )}
-      </main>
+      </div>
     </div>
   );
 };
