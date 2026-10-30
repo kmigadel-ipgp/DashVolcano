@@ -1,7 +1,9 @@
 import React from 'react';
-import Plot from 'react-plotly.js';
+import { ThemedPlot } from './ThemedPlot';
 import type { Eruption } from '../../types';
 import { dateInfoToYear, formatDateInfo } from '../../utils/dateUtils';
+import { useIsPhone, PHONE_LEGEND, chartTitle } from '../../hooks/useIsPhone';
+import { usePlotTheme } from '../../hooks/usePlotTheme';
 
 interface EruptionTimelinePlotProps {
   eruptions: Eruption[];
@@ -18,10 +20,12 @@ const EruptionTimelinePlot: React.FC<EruptionTimelinePlotProps> = ({
   eruptions,
   volcanoName,
 }) => {
+  const isPhone = useIsPhone();
+  const { palette } = usePlotTheme();
   if (eruptions.length === 0) {
     return (
-      <div className="bg-white">
-        <p className="text-gray-500 text-center py-8">No eruptions found</p>
+      <div className="note text-center py-8">
+        <p>No eruptions found</p>
       </div>
     );
   }
@@ -45,8 +49,8 @@ const EruptionTimelinePlot: React.FC<EruptionTimelinePlotProps> = ({
 
   if (plotData.length === 0) {
     return (
-      <div className="bg-white">
-        <p className="text-gray-500 text-center py-8">No eruptions with known dates</p>
+      <div className="note text-center py-8">
+        <p>No eruptions with known dates</p>
       </div>
     );
   }
@@ -106,13 +110,13 @@ const EruptionTimelinePlot: React.FC<EruptionTimelinePlotProps> = ({
     });
 
   const layout: Partial<Plotly.Layout> = {
-    title: { text: `${volcanoName} - Eruption Timeline` },
+    title: chartTitle(`${volcanoName} - Eruption Timeline`, isPhone),
     xaxis: {
       title: { text: 'Year' },
       showgrid: true,
       zeroline: true,
       zerolinewidth: 2,
-      zerolinecolor: '#374151',
+      zerolinecolor: palette.muted,
     },
     yaxis: {
       title: { text: 'VEI (Volcanic Explosivity Index)' },
@@ -124,8 +128,8 @@ const EruptionTimelinePlot: React.FC<EruptionTimelinePlotProps> = ({
     },
     hovermode: 'closest',
     showlegend: true,
-    legend: { x: 1.05, y: 1, xanchor: 'left', yanchor: 'top' },
-    margin: { l: 60, r: 120, t: 60, b: 60 },
+    legend: isPhone ? PHONE_LEGEND : { x: 1.05, y: 1, xanchor: 'left', yanchor: 'top' },
+    margin: isPhone ? { l: 50, r: 16, t: 60, b: 40 } : { l: 60, r: 120, t: 60, b: 60 },
     autosize: true,
   };
 
@@ -137,8 +141,8 @@ const EruptionTimelinePlot: React.FC<EruptionTimelinePlotProps> = ({
   };
 
   return (
-    <div className="bg-white">
-      <Plot data={traces} layout={layout} config={config} style={{ width: '100%', height: '100%' }} />
+    <div className="h-full">
+      <ThemedPlot data={traces} layout={layout} config={config} style={{ width: '100%', height: '100%' }} />
     </div>
   );
 };

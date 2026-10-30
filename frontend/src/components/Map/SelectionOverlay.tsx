@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import * as turf from '@turf/turf';
 import { WebMercatorViewport } from '@deck.gl/core';
 import type { Sample } from '../../types';
+import { wrapLongitude } from '../../utils/longitude';
 
 interface SelectionOverlayProps {
   /** Selection mode: 'lasso' for freeform or 'box' for rectangular */
@@ -45,6 +46,8 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
   const [isDrawing, setIsDrawing] = useState(false);
   const [points, setPoints] = useState<{ x: number; y: number }[]>([]);
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
+  // Box mode also works with two clicks (one per corner), without dragging (WCAG 2.5.7)
+  const [awaitingCorner, setAwaitingCorner] = useState(false);
 
   /**
    * Convert screen coordinates to geographic coordinates (lng, lat)
@@ -72,6 +75,12 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
 
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+
+    if (mode === 'box' && awaitingCorner && startPoint) {
+      // Second click: the opposite corner; the selection completes on mouse up
+      setPoints([startPoint, { x, y }]);
+      return;
+    }
 
     setIsDrawing(true);
     setStartPoint({ x, y });
@@ -103,11 +112,17 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
    */
   const handleMouseUp = () => {
     if (!isDrawing || points.length < 2) {
+      if (mode === 'box' && isDrawing && !awaitingCorner) {
+        // A click without dragging sets the first corner; keep previewing until the second click
+        setAwaitingCorner(true);
+        return;
+      }
       setIsDrawing(false);
       return;
     }
 
     setIsDrawing(false);
+    setAwaitingCorner(false);
 
     // Convert screen points to geographic coordinates
     let polygon: number[][];
@@ -140,9 +155,12 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
     // Create turf polygon
     const turfPolygon = turf.polygon([polygon]);
 
-    // Find samples within the polygon
+    // Find samples within the polygon. The polygon is in the world copy shown on
+    // screen (longitudes may exceed ±180), so samples are wrapped around its centre.
+    const polygonCenterLon = polygon.reduce((sum, [lon]) => sum + lon, 0) / polygon.length;
     const selectedSamples = samples.filter((sample) => {
-      const point = turf.point(sample.geometry.coordinates);
+      const [lon, lat] = sample.geometry.coordinates;
+      const point = turf.point([wrapLongitude(lon, polygonCenterLon), lat]);
       return turf.booleanPointInPolygon(point, turfPolygon);
     });
 
@@ -226,7 +244,7 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
       {/* Instructions */}
       <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg px-4 py-2 text-sm">
         <span className="font-semibold">
-          {mode === 'lasso' ? 'Draw a lasso' : 'Draw a box'} to select samples
+          {mode === 'lasso' ? 'Draw a lasso' : 'Drag a box, or click two corners,'} to select samples
         </span>
         <span className="ml-2 text-gray-500">Press ESC to cancel</span>
       </div>

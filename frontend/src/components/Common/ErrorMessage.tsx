@@ -4,6 +4,8 @@ interface ErrorMessageProps {
   title?: string;
   message: string;
   onRetry?: () => void;
+  /** Shows a close button */
+  onDismiss?: () => void;
   className?: string;
 }
 
@@ -23,14 +25,16 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
   title = 'Error',
   message,
   onRetry,
+  onDismiss,
   className = ''
 }) => {
   return (
-    <div className={`bg-red-50 border border-red-200 rounded-lg p-4 ${className}`}>
+    <div role="alert" className={`bg-red-50 border border-red-200 rounded-lg p-4 ${className}`}>
       <div className="flex items-start">
         <div className="flex-shrink-0">
           <svg
             className="h-5 w-5 text-red-600"
+            aria-hidden="true"
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 20 20"
             fill="currentColor"
@@ -43,7 +47,7 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
           </svg>
         </div>
         <div className="ml-3 flex-1">
-          <h3 className="text-sm font-medium text-red-800">{title}</h3>
+          <h2 className="text-sm font-medium text-red-800">{title}</h2>
           <p className="mt-1 text-sm text-red-700">{message}</p>
           {onRetry && (
             <button
@@ -54,6 +58,18 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
             </button>
           )}
         </div>
+        {onDismiss && (
+          <button
+            type="button"
+            onClick={onDismiss}
+            className="ml-2 -mr-1 -mt-1 flex-shrink-0 w-8 h-8 inline-flex items-center justify-center rounded text-red-700 hover:bg-red-100"
+            aria-label="Dismiss error"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+            </svg>
+          </button>
+        )}
       </div>
     </div>
   );

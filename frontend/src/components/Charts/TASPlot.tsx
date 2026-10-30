@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import Plot from 'react-plotly.js';
+import { ThemedPlot } from './ThemedPlot';
+import { usePlotTheme } from '../../hooks/usePlotTheme';
 import type { Sample } from '../../types';
 import { getRockTypeColor, getVEIColor } from '../../utils/colors';
 import { getMatchMethod, getMatchMethodLabel, getVolcanoName } from '../../utils/matchMethod';
+import { useIsPhone, PHONE_LEGEND, chartTitle } from '../../hooks/useIsPhone';
 
 interface TASPlotProps {
   /** Array of samples to plot */
@@ -46,6 +48,8 @@ export const TASPlot: React.FC<TASPlotProps> = React.memo(({
   colorBy = 'rock_type',
   title,
 }) => {
+  const isPhone = useIsPhone();
+  const { palette } = usePlotTheme();
   const [tasData, setTasData] = useState<TASData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -149,7 +153,7 @@ export const TASPlot: React.FC<TASPlotProps> = React.memo(({
       y,
       fill: 'toself',
       fillcolor: `rgba(200, 200, 200, 0.1)`,
-      line: { color: 'rgba(150, 150, 150, 0.5)', width: 1 },
+      line: { color: palette.field, width: 1 },
       hoverinfo: 'text',
       text: polygon.name,
       name: polygon.name,
@@ -165,7 +169,7 @@ export const TASPlot: React.FC<TASPlotProps> = React.memo(({
     mode: 'lines',
     x: alkaliX,
     y: alkaliY,
-    line: { color: 'black', width: 2, dash: 'dash' },
+    line: { color: palette.reference, width: 2, dash: 'dash' },
     name: 'Alkali/Subalkalic',
     showlegend: true,
     hoverinfo: 'name',
@@ -295,34 +299,30 @@ export const TASPlot: React.FC<TASPlotProps> = React.memo(({
 
   return (
     <div className="w-full h-full">
-      <Plot
+      <ThemedPlot
         data={plotlyData}
         layout={{
           title: {
-            text: title || `TAS Diagram ${colorBy === 'vei' ? '(Colored by VEI)' : '(Colored by Rock Type)'}`,
+            ...chartTitle(title || `TAS Diagram ${colorBy === 'vei' ? '(Colored by VEI)' : '(Colored by Rock Type)'}`, isPhone),
             font: { size: 16 },
           },
           xaxis: {
             title: { text: 'SiO₂ (wt%)' },
             range: tasData.axes.x.range,
-            gridcolor: 'rgba(200, 200, 200, 0.3)',
           },
           yaxis: {
             title: { text: 'Na₂O + K₂O (wt%)' },
             range: tasData.axes.y.range,
-            gridcolor: 'rgba(200, 200, 200, 0.3)',
           },
           autosize: true,
           hovermode: 'closest',
           showlegend: true,
-          legend: {
+          legend: isPhone ? PHONE_LEGEND : {
             x: 1.05,
             y: 1,
             orientation: 'v',
           },
-          margin: { l: 60, r: 150, t: 60, b: 60 },
-          plot_bgcolor: 'rgba(250, 250, 250, 1)',
-          paper_bgcolor: 'white',
+          margin: isPhone ? { l: 50, r: 16, t: 60, b: 40 } : { l: 60, r: 150, t: 60, b: 60 },
         }}
         config={{
           displayModeBar: true,

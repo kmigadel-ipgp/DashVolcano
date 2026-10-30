@@ -30,7 +30,8 @@ export const SummaryStats: React.FC<SummaryStatsProps> = ({
   publicationSampleScopeCount = 0,
   loading = false,
 }) => {
-  const [isExpanded, setIsExpanded] = useState(true);
+  // Expanded by default on wide screens, collapsed on phones
+  const [isExpanded, setIsExpanded] = useState(() => window.matchMedia('(min-width: 768px)').matches);
   // Calculate unique values
   const uniqueRockTypes = new Set(
     samples.filter(s => s.petro?.rock_type).map(s => s.petro?.rock_type)
@@ -52,22 +53,23 @@ export const SummaryStats: React.FC<SummaryStatsProps> = ({
   };
 
   return (
-    <div className="absolute bottom-4 left-4 z-10 bg-white/95 backdrop-blur-sm rounded-lg shadow-lg min-w-[280px] md:min-w-[300px]">
+    <div className="absolute bottom-16 sm:bottom-4 left-4 z-10 bg-white/95 backdrop-blur-sm rounded-lg shadow-md border border-line w-[calc(100vw-6.5rem)] sm:w-auto sm:min-w-[280px] lg:min-w-[300px]">
       {/* Header - Always Visible */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center gap-2 p-3 hover:bg-gray-50 rounded-t-lg transition-colors duration-200"
-        aria-label={isExpanded ? 'Collapse data overview' : 'Expand data overview'}
-        aria-expanded={isExpanded}
-      >
-        <BarChart3 className="w-4 h-4 text-volcano-600" aria-hidden="true" />
-        <h3 className="font-semibold text-sm text-gray-800 flex-1 text-left">Data Overview</h3>
-        {isExpanded ? (
-          <ChevronDown className="w-4 h-4 text-gray-600" aria-hidden="true" />
-        ) : (
-          <ChevronUp className="w-4 h-4 text-gray-600" aria-hidden="true" />
-        )}
-      </button>
+      <h2>
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="w-full flex items-center gap-2 p-3 hover:bg-gray-50 rounded-t-lg transition-colors duration-200"
+          aria-expanded={isExpanded}
+        >
+          <BarChart3 className="w-4 h-4 text-volcano-600" aria-hidden="true" />
+          <span className="font-semibold text-sm text-gray-800 flex-1 text-left">Data Overview</span>
+          {isExpanded ? (
+            <ChevronDown className="w-4 h-4 text-gray-600" aria-hidden="true" />
+          ) : (
+            <ChevronUp className="w-4 h-4 text-gray-600" aria-hidden="true" />
+          )}
+        </button>
+      </h2>
 
       {/* Collapsible Content */}
       {isExpanded && (

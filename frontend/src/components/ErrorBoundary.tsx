@@ -57,7 +57,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       // Default error UI
       return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
-          <div className="max-w-2xl w-full bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+          <div className="max-w-2xl w-full card p-8">
             <div className="flex items-start gap-4 mb-6">
               <div className="p-3 bg-red-50 rounded-lg flex-shrink-0">
                 <AlertTriangle className="w-8 h-8 text-red-600" />

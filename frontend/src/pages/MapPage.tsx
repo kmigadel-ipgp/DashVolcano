@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import type { AxiosError } from 'axios';
-import { Filter as FilterIcon } from 'lucide-react';
+import { Filter as FilterIcon, Map as MapIcon } from 'lucide-react';
 import { VolcanoMap, LayerControls, ViewportControls, SampleDetailsPanel, SummaryStats, ChartPanel, SelectionOverlay } from '../components/Map';
 import { BboxSearchWidget } from '../components/Map/BboxSearchWidget';
 import { FilterPanel } from '../components/Filters';
@@ -15,6 +15,7 @@ import { filterSamplesByMethod } from '../utils/matchMethod';
 import { useKeyboardShortcuts, commonShortcuts } from '../hooks/useKeyboardShortcuts';
 import { formatBboxForAPI } from '../hooks/useBboxDraw';
 import { fetchSamples } from '../api/samples';
+import { normalizeBbox, splitBboxAtAntimeridian } from '../utils/longitude';
 import type {
   BBox,
   ComparisonVolcanoOption,
@@ -25,6 +26,7 @@ import type {
   VolcanoFilters,
 } from '../types';
 import type { MatchMethod } from '../utils/matchMethod';
+import { BOUNDARY_TYPES, type BoundaryType } from '../components/Map/mapStyle';
 
 const INITIAL_VIEWPORT = {
   longitude: 0,
@@ -39,7 +41,7 @@ interface APIErrorResponse {
 }
 
 interface MapInteractionInfo {
-  coordinate?: [number, number];
+  coordinate?: number[];
 }
 
 const buildRadarComparisonFilters = (
@@ -53,11 +55,31 @@ const buildRadarComparisonFilters = (
   material: 'WR',
 });
 
+/**
+ * Fetch the samples inside a bbox. A bbox crossing the antimeridian is sent as
+ * two requests (the API only accepts longitudes within [-180, 180]).
+ */
+const fetchSamplesInBbox = async (bbox: BBox, filters: SampleFilters): Promise<Sample[]> => {
+  const responses = await Promise.all(
+    splitBboxAtAntimeridian(bbox).map((part) => fetchSamples({ ...filters, bbox: formatBboxForAPI(part) }))
+  );
+  if (responses.length === 1) return responses[0].data;
+
+  // Points lying exactly on the antimeridian may be returned by both requests
+  const seen = new Set<string>();
+  return responses.flatMap((response) => response.data).filter((sample) => {
+    if (seen.has(sample._id)) return false;
+    seen.add(sample._id);
+    return true;
+  });
+};
+
 const MapPage = () => {
   // Layer visibility state
   const [showVolcanoes, setShowVolcanoes] = useState(true);
   const [showSamplePoints, setShowSamplePoints] = useState(true);
-  const [showTectonicBoundaries, setShowTectonicBoundaries] = useState(true);
+  // Plate boundary types shown on the map (all by default)
+  const [visibleBoundaryTypes, setVisibleBoundaryTypes] = useState<BoundaryType[]>(() => BOUNDARY_TYPES.map((b) => b.type));
 
   // Viewport state
   const [viewport, setViewport] = useState(INITIAL_VIEWPORT);
@@ -160,7 +182,10 @@ const MapPage = () => {
   const samplesLoading = loadingVolcanoSamples || loadingBboxSamples;
 
   // Convert boundaries response to array
-  const tectonicBoundaries = boundaries?.features || [];
+  const tectonicBoundaries = useMemo(
+    () => (boundaries?.features || []).filter((b) => visibleBoundaryTypes.includes(b.properties?.boundary_type)),
+    [boundaries, visibleBoundaryTypes],
+  );
 
   const selectedVolcano = useMemo(() => {
     const selectedVolcanoNumber = volcanoFilters.volcano_number;
@@ -237,13 +262,11 @@ const MapPage = () => {
         setBboxSamplesError(null); // Clear previous errors
         
         try {
-          const bboxString = formatBboxForAPI(currentBbox);
           // Combine bbox with sampleFilters (database, rock_type, tectonic_setting, SiO2)
-          const response = await fetchSamples({
-            bbox: bboxString,
+          const bboxSamples = await fetchSamplesInBbox(currentBbox, {
             ...sampleFilters, // Include all sample filters (database, rock_type, tectonic_setting, min_sio2, max_sio2)
           });
-          setBboxSamples(response.data);
+          setBboxSamples(bboxSamples);
           setBboxSamplesError(null);
         } catch (error: unknown) {
           console.error('Error fetching bbox samples:', error);
@@ -291,17 +314,17 @@ const MapPage = () => {
       setComparisonSamplesError(null);
 
       try {
-        const response = await fetchSamples({
+        const comparisonFilters = {
           ...buildRadarComparisonFilters(sampleFilters),
           ...(comparisonMode === 'volcano' && comparisonVolcano
             ? { volcano_number: comparisonVolcano.volcano_number }
             : {}),
-          ...(comparisonMode === 'bbox' && comparisonBbox
-            ? { bbox: formatBboxForAPI(comparisonBbox) }
-            : {}),
-        });
+        };
+        const comparisonData = comparisonMode === 'bbox' && comparisonBbox
+          ? await fetchSamplesInBbox(comparisonBbox, comparisonFilters)
+          : (await fetchSamples(comparisonFilters)).data;
 
-        setComparisonSamples(response.data);
+        setComparisonSamples(comparisonData);
         setComparisonSamplesError(null);
       } catch (error: unknown) {
         console.error('Error fetching comparison samples:', error);
@@ -341,6 +364,7 @@ const MapPage = () => {
     .filter(Boolean)
     .join(' | ');
   const error = allErrors || null;
+  const [dismissedError, setDismissedError] = useState<string | null>(null);
 
   // Handle volcano click
   const handleVolcanoClick = (volcano: Volcano) => {
@@ -475,7 +499,7 @@ const MapPage = () => {
 
       // Validate minimum size (at least 0.1 degrees)
       if (Math.abs(maxLon - minLon) > 0.1 && Math.abs(maxLat - minLat) > 0.1) {
-        const newBbox: BBox = { minLon, minLat, maxLon, maxLat };
+        const newBbox = normalizeBbox({ minLon, minLat, maxLon, maxLat });
         if (bboxDrawMode === 'comparison') {
           setComparisonBbox(newBbox);
         } else {
@@ -552,10 +576,12 @@ const MapPage = () => {
 
   return (
     <div ref={mapContainerRef} className="relative w-full h-full">
+      <h1 className="sr-only">Volcano map</h1>
       {/* Error Message */}
-      {error && (
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 max-w-md">
-          <ErrorMessage message={error} />
+      {error && error !== dismissedError && (
+        // Phones: below the collapsed Map Layers header instead of over it
+        <div className="absolute top-[4.5rem] left-20 right-4 sm:top-4 sm:right-auto sm:max-w-md xl:left-1/2 xl:-translate-x-1/2 z-20">
+          <ErrorMessage message={error} onDismiss={() => setDismissedError(error)} />
         </div>
       )}
 
@@ -570,7 +596,7 @@ const MapPage = () => {
             }
           }}
         >
-          <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md relative">
+          <div className="bg-white rounded-xl shadow-2xl border border-line p-6 sm:p-8 w-[calc(100vw-2rem)] max-w-md relative">
             {/* Close button */}
             <button
               onClick={() => setShowNoSamplesMessage(false)}
@@ -584,8 +610,8 @@ const MapPage = () => {
             </button>
             
             <div className="text-center space-y-4">
-              <div className="text-volcano-600 text-5xl mb-4">🗺️</div>
-              <h3 className="text-xl font-bold text-gray-800">No Samples Loaded</h3>
+              <MapIcon className="w-10 h-10 mx-auto text-volcano-600" aria-hidden="true" />
+              <h2 className="text-xl font-bold text-gray-800">No Samples Loaded</h2>
               <p className="text-gray-600">
                 To display rock samples on the map, use one of these options:
               </p>
@@ -651,7 +677,7 @@ const MapPage = () => {
         viewState={viewport}
         showVolcanoes={showVolcanoes}
         showSamplePoints={showSamplePoints}
-        showTectonicBoundaries={showTectonicBoundaries}
+        showTectonicBoundaries={visibleBoundaryTypes.length > 0}
         selectedVolcanoName={selectedVolcano?.volcano_name}
         selectedVolcanoNumber={selectedVolcano?.volcano_number}
         loading={isLoading}
@@ -702,10 +728,10 @@ const MapPage = () => {
       <LayerControls
         showVolcanoes={showVolcanoes}
         showSamplePoints={showSamplePoints}
-        showTectonicBoundaries={showTectonicBoundaries}
+        visibleBoundaryTypes={visibleBoundaryTypes}
         onVolcanoesChange={setShowVolcanoes}
         onSamplePointsChange={setShowSamplePoints}
-        onTectonicsChange={setShowTectonicBoundaries}
+        onBoundaryTypesChange={setVisibleBoundaryTypes}
       />
 
       {/* Viewport Controls */}
@@ -770,7 +796,7 @@ const MapPage = () => {
       {/* Filter Button */}
       <button
         onClick={() => setFilterPanelOpen(true)}
-        className="absolute top-4 left-4 z-10 bg-white rounded-lg shadow-lg p-4 hover:bg-gray-50 transition-colors duration-200"
+        className="absolute top-4 left-4 z-10 bg-white rounded-lg shadow-md border border-line p-4 hover:bg-gray-50 transition-colors duration-200"
         title="Open Filters"
         aria-label="Open filter panel"
       >

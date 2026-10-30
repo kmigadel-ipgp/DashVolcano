@@ -26,6 +26,9 @@ import {
 import type { Sample } from '../types';
 import type { MatchMethod } from '../utils/matchMethod';
 import { filterSamplesByMethod, calculateRockTypeDistribution } from '../utils/matchMethod';
+import { Combobox } from '../components/Common/Combobox';
+import { usePlotTheme } from '../hooks/usePlotTheme';
+import { VolcanoSamplesMap } from '../components/Map/VolcanoSamplesMap';
 
 interface ChemicalAnalysisData {
   volcano_number: number;
@@ -46,9 +49,12 @@ interface VolcanoSelection {
   error: string | null;
 }
 
-const VOLCANO_COLORS = ['#DC2626', '#2563EB', '#16A34A'];
+// Compared volcanoes: marks use the theme series colours (hooks/usePlotTheme),
+// text uses their readable variants (index.css)
+const VOLCANO_TEXT_COLORS = ['rgb(var(--series-1-text))', 'rgb(var(--series-2-text))', 'rgb(var(--series-3-text))'];
 
 const CompareVolcanoesPage: React.FC = () => {
+  const { palette: { series } } = usePlotTheme();
   const [volcanoes, setVolcanoes] = useState<VolcanoAutocompleteSource[]>([]);
   
   const [selections, setSelections] = useState<VolcanoSelection[]>([
@@ -57,7 +63,6 @@ const CompareVolcanoesPage: React.FC = () => {
   ]);
   
   const [searchInputs, setSearchInputs] = useState<string[]>(['', '']);
-  const [showSuggestions, setShowSuggestions] = useState<boolean[]>([false, false]);
   
   // Confidence level filter
   const [selectedMatchMethods, setSelectedMatchMethods] = useState<MatchMethod[]>(['literature', 'nearest', 'no_match']);
@@ -86,10 +91,6 @@ const CompareVolcanoesPage: React.FC = () => {
     const newSearchInputs = [...searchInputs];
     newSearchInputs[index] = volcano.label;
     setSearchInputs(newSearchInputs);
-
-    const newShowSuggestions = [...showSuggestions];
-    newShowSuggestions[index] = false;
-    setShowSuggestions(newShowSuggestions);
 
     // Update selection with loading state
     const newSelections = [...selections];
@@ -189,11 +190,11 @@ const CompareVolcanoesPage: React.FC = () => {
         return {
           volcanoName: v.name,
           rockTypes,
-          color: VOLCANO_COLORS[idx]
+          color: series[idx]
         };
       })
       .filter(v => Object.keys(v.rockTypes).length > 0);
-  }, [selections, selectedMatchMethods]);
+  }, [selections, selectedMatchMethods, series]);
 
   const harkerChartData = useMemo(() => {
     return selections
@@ -203,10 +204,10 @@ const CompareVolcanoesPage: React.FC = () => {
         harkerData: filterSamplesByMethod(v.samples, selectedMatchMethods)
           .map(sample => toHarkerDataPoint(sample, v.name))
           .filter((sample): sample is NonNullable<typeof sample> => sample !== null),
-        color: VOLCANO_COLORS[idx]
+        color: series[idx]
       }))
       .filter(v => v.harkerData.length > 0);
-  }, [selections, selectedMatchMethods]);
+  }, [selections, selectedMatchMethods, series]);
 
   // Memoize sampled data for TAS/AFM plots to improve performance with large datasets
   // Apply confidence filtering
@@ -220,9 +221,9 @@ const CompareVolcanoesPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+      <header className="bg-surface border-b border-line">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-3">
                 <Mountain className="w-8 h-8 text-volcano-600" aria-hidden="true" />
@@ -236,7 +237,7 @@ const CompareVolcanoesPage: React.FC = () => {
               <button
                 onClick={handleDownloadCSV}
                 className="flex items-center gap-2 px-4 py-2 bg-volcano-600 text-white rounded-lg hover:bg-volcano-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-volcano-500 focus:ring-offset-2"
-                aria-label="Download comparison data as CSV"
+                aria-label="Download Combined CSV of the comparison data"
                 title="Download CSV (Ctrl+D / Cmd+D)"
               >
                 <Download className="w-4 h-4" aria-hidden="true" />
@@ -248,13 +249,14 @@ const CompareVolcanoesPage: React.FC = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Volcano Selectors */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           {selections.map((selection, index) => (
-            <div key={`selector-${index}`} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div key={`selector-${index}`} className="card p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+                  <span className="series-swatch" style={{ backgroundColor: series[index] }} aria-hidden="true" />
                   Volcano {index + 1}
                 </h2>
                 {selection.name && (
@@ -269,48 +271,19 @@ const CompareVolcanoesPage: React.FC = () => {
               </div>
               
               <div className="relative">
-                <input
-                  type="text"
+                <Combobox
                   value={searchInputs[index]}
-                  onChange={(e) => {
-                    const newInputs = [...searchInputs];
-                    newInputs[index] = e.target.value;
-                    setSearchInputs(newInputs);
-                    const newShow = [...showSuggestions];
-                    newShow[index] = true;
-                    setShowSuggestions(newShow);
-                  }}
-                  onFocus={() => {
-                    const newShow = [...showSuggestions];
-                    newShow[index] = true;
-                    setShowSuggestions(newShow);
-                  }}
-                  onBlur={() => {
-                    setTimeout(() => {
-                      const newShow = [...showSuggestions];
-                      newShow[index] = false;
-                      setShowSuggestions(newShow);
-                    }, 200);
-                  }}
+                  onValueChange={(value) =>
+                    setSearchInputs((prev) => prev.map((input, i) => (i === index ? value : input)))
+                  }
+                  options={getFilteredVolcanoNames(index)}
+                  getOptionKey={(volcano) => volcano.volcano_number}
+                  getOptionLabel={(volcano) => volcano.label}
+                  onSelect={(volcano) => handleVolcanoSelect(index, volcano)}
                   placeholder="Type to search volcanoes..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-volcano-500 focus:border-volcano-500"
-                  style={{ borderColor: selection.name ? VOLCANO_COLORS[index] : undefined }}
+                  ariaLabel={`Search for volcano ${index + 1}`}
+                  inputClassName="field"
                 />
-                
-                {showSuggestions[index] && getFilteredVolcanoNames(index).length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                    {getFilteredVolcanoNames(index).map((volcano) => (
-                      <button
-                        key={volcano.volcano_number}
-                        type="button"
-                        onClick={() => handleVolcanoSelect(index, volcano)}
-                        className="w-full text-left px-4 py-2 hover:bg-volcano-50 text-sm text-gray-700"
-                      >
-                        {volcano.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
 
               {selection.loading && (
@@ -333,7 +306,7 @@ const CompareVolcanoesPage: React.FC = () => {
                   <div className="mt-4 grid grid-cols-3 gap-3">
                     <div className="bg-gray-50 rounded p-2">
                       <p className="text-xs text-gray-600">Samples</p>
-                      <p className="text-lg font-bold" style={{ color: VOLCANO_COLORS[index] }}>
+                      <p className="text-lg font-bold" style={{ color: VOLCANO_TEXT_COLORS[index] }}>
                         {filteredSamples.length}
                       </p>
                       {filteredSamples.length < selection.samples.length && (
@@ -342,7 +315,7 @@ const CompareVolcanoesPage: React.FC = () => {
                     </div>
                     <div className="bg-gray-50 rounded p-2">
                       <p className="text-xs text-gray-600">TAS Points</p>
-                      <p className="text-lg font-bold" style={{ color: VOLCANO_COLORS[index] }}>
+                      <p className="text-lg font-bold" style={{ color: VOLCANO_TEXT_COLORS[index] }}>
                         {tasCount}
                       </p>
                       {filteredSamples.length < selection.samples.length && (
@@ -351,7 +324,7 @@ const CompareVolcanoesPage: React.FC = () => {
                     </div>
                     <div className="bg-gray-50 rounded p-2">
                       <p className="text-xs text-gray-600">AFM Points</p>
-                      <p className="text-lg font-bold" style={{ color: VOLCANO_COLORS[index] }}>
+                      <p className="text-lg font-bold" style={{ color: VOLCANO_TEXT_COLORS[index] }}>
                         {afmCount}
                       </p>
                       {filteredSamples.length < selection.samples.length && (
@@ -398,21 +371,18 @@ const CompareVolcanoesPage: React.FC = () => {
             {sampledSelectionsData.filter(s => s.name && s.data).map((selection, index) => (
               <div 
                 key={selection.number}
-                className="bg-white rounded-lg shadow-sm border-2 p-6"
-                style={{ borderColor: VOLCANO_COLORS[index] }}
+                className="card p-6"
               >
                 {/* Volcano Header */}
                 <div className="mb-6">
-                  <h2 
-                    className="text-xl font-bold mb-2"
-                    style={{ color: VOLCANO_COLORS[index] }}
-                  >
+                  <h2 className="flex items-center gap-2 text-xl font-bold text-gray-900 mb-2">
+                    <span className="series-swatch" style={{ backgroundColor: series[index] }} aria-hidden="true" />
                     {selection.name}
                   </h2>
                   <div className="grid grid-cols-3 gap-3">
                     <div className="bg-gray-50 rounded p-3">
                       <p className="text-xs text-gray-600 mb-1">Filtered Samples</p>
-                      <p className="text-xl font-bold" style={{ color: VOLCANO_COLORS[index] }}>
+                      <p className="text-xl font-bold" style={{ color: VOLCANO_TEXT_COLORS[index] }}>
                         {selection.sampledSamples.length}
                       </p>
                       {selection.sampledSamples.length < selection.samples.length && (
@@ -421,7 +391,7 @@ const CompareVolcanoesPage: React.FC = () => {
                     </div>
                     <div className="bg-gray-50 rounded p-3">
                       <p className="text-xs text-gray-600 mb-1">TAS Data</p>
-                      <p className="text-xl font-bold" style={{ color: VOLCANO_COLORS[index] }}>
+                      <p className="text-xl font-bold" style={{ color: VOLCANO_TEXT_COLORS[index] }}>
                         {selection.sampledSamples.filter(hasTasOxides).length}
                       </p>
                       {selection.sampledSamples.length < selection.samples.length && (
@@ -430,7 +400,7 @@ const CompareVolcanoesPage: React.FC = () => {
                     </div>
                     <div className="bg-gray-50 rounded p-3">
                       <p className="text-xs text-gray-600 mb-1">AFM Data</p>
-                      <p className="text-xl font-bold" style={{ color: VOLCANO_COLORS[index] }}>
+                      <p className="text-xl font-bold" style={{ color: VOLCANO_TEXT_COLORS[index] }}>
                         {selection.sampledSamples.filter(hasAfmOxides).length}
                       </p>
                       {selection.sampledSamples.length < selection.samples.length && (
@@ -440,9 +410,20 @@ const CompareVolcanoesPage: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Location of the volcano and of its samples */}
+                <div className="mb-6">
+                  <h3 className="eyebrow mb-3">Location and Samples</h3>
+                  <VolcanoSamplesMap
+                    volcanoNumber={selection.number}
+                    volcanoName={selection.name}
+                    matchMethods={selectedMatchMethods}
+                    height={260}
+                  />
+                </div>
+
                 {/* TAS Plot */}
                 <div className="mb-6">
-                  <h3 className="text-md font-semibold text-gray-700 mb-3">
+                  <h3 className="eyebrow mb-3">
                     TAS Diagram
                     {selection.samples.length > 1000 && (
                       <span className="ml-2 text-xs text-gray-500">
@@ -450,14 +431,14 @@ const CompareVolcanoesPage: React.FC = () => {
                       </span>
                     )}
                   </h3>
-                  <div className="border border-gray-200 rounded-lg overflow-hidden h-[400px]">
+                  <div className="border border-gray-200 rounded-lg overflow-hidden h-[580px] sm:h-[400px]">
                     <TASPlot samples={selection.sampledSamples} />
                   </div>
                 </div>
 
                 {/* AFM Plot */}
                 <div>
-                  <h3 className="text-md font-semibold text-gray-700 mb-3">
+                  <h3 className="eyebrow mb-3">
                     AFM Diagram
                     {selection.samples.length > 1000 && (
                       <span className="ml-2 text-xs text-gray-500">
@@ -465,7 +446,7 @@ const CompareVolcanoesPage: React.FC = () => {
                       </span>
                     )}
                   </h3>
-                  <div className="border border-gray-200 rounded-lg overflow-hidden h-[400px]">
+                  <div className="border border-gray-200 rounded-lg overflow-hidden h-[580px] sm:h-[400px]">
                     <AFMPlot samples={selection.sampledSamples} />
                   </div>
                 </div>
@@ -490,7 +471,7 @@ const CompareVolcanoesPage: React.FC = () => {
             description="Choose volcanoes from the selectors above to view their side-by-side chemical comparison with TAS and AFM diagrams."
           />
         )}
-      </main>
+      </div>
     </div>
   );
 };

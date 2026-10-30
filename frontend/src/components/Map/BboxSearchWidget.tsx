@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronUp, Search, X } from 'lucide-react';
+import { toStandardLongitude } from '../../utils/longitude';
 
 /**
  * Bounding box coordinates
@@ -75,7 +76,7 @@ export const BboxSearchWidget: React.FC<BboxSearchWidgetProps> = ({
   const toggleExpanded = () => setIsExpanded(!isExpanded);
 
   const formatBbox = (b: BBox): string => {
-    return `(${b.minLon.toFixed(2)}, ${b.minLat.toFixed(2)}) to (${b.maxLon.toFixed(2)}, ${b.maxLat.toFixed(2)})`;
+    return `(${b.minLon.toFixed(2)}, ${b.minLat.toFixed(2)}) to (${toStandardLongitude(b.maxLon).toFixed(2)}, ${b.maxLat.toFixed(2)})`;
   };
 
   return (
@@ -86,7 +87,7 @@ export const BboxSearchWidget: React.FC<BboxSearchWidgetProps> = ({
           onClick={toggleExpanded}
           className={`p-4 rounded-lg shadow-lg transition-colors ${
             bbox
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              ? 'bg-volcano-600 text-white hover:bg-volcano-700'
               : 'bg-white text-gray-700 hover:bg-gray-100'
           }`}
           title="Spatial Search"
@@ -98,15 +99,15 @@ export const BboxSearchWidget: React.FC<BboxSearchWidgetProps> = ({
 
       {/* Expanded: Full panel */}
       {isExpanded && (
-        <div className="bg-white rounded-lg shadow-lg w-80 max-h-[calc(100vh-2rem)] overflow-y-auto">
+        <div className="bg-white rounded-lg shadow-md border border-line w-80 max-w-[calc(100vw-6rem)] max-h-[calc(100vh-2rem)] overflow-y-auto">
           {/* Header */}
           <div
             className="flex items-center justify-between p-3 border-b cursor-pointer hover:bg-gray-50"
             onClick={toggleExpanded}
           >
             <div className="flex items-center gap-2">
-              <Search className={`w-5 h-5 ${bbox ? 'text-blue-600' : 'text-gray-700'}`} />
-              <h3 className="font-semibold text-gray-900">Spatial Search</h3>
+              <Search className={`w-5 h-5 ${bbox ? 'text-volcano-600' : 'text-gray-700'}`} />
+              <h2 className="font-semibold text-gray-900">Spatial Search</h2>
             </div>
             <ChevronUp className="w-5 h-5 text-gray-500" />
           </div>
@@ -119,8 +120,8 @@ export const BboxSearchWidget: React.FC<BboxSearchWidgetProps> = ({
               disabled={isDrawing}
               className={`w-full py-2 px-3 rounded-md font-medium transition-colors ${
                 isDrawing
-                  ? 'bg-orange-500 text-white cursor-not-allowed'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
+                  ? 'bg-volcano-700 text-white cursor-not-allowed'
+                  : 'bg-volcano-600 text-white hover:bg-volcano-700'
               }`}
             >
               {isDrawing ? 'Drawing Mode Active...' : 'Draw Search Area'}
@@ -164,7 +165,7 @@ export const BboxSearchWidget: React.FC<BboxSearchWidgetProps> = ({
                   <button
                     key={region.name}
                     onClick={() => onSetPresetRegion(region.bbox)}
-                    className="py-2 px-3 text-sm border border-gray-300 rounded-md hover:bg-blue-50 hover:border-blue-500 transition-colors text-gray-700 hover:text-blue-700 font-medium"
+                    className="py-2 px-3 text-sm border border-gray-300 rounded-md hover:bg-volcano-50 hover:border-volcano-500 transition-colors text-gray-700 hover:text-volcano-700 font-medium"
                   >
                     {region.name}
                   </button>

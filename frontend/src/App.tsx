@@ -19,6 +19,8 @@ function App() {
             duration: 3000,
             style: {
               maxWidth: '500px',
+              background: 'rgb(var(--surface))',
+              color: 'rgb(var(--ink))',
             },
           }}
         />

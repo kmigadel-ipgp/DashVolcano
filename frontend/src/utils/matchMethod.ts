@@ -84,21 +84,6 @@ export const getMatchMethodLabel = (method: MatchMethod): string => {
 };
 
 /**
- * Get an icon glyph for a match method (quick visual reference).
- */
-export const getMatchMethodIcon = (method: MatchMethod): string => {
-  switch (method) {
-    case 'literature':
-      return '📚';
-    case 'nearest':
-      return '📍';
-    case 'no_match':
-    default:
-      return '−';
-  }
-};
-
-/**
  * Filter samples by association method.
  * Supports empty (nothing) and full (everything) selections explicitly.
  */
