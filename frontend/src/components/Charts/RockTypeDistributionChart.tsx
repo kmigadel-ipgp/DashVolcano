@@ -1,7 +1,10 @@
 import React from 'react';
-import Plot from 'react-plotly.js';
+import { ThemedPlot } from './ThemedPlot';
 import { InlineMath, BlockMath } from 'react-katex';
 import 'katex/dist/katex.min.css';
+import { useIsPhone, chartTitle } from '../../hooks/useIsPhone';
+import { seriesTextColor } from '../../utils/colors';
+import { HelpTooltip } from '../Common/HelpTooltip';
 
 interface RockTypeData {
   volcanoName: string;
@@ -12,6 +15,19 @@ interface RockTypeData {
 interface RockTypeDistributionChartProps {
   volcanoes: RockTypeData[];
 }
+
+// WR Filter Notice
+const WRFilterNotice = () => (
+  <div className="mb-4 note">
+    <div className="flex items-start gap-2">
+      <span className="font-semibold text-gray-900 whitespace-nowrap">Data filter:</span>
+      <p>
+        Showing <strong>Whole Rock (WR) samples only</strong> for accurate rock type comparison. 
+        This excludes minerals, glasses, and inclusions to ensure representative data.
+      </p>
+    </div>
+  </div>
+);
 
 /**
  * RockTypeDistributionChart Component
@@ -27,26 +43,15 @@ interface RockTypeDistributionChartProps {
  * - Color-coded by volcano
  */
 export const RockTypeDistributionChart: React.FC<RockTypeDistributionChartProps> = React.memo(({ volcanoes }) => {
+  const isPhone = useIsPhone();
   if (volcanoes.length === 0 || volcanoes.every(v => Object.keys(v.rockTypes).length === 0)) {
     return (
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
-        <p className="text-gray-600">No rock type data available for selected volcanoes</p>
+      <div className="note text-center p-6">
+        <p>No rock type data available for selected volcanoes</p>
       </div>
     );
   }
 
-  // WR Filter Notice
-  const WRFilterNotice = () => (
-    <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
-      <div className="flex items-start gap-2">
-        <span className="text-blue-600 font-semibold text-sm">📊 Data Filter:</span>
-        <p className="text-sm text-blue-900">
-          Showing <strong>Whole Rock (WR) samples only</strong> for accurate rock type comparison. 
-          This excludes minerals, glasses, and inclusions to ensure representative data.
-        </p>
-      </div>
-    </div>
-  );
 
   // Collect all unique rock types across all volcanoes
   const allRockTypes = new Set<string>();
@@ -108,18 +113,17 @@ export const RockTypeDistributionChart: React.FC<RockTypeDistributionChartProps>
   }));
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+    <div>
       <WRFilterNotice />
-      <Plot
+      <ThemedPlot
         data={traces}
         layout={{
-          title: { text: 'Rock Type Distribution Comparison', font: { size: 16 } },
+          title: { ...chartTitle('Rock Type Distribution Comparison', isPhone), font: { size: 16 } },
           barmode: 'group',
           xaxis: {
             title: { text: 'Percentage (%)' },
             range: [0, Math.max(...traces.flatMap(t => t.x)) * 1.1 || 100],
             showgrid: true,
-            gridcolor: '#e5e7eb'
           },
           yaxis: {
             title: { text: '' },
@@ -137,8 +141,6 @@ export const RockTypeDistributionChart: React.FC<RockTypeDistributionChartProps>
             x: 1
           },
           hovermode: 'closest',
-          paper_bgcolor: 'white',
-          plot_bgcolor: 'white'
         }}
         config={{
           displayModeBar: true,
@@ -157,7 +159,7 @@ export const RockTypeDistributionChart: React.FC<RockTypeDistributionChartProps>
       />
       
       {/* Summary Statistics Table */}
-      <div className="mt-4 overflow-x-auto">
+      <div className="mt-4 overflow-x-auto" tabIndex={0} role="region" aria-label="Rock type table">
         <table className="min-w-full text-sm border-collapse">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
@@ -275,12 +277,12 @@ export const RockTypeDistributionChart: React.FC<RockTypeDistributionChartProps>
 
       {/* Comparison Insights */}
       {volcanoes.length >= 2 && (
-        <div className="mt-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6">
+        <div className="mt-6 card p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-semibold">📊 Comparison Insights</h3>
+            <h3 className="text-xl font-semibold text-gray-900">Comparison insights</h3>
             <details className="text-xs">
-              <summary className="cursor-pointer text-blue-700 hover:text-blue-900 font-medium">How are these calculated?</summary>
-              <div className="mt-2 p-3 bg-white rounded-lg shadow-sm space-y-2 max-w-md">
+              <summary className="cursor-pointer text-volcano-700 hover:text-volcano-800 font-medium">How are these calculated?</summary>
+              <div className="mt-2 p-3 card space-y-2 max-w-md">
                 <div>
                   <p className="font-semibold text-gray-700">Similarity Score:</p>
                   <p className="text-gray-600">Weighted average of rock type similarities. For each rock type <InlineMath math="r" />, compute local similarity <InlineMath math="(1 - |v1_r - v2_r|)" /> where <InlineMath math="v1_r" /> and <InlineMath math="v2_r" /> are the fractions in each volcano. Weight by total sample count <InlineMath math="(w_r = n1_r + n2_r)" />. Rock types with more samples have more influence.</p>
@@ -310,12 +312,14 @@ export const RockTypeDistributionChart: React.FC<RockTypeDistributionChartProps>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Similarity Score */}
-            <div className="bg-white rounded-lg p-4 shadow">
+            <div className="card p-4">
               <div className="flex items-center gap-2 mb-1">
                 <p className="text-sm text-gray-600">Similarity Score</p>
-                <div className="group relative">
-                  <span className="text-blue-500 cursor-help text-xs border border-blue-500 rounded-full w-4 h-4 inline-flex items-center justify-center relative -translate-y-px">?</span>
-                  <div className="hidden group-hover:block absolute z-50 w-80 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg -left-36 top-6">
+                <HelpTooltip
+                  id="rock-similarity-help"
+                  label="How the similarity score is calculated"
+                  className="w-80 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg -left-36 top-6"
+                >
                     <p className="font-semibold mb-2">Similarity Score Formula:</p>
                     <div className="my-2 p-2 bg-gray-800 rounded">
                       <div className="text-yellow-300 flex justify-center">
@@ -358,17 +362,16 @@ export const RockTypeDistributionChart: React.FC<RockTypeDistributionChartProps>
                       return null;
                     })()}
                     <p className="mt-2 text-gray-300 text-[10px]">100% = identical, 0% = completely different</p>
-                  </div>
-                </div>
+                </HelpTooltip>
               </div>
-              <p className="text-lg font-bold text-purple-600">
+              <p className="text-lg font-bold text-gray-900">
                 {getRockTypeSimilarity(volcanoStats)}%
               </p>
               <p className="text-xs text-gray-500 mt-1">Distribution overlap</p>
             </div>
 
             {/* Most Diverse */}
-            <div className="bg-white rounded-lg p-4 shadow">
+            <div className="card p-4">
               <p className="text-sm text-gray-600 mb-1">Most Diverse</p>
               <p className="text-lg font-bold" style={{ color: getMostDiverseColor(volcanoStats) }}>
                 {getMostDiverseVolcano(volcanoStats)}
@@ -377,7 +380,7 @@ export const RockTypeDistributionChart: React.FC<RockTypeDistributionChartProps>
             </div>
 
             {/* Dominant Rock Type */}
-            <div className="bg-white rounded-lg p-4 shadow">
+            <div className="card p-4">
               <p className="text-sm text-gray-600 mb-1">Common Rock Type</p>
               <p className="text-lg font-bold text-orange-600">
                 {getCommonDominantRockType(volcanoStats)}
@@ -450,7 +453,7 @@ function getMostDiverseVolcano(volcanoStats: Array<{ volcanoName: string; rockTy
 }
 
 function getMostDiverseColor(volcanoStats: Array<{ volcanoName: string; rockTypes: Record<string, number>; color: string }>): string {
-  if (volcanoStats.length === 0) return '#6B7280';
+  if (volcanoStats.length === 0) return 'rgb(var(--series-neutral-text))';
 
   let maxDiversity = 0;
   let color = volcanoStats[0].color;
@@ -463,7 +466,7 @@ function getMostDiverseColor(volcanoStats: Array<{ volcanoName: string; rockType
     }
   }
 
-  return color;
+  return seriesTextColor(color);
 }
 
 function getCommonDominantRockType(volcanoStats: Array<{ volcanoName: string; rockTypes: Record<string, number>; total: number; percentages: Record<string, { count: number; percentage: number }> }>): string {

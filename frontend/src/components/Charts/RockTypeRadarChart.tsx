@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
-import Plot from 'react-plotly.js';
+import { ThemedPlot } from './ThemedPlot';
 import type { RockTypeRadarSeries } from '../../types';
+import { useIsPhone, chartTitle } from '../../hooks/useIsPhone';
 
 interface RockTypeRadarChartProps {
   series: RockTypeRadarSeries[];
@@ -58,6 +59,7 @@ export const RockTypeRadarChart: React.FC<RockTypeRadarChartProps> = React.memo(
   series,
   title = 'Rock Type Distribution Radar',
 }) => {
+  const isPhone = useIsPhone();
   const nonEmptySeries = useMemo(
     () => series.filter(entry => Object.keys(entry.rockTypes).length > 0 && entry.sampleCount > 0),
     [series]
@@ -103,16 +105,16 @@ export const RockTypeRadarChart: React.FC<RockTypeRadarChartProps> = React.memo(
   }));
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+    <div className="card p-4">
       <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-900">
         Showing <strong>Whole Rock (WR) samples only</strong>. Percentages are normalized within each compared dataset.
       </div>
 
-      <Plot
+      <ThemedPlot
         data={traces}
         layout={{
           title: {
-            text: title,
+            ...chartTitle(title, isPhone),
             font: { size: 16 },
           },
           height: 560,
@@ -130,16 +132,13 @@ export const RockTypeRadarChart: React.FC<RockTypeRadarChartProps> = React.memo(
               visible: true,
               ticksuffix: '%',
               range: [0, 100],
-              gridcolor: '#d1d5db',
               tickfont: { size: 10 },
             },
             angularaxis: {
               tickfont: { size: 11 },
               direction: 'clockwise' as const,
             },
-            bgcolor: 'white',
           },
-          paper_bgcolor: 'white',
           hovermode: 'closest',
         }}
         config={{
@@ -158,7 +157,7 @@ export const RockTypeRadarChart: React.FC<RockTypeRadarChartProps> = React.memo(
         style={{ width: '100%', height: '100%' }}
       />
 
-      <div className="mt-4 overflow-x-auto">
+      <div className="mt-4 overflow-x-auto" tabIndex={0} role="region" aria-label="Rock type table">
         <table className="min-w-full text-sm border-collapse">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">

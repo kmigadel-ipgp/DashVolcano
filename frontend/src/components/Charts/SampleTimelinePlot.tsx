@@ -1,5 +1,7 @@
 import React from 'react';
-import Plot from 'react-plotly.js';
+import { ThemedPlot } from './ThemedPlot';
+import { useIsPhone, chartTitle } from '../../hooks/useIsPhone';
+import { usePlotTheme } from '../../hooks/usePlotTheme';
 
 interface SampleTimelineData {
   year: number;
@@ -20,10 +22,12 @@ export const SampleTimelinePlot: React.FC<SampleTimelinePlotProps> = ({
   data,
   volcanoName
 }) => {
+  const isPhone = useIsPhone();
+  const { palette } = usePlotTheme();
   if (!data || data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-96 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-        <p className="text-gray-500">No sample timeline data available</p>
+      <div className="note flex items-center justify-center h-96">
+        <p>No sample timeline data available</p>
       </div>
     );
   }
@@ -34,9 +38,9 @@ export const SampleTimelinePlot: React.FC<SampleTimelinePlotProps> = ({
     type: 'bar',
     name: 'Samples',
     marker: {
-      color: '#DC2626', // volcano-600
+      color: palette.series[0], // single-volcano series colour
       line: {
-        color: '#991B1B', // volcano-800
+        color: palette.series[0],
         width: 1
       }
     },
@@ -47,28 +51,24 @@ export const SampleTimelinePlot: React.FC<SampleTimelinePlotProps> = ({
   }];
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200">
-      <Plot
+    <div className="h-full">
+      <ThemedPlot
         data={plotData}
         layout={{
           title: {
-            text: `Sample Collection Timeline - ${volcanoName}`
+            ...chartTitle(`Sample Collection Timeline - ${volcanoName}`, isPhone),
           },
           xaxis: {
             title: { text: 'Year (based on eruption date)' },
             type: 'linear',
             showgrid: true,
-            gridcolor: '#e5e7eb'
           },
           yaxis: {
             title: { text: 'Number of Samples' },
             showgrid: true,
-            gridcolor: '#e5e7eb'
           },
           height: 400,
           margin: { l: 60, r: 40, t: 60, b: 80 },
-          paper_bgcolor: 'white',
-          plot_bgcolor: 'white',
           hovermode: 'closest',
           showlegend: false
         }}
