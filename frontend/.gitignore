@@ -10,6 +10,10 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+# Builds kept by deploy.sh
+dist.new
+dist.prev
+dist.failed
 *.local
 
 # Editor directories and files
