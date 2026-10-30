@@ -1,19 +1,22 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import DeckGL from '@deck.gl/react';
 import { Map as MapboxMap } from 'react-map-gl/mapbox';
 import { ScatterplotLayer, GeoJsonLayer, IconLayer } from '@deck.gl/layers';
+import type { LayersList, PickingInfo, ViewStateChangeParameters } from '@deck.gl/core';
 import type { BBox, Sample, Volcano, TectonicBoundary } from '../../types';
 import {
   getMatchMethod,
   getMatchMethodColor,
-  getMatchMethodLabel,
-  getMatchMethodIcon,
   getVolcanoNumber,
   getVolcanoName,
-  type MatchMethod
 } from '../../utils/matchMethod';
+import { getWrapCenter, wrapBbox, wrapLine, wrapLongitude } from '../../utils/longitude';
 
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { usePlotTheme } from '../../hooks/usePlotTheme';
+import { BOUNDARY_TYPES, MAP_STYLE, MAPBOX_TOKEN, VOLCANO_ICON } from './mapStyle';
+import { MapTooltip } from './MapTooltip';
+import { sampleHoverObject, useMapHover } from './mapHover';
 
 type ViewState = {
   longitude: number;
@@ -66,29 +69,10 @@ interface MapProps {
   /** Whether bbox drawing mode is active */
   isDrawingBbox?: boolean;
   /** Callback when map is clicked (for drawing) */
-  onMapClick?: (info: any) => void;
+  onMapClick?: (info: PickingInfo) => void;
   /** Callback when mouse hovers over map (for drawing) */
-  onMapHover?: (info: any) => void;
+  onMapHover?: (info: PickingInfo) => void;
 }
-
-// Mapbox token - you'll need to set this in your environment
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
-
-// OpenStreetMap raster basemap, as on VolcashDB. In the dark theme the basemap
-// canvas is inverted by CSS (index.css); deck.gl layers are not affected.
-const MAP_STYLE: React.ComponentProps<typeof MapboxMap>['mapStyle'] = {
-  version: 8,
-  sources: {
-    osm: {
-      type: 'raster',
-      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-      tileSize: 256,
-      maxzoom: 19,
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    },
-  },
-  layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
-};
 
 // Default viewport settings
 const INITIAL_VIEW_STATE: ViewState = {
@@ -143,26 +127,19 @@ export const VolcanoMap: React.FC<MapProps> = ({
     ? { ...INITIAL_VIEW_STATE, ...externalViewState } as ViewState
     : internalViewState;
 
-  // Hover state for tooltips
-  type HoverObject = Volcano | { 
-    type: string; 
-    volcano_name?: string; 
-    rock_name?: string; 
-    longitude?: number; 
-    latitude?: number; 
-    boundaryType?: string; 
-    tectonic_setting?: string | string[]; 
-    references?: string;
-    match_method?: MatchMethod;
-    method_label?: string;
-    method_icon?: string;
-    sample_context?: string;
-  };
-  const [hoverInfo, setHoverInfo] = useState<{
-    x: number;
-    y: number;
-    object: HoverObject;
-  } | null>(null);
+  // Radar comparison areas use the theme's second series colour (as in the radar chart)
+  const { palette: plotPalette } = usePlotTheme();
+  const comparisonRgb = [1, 3, 5].map((k) => parseInt(plotPalette.series[1].slice(k, k + 2), 16)) as [number, number, number];
+
+  // Each object is drawn once, in the world copy closest to the view centre
+  const wrapCenter = getWrapCenter(currentViewState.longitude);
+  const getWrappedPosition = useCallback(
+    (coordinates: number[]): [number, number] => [wrapLongitude(coordinates[0], wrapCenter), coordinates[1]],
+    [wrapCenter]
+  );
+
+  // Tooltip shared with the volcano maps of the other pages (MapTooltip.tsx)
+  const { hoverInfo, showHover, clearHover, enterTooltip, leaveTooltip } = useMapHover();
 
   const normalizedSelectedVolcanoName = selectedVolcanoName?.trim().toLowerCase();
   const normalizedSelectedVolcanoNumber = selectedVolcanoNumber != null
@@ -189,12 +166,13 @@ export const VolcanoMap: React.FC<MapProps> = ({
    * Handle viewport changes
    */
   const handleViewStateChange = useCallback(
-    (e: any) => {
+    (e: ViewStateChangeParameters) => {
+      const viewState = e.viewState as ViewState;
       if (!externalViewState) {
-        setInternalViewState(e.viewState);
+        setInternalViewState(viewState);
       }
       if (onViewportChange) {
-        onViewportChange(e.viewState);
+        onViewportChange(viewState);
       }
     },
     [externalViewState, onViewportChange]
@@ -208,48 +186,38 @@ export const VolcanoMap: React.FC<MapProps> = ({
   const volcanoLayer = useCallback(() => {
     if (!showVolcanoes || volcanoes.length === 0) return null;
 
-    // Create SVG triangle icon data URL
-    const triangleIcon = {
-      url: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
-        `<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 2 L22 20 L2 20 Z" fill="rgb(220, 20, 60)" stroke="rgb(180, 0, 40)" stroke-width="1.5"/>
-        </svg>`
-      ),
-      width: 24,
-      height: 24,
-      anchorY: 16, // Anchor point at bottom center of triangle
-    };
 
     return new IconLayer({
       id: 'volcanoes',
       data: volcanoes,
-      getPosition: (d: Volcano) => d.geometry.coordinates,
-      getIcon: () => triangleIcon,
+      getPosition: (d: Volcano) => getWrappedPosition(d.geometry.coordinates),
+      getIcon: () => VOLCANO_ICON,
       getSize: 8, // Size in pixels (consistent at all latitudes and zoom levels)
       sizeScale: 1,
       sizeMinPixels: 2,
       sizeMaxPixels: 8,
+      updateTriggers: { getPosition: wrapCenter },
       pickable: true,
       // Click interaction
-      onClick: (info: any) => {
+      onClick: (info: PickingInfo<Volcano>) => {
         if (info.object && onVolcanoClick) {
           onVolcanoClick(info.object);
         }
       },
       // Hover interaction
-      onHover: (info: any) => {
+      onHover: (info: PickingInfo<Volcano>) => {
         if (info.object) {
-          setHoverInfo({
+          showHover({
             x: info.x,
             y: info.y,
             object: info.object,
           });
         } else {
-          setHoverInfo(null);
+          clearHover();
         }
       },
     });
-  }, [volcanoes, showVolcanoes, onVolcanoClick]);
+  }, [volcanoes, showVolcanoes, onVolcanoClick, getWrappedPosition, wrapCenter, showHover, clearHover]);
 
   /**
    * Sample points layer for individual sample visualization and selection
@@ -271,7 +239,7 @@ export const VolcanoMap: React.FC<MapProps> = ({
     return new ScatterplotLayer({
       id: 'samples-points',
       data: samples,
-      getPosition: (d: Sample) => d.geometry.coordinates,
+      getPosition: (d: Sample) => getWrappedPosition(d.geometry.coordinates),
       getRadius: 3000, // 3km radius points
       getFillColor: (d: Sample) => {
         // PRIORITY 1: Highlight samples from the selected volcano with orange color
@@ -305,6 +273,7 @@ export const VolcanoMap: React.FC<MapProps> = ({
         return 1;
       },
       updateTriggers: {
+        getPosition: wrapCenter,
         getFillColor: [normalizedSelectedVolcanoName, normalizedSelectedVolcanoNumber],
         getLineColor: [normalizedSelectedVolcanoName, normalizedSelectedVolcanoNumber],
         getLineWidth: [normalizedSelectedVolcanoName, normalizedSelectedVolcanoNumber],
@@ -313,39 +282,22 @@ export const VolcanoMap: React.FC<MapProps> = ({
       radiusMinPixels: 2,
       radiusMaxPixels: 8,
       // Click interaction
-      onClick: (info: any) => {
+      onClick: (info: PickingInfo<Sample>) => {
         if (info.object && onSampleClick) {
           onSampleClick(info.object as Sample);
         }
       },
       // Hover interaction - now includes association-method information
-      onHover: (info: any) => {
+      onHover: (info: PickingInfo<Sample>) => {
         if (info.object) {
           const sample = info.object as Sample;
-          const method = getMatchMethod(sample.matching_metadata);
-
-          setHoverInfo({
-            x: info.x,
-            y: info.y,
-            object: {
-              type: 'sample',
-              volcano_name: getVolcanoName(sample.matching_metadata),
-              rock_name: sample.petro?.rock_type,
-              longitude: sample.geometry.coordinates[0],
-              latitude: sample.geometry.coordinates[1],
-              tectonic_setting: typeof sample.tecto === 'object' ? sample.tecto?.ui : sample.tecto,
-              references: sample.references,
-              match_method: method,
-              method_label: getMatchMethodLabel(method),
-              method_icon: getMatchMethodIcon(method),
-            } as any,
-          });
+          showHover({ x: info.x, y: info.y, object: sampleHoverObject(sample) });
         } else {
-          setHoverInfo(null);
+          clearHover();
         }
       },
     });
-  }, [samples, showSamplePoints, isSelectedVolcanoSample, onSampleClick, normalizedSelectedVolcanoName, normalizedSelectedVolcanoNumber]);
+  }, [samples, showSamplePoints, isSelectedVolcanoSample, onSampleClick, normalizedSelectedVolcanoName, normalizedSelectedVolcanoNumber, getWrappedPosition, wrapCenter, showHover, clearHover]);
 
   const comparisonSampleLayer = useCallback(() => {
     if (!showSamplePoints || comparisonSamples.length === 0) return null;
@@ -353,7 +305,7 @@ export const VolcanoMap: React.FC<MapProps> = ({
     return new ScatterplotLayer({
       id: 'comparison-samples-points',
       data: comparisonSamples,
-      getPosition: (d: Sample) => d.geometry.coordinates,
+      getPosition: (d: Sample) => getWrappedPosition(d.geometry.coordinates),
       getRadius: 3200,
       getFillColor: (d: Sample) => {
         const method = getMatchMethod(d.matching_metadata);
@@ -369,73 +321,64 @@ export const VolcanoMap: React.FC<MapProps> = ({
       lineWidthMinPixels: 1,
       lineWidthMaxPixels: 2,
       getLineWidth: 2,
+      updateTriggers: { getPosition: wrapCenter },
       pickable: true,
       radiusMinPixels: 2,
       radiusMaxPixels: 9,
-      onClick: (info: any) => {
+      onClick: (info: PickingInfo<Sample>) => {
         if (info.object && onSampleClick) {
           onSampleClick(info.object as Sample);
         }
       },
-      onHover: (info: any) => {
+      onHover: (info: PickingInfo<Sample>) => {
         if (info.object) {
           const sample = info.object as Sample;
-          const method = getMatchMethod(sample.matching_metadata);
-
-          setHoverInfo({
-            x: info.x,
-            y: info.y,
-            object: {
-              type: 'comparison-sample',
-              volcano_name: getVolcanoName(sample.matching_metadata),
-              rock_name: sample.petro?.rock_type,
-              longitude: sample.geometry.coordinates[0],
-              latitude: sample.geometry.coordinates[1],
-              tectonic_setting: typeof sample.tecto === 'object' ? sample.tecto?.ui : sample.tecto,
-              references: sample.references,
-              match_method: method,
-              method_label: getMatchMethodLabel(method),
-              method_icon: getMatchMethodIcon(method),
-              sample_context: 'Radar comparison overlay',
-            } as any,
-          });
+          showHover({ x: info.x, y: info.y, object: sampleHoverObject(sample, 'comparison-sample', 'Radar comparison overlay') });
         } else {
-          setHoverInfo(null);
+          clearHover();
         }
       },
     });
-  }, [comparisonSamples, onSampleClick, showSamplePoints]);
+  }, [comparisonSamples, onSampleClick, showSamplePoints, getWrappedPosition, wrapCenter, showHover, clearHover]);
+
+  // Boundary lines wrapped around the view centre (recomputed only when wrapCenter changes)
+  const wrappedTectonicBoundaries = useMemo(
+    () => tectonicBoundaries
+      .map((boundary) => ({
+        ...boundary,
+        geometry: {
+          type: 'MultiLineString' as const,
+          coordinates: wrapLine(boundary.geometry.coordinates, wrapCenter),
+        },
+      }))
+      // A line with fewer than two vertices draws nothing (deck.gl reports it as malformed)
+      .filter((boundary) => boundary.geometry.coordinates.length > 0),
+    [tectonicBoundaries, wrapCenter]
+  );
 
   /**
    * Tectonic boundaries GeoJsonLayer
    * Lines for ridges, trenches, and transforms
    */
   const tectonicLayer = useCallback(() => {
-    if (!showTectonicBoundaries || tectonicBoundaries.length === 0) return null;
+    if (!showTectonicBoundaries || wrappedTectonicBoundaries.length === 0) return null;
 
     // Group boundaries by type for different colors
-    const boundariesByType = tectonicBoundaries.reduce((acc, boundary) => {
+    const boundariesByType = wrappedTectonicBoundaries.reduce((acc, boundary) => {
       const type = boundary.properties?.boundary_type || 'unknown';
       if (!acc[type]) acc[type] = [];
       acc[type].push(boundary);
       return acc;
-    }, {} as Record<string, TectonicBoundary[]>);
+    }, {} as Record<string, typeof wrappedTectonicBoundaries>);
 
     // Create a layer for each boundary type
     const layers = Object.entries(boundariesByType).map(([type, boundaries]) => {
-      // Determine color based on boundary type
-      let color: [number, number, number];
-      if (type === 'ridge') {
-        color = [255, 165, 0]; // Orange
-      } else if (type === 'trench') {
-        color = [255, 0, 0]; // Red
-      } else {
-        color = [128, 128, 128]; // Gray
-      }
+      // Colour by boundary type (shared with the legend in LayerControls)
+      const color = BOUNDARY_TYPES.find((b) => b.type === type)?.color ?? [128, 128, 128];
 
       return new GeoJsonLayer({
         id: `tectonic-${type}`,
-        data: boundaries as any,
+        data: boundaries,
         pickable: true,
         stroked: true,
         filled: false,
@@ -443,9 +386,9 @@ export const VolcanoMap: React.FC<MapProps> = ({
         getLineColor: color,
         getLineWidth: 2,
         opacity: 0.7,
-        onHover: (info: any) => {
+        onHover: (info: PickingInfo<(typeof boundaries)[number]>) => {
           if (info.object) {
-            setHoverInfo({
+            showHover({
               x: info.x,
               y: info.y,
               object: {
@@ -455,31 +398,34 @@ export const VolcanoMap: React.FC<MapProps> = ({
               },
             });
           } else {
-            setHoverInfo(null);
+            clearHover();
           }
         },
       });
     });
 
     return layers;
-  }, [tectonicBoundaries, showTectonicBoundaries]);
+  }, [wrappedTectonicBoundaries, showTectonicBoundaries, showHover, clearHover]);
 
   // Combine all layers
   // Drawing bbox layer (for real-time preview during drawing)
-  const createBboxFeature = (bbox: BBox) => ({
-    type: 'Feature' as const,
-    properties: {},
-    geometry: {
-      type: 'Polygon' as const,
-      coordinates: [[
-        [bbox.minLon, bbox.minLat],
-        [bbox.maxLon, bbox.minLat],
-        [bbox.maxLon, bbox.maxLat],
-        [bbox.minLon, bbox.maxLat],
-        [bbox.minLon, bbox.minLat],
-      ]],
-    },
-  });
+  const createBboxFeature = (rawBbox: BBox) => {
+    const bbox = wrapBbox(rawBbox, wrapCenter);
+    return {
+      type: 'Feature' as const,
+      properties: {},
+      geometry: {
+        type: 'Polygon' as const,
+        coordinates: [[
+          [bbox.minLon, bbox.minLat],
+          [bbox.maxLon, bbox.minLat],
+          [bbox.maxLon, bbox.maxLat],
+          [bbox.minLon, bbox.maxLat],
+          [bbox.minLon, bbox.minLat],
+        ]],
+      },
+    };
+  };
 
   const drawingBboxLayer = () => {
     if (!drawingBboxProp) return null;
@@ -491,8 +437,8 @@ export const VolcanoMap: React.FC<MapProps> = ({
       data: [bboxGeoJSON],
       filled: true,
       stroked: true,
-      getFillColor: isComparison ? [5, 150, 105, 70] : [59, 130, 246, 80],
-      getLineColor: isComparison ? [5, 150, 105, 220] : [59, 130, 246, 200],
+      getFillColor: isComparison ? [...comparisonRgb, 70] : [59, 130, 246, 80],
+      getLineColor: isComparison ? [...comparisonRgb, 220] : [59, 130, 246, 200],
       getLineWidth: 2,
       lineWidthMinPixels: 2,
       getDashArray: [5, 3], // Dashed line
@@ -525,7 +471,7 @@ export const VolcanoMap: React.FC<MapProps> = ({
       data: [createBboxFeature(comparisonBbox)],
       filled: false,
       stroked: true,
-      getLineColor: [5, 150, 105, 255],
+      getLineColor: [...comparisonRgb, 255],
       getLineWidth: 3,
       lineWidthMinPixels: 3,
       getDashArray: [6, 4],
@@ -533,7 +479,7 @@ export const VolcanoMap: React.FC<MapProps> = ({
     });
   };
 
-  const layers: any[] = [];
+  const layers: LayersList = [];
   
   // Add tectonic boundaries first (bottom layer)
   const tectonic = tectonicLayer();
@@ -579,137 +525,11 @@ export const VolcanoMap: React.FC<MapProps> = ({
     layers.push(drawingBbox);
   }
 
-  /**
-   * Render tooltip
-   */
-  const renderTooltip = () => {
-    if (!hoverInfo?.object) return null;
-
-    const { x, y, object } = hoverInfo;
-
-    // Volcano tooltip
-    if ('volcano_name' in object && !('type' in object)) {
-      return (
-        <div
-          style={{
-            position: 'absolute',
-            left: x,
-            top: y,
-            pointerEvents: 'none',
-            padding: '8px',
-            background: 'rgba(0, 0, 0, 0.8)',
-            color: 'white',
-            borderRadius: '4px',
-            fontSize: '12px',
-            zIndex: 1000,
-          }}
-        >
-          <div><strong>{object.volcano_name}</strong></div>
-          <div>Type: {object.primary_volcano_type || 'N/A'}</div>
-          <div>Country: {object.country || 'N/A'}</div>
-          <div>Region: {object.region || 'N/A'}</div>
-        </div>
-      );
-    }
-
-    // Sample tooltip - now includes association-method information
-    if ('type' in object && (object.type === 'sample' || object.type === 'comparison-sample')) {
-      const isComparisonSample = object.type === 'comparison-sample';
-
-      // Get association-method color for border accent
-      const methodColor = object.match_method
-        ? getMatchMethodColor(object.match_method)
-        : [156, 163, 175, 140];
-
-      return (
-        <div
-          style={{
-            position: 'absolute',
-            left: x,
-            top: y,
-            pointerEvents: 'none',
-            padding: '8px',
-            background: 'rgba(0, 0, 0, 0.9)',
-            color: 'white',
-            borderRadius: '4px',
-            fontSize: '12px',
-            zIndex: 1000,
-            borderLeft: `3px solid rgba(${methodColor[0]}, ${methodColor[1]}, ${methodColor[2]}, ${methodColor[3] / 255})`,
-            minWidth: '200px',
-          }}
-        >
-          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-            {isComparisonSample ? 'Comparison Sample' : 'Sample'}
-          </div>
-          <div>Volcano: {object.volcano_name || 'N/A'}</div>
-          <div>Rock: {object.rock_name || 'N/A'}</div>
-          <div>Location: {object.latitude?.toFixed(2)}°, {object.longitude?.toFixed(2)}°</div>
-          <div>Tectonic Setting: {object.tectonic_setting || 'N/A'}</div>
-          {isComparisonSample && object.sample_context && (
-            <div style={{
-              fontSize: '10px',
-              color: 'rgba(255, 255, 255, 0.7)',
-              marginTop: '4px',
-            }}>
-              {object.sample_context}
-            </div>
-          )}
-          
-          {/* Association Method Section */}
-          {object.match_method && (
-            <div style={{
-              borderTop: '1px solid rgba(255, 255, 255, 0.2)',
-              marginTop: '6px',
-              paddingTop: '6px'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '14px' }}>{object.method_icon}</span>
-                <span style={{ fontWeight: 'bold' }}>{object.method_label}</span>
-              </div>
-            </div>
-          )}
-          
-          <div style={{ 
-            fontSize: '10px', 
-            color: 'rgba(255, 255, 255, 0.5)', 
-            marginTop: '4px',
-            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-            paddingTop: '4px'
-          }}>
-            References: {object.references || 'N/A'}
-          </div>
-        </div>
-      );
-    }
-
-    // Tectonic boundary tooltip
-    if ('type' in object && object.type === 'tectonic') {
-      return (
-        <div
-          style={{
-            position: 'absolute',
-            left: x,
-            top: y,
-            pointerEvents: 'none',
-            padding: '8px',
-            background: 'rgba(0, 0, 0, 0.8)',
-            color: 'white',
-            borderRadius: '4px',
-            fontSize: '12px',
-            zIndex: 1000,
-          }}
-        >
-          <div><strong>Tectonic Boundary</strong></div>
-          <div>Type: {object.boundaryType}</div>
-        </div>
-      );
-    }
-
-    return null;
-  };
-
   // Handle click events
-  const handleClick = useCallback((info: any) => {
+  const handleClick = useCallback((info: PickingInfo) => {
+    // The hover tooltip would cover the panel the click opens
+    clearHover();
+
     if (isDrawingBbox && onMapClick) {
       onMapClick(info);
       return;
@@ -723,22 +543,36 @@ export const VolcanoMap: React.FC<MapProps> = ({
     } else if ('type' in info.object && info.object.type === 'sample') {
       onSampleClick?.(info.object);
     }
-  }, [isDrawingBbox, onMapClick, onVolcanoClick, onSampleClick]);
+  }, [isDrawingBbox, onMapClick, onVolcanoClick, onSampleClick, clearHover]);
 
   // Handle hover events
-  const handleHover = useCallback((info: any) => {
+  const handleHover = useCallback((info: PickingInfo) => {
     if (isDrawingBbox && onMapHover) {
       onMapHover(info);
     }
     
     // Layer-specific onHover handlers own tooltip contents.
     if (!info.object) {
-      setHoverInfo(null);
+      clearHover();
     }
-  }, [isDrawingBbox, onMapHover]);
+  }, [isDrawingBbox, onMapHover, clearHover]);
+
+  // Keyboard access: deck.gl's event target (arrow keys pan, +/- zoom) is the
+  // single, named tab stop of the map; mapbox's own canvas leaves the tab order.
+  const mapWrapperRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const wrapper = mapWrapperRef.current;
+    const deckTarget = wrapper?.querySelector<HTMLElement>('.deck-widget-container');
+    if (deckTarget) {
+      deckTarget.setAttribute('role', 'application');
+      deckTarget.setAttribute('aria-roledescription', 'map');
+      deckTarget.setAttribute('aria-label', 'Volcano map. Use the arrow keys to pan and the + and - keys to zoom.');
+    }
+    wrapper?.querySelector('.mapboxgl-canvas')?.setAttribute('tabindex', '-1');
+  });
 
   return (
-    <div className="relative w-full h-full" style={{ cursor: isDrawingBbox ? 'crosshair' : 'default' }}>
+    <div ref={mapWrapperRef} className="relative w-full h-full" style={{ cursor: isDrawingBbox ? 'crosshair' : 'default' }}>
       <DeckGL
         viewState={currentViewState}
         onViewStateChange={handleViewStateChange}
@@ -752,11 +586,24 @@ export const VolcanoMap: React.FC<MapProps> = ({
         <MapboxMap
           mapboxAccessToken={MAPBOX_TOKEN}
           mapStyle={MAP_STYLE}
+          // Replaced by the attribution below: mapbox-gl's control uses an invalid role="list"
+          attributionControl={false}
         />
       </DeckGL>
 
+      {/* Basemap attribution (required by the OpenStreetMap tile usage policy) */}
+      <p className="absolute bottom-0 right-0 z-[1] m-0 px-1.5 py-0.5 rounded-tl bg-surface/90 text-[11px] text-ink">
+        ©{' '}
+        <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline">
+          OpenStreetMap
+        </a>{' '}
+        contributors
+      </p>
+
       {/* Tooltip overlay (hidden during drawing) */}
-      {!isDrawingBbox && renderTooltip()}
+      {!isDrawingBbox && (
+        <MapTooltip hover={hoverInfo} onMouseEnter={enterTooltip} onMouseLeave={leaveTooltip} />
+      )}
 
       {/* Loading overlay */}
       {loading && (

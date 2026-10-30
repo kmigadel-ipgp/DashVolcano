@@ -19,6 +19,9 @@ import type {
   SampleFilters,
 } from '../../types';
 import type { MatchMethod } from '../../utils/matchMethod';
+import { toStandardLongitude } from '../../utils/longitude';
+import { Combobox } from '../Common/Combobox';
+import { usePlotTheme } from '../../hooks/usePlotTheme';
 
 interface RockTypeRadarPanelProps {
   samples: Sample[];
@@ -42,12 +45,7 @@ interface APIErrorResponse {
   detail?: string;
 }
 
-const PRIMARY_COLOR = '#D97706';
-const MODE_COLORS: Record<Exclude<RockTypeComparisonMode, 'none'>, string> = {
-  global: '#2563EB',
-  volcano: '#0F766E',
-  bbox: '#059669',
-};
+// Primary selection and comparison use the compared-series colours of the theme (hooks/usePlotTheme)
 
 const buildDistributionFilters = (
   sampleFilters: SampleFilters,
@@ -63,7 +61,7 @@ const buildDistributionFilters = (
 });
 
 const formatBboxLabel = (bbox: BBox) => (
-  `${bbox.minLon.toFixed(2)}, ${bbox.minLat.toFixed(2)} → ${bbox.maxLon.toFixed(2)}, ${bbox.maxLat.toFixed(2)}`
+  `${bbox.minLon.toFixed(2)}, ${bbox.minLat.toFixed(2)} → ${toStandardLongitude(bbox.maxLon).toFixed(2)}, ${bbox.maxLat.toFixed(2)}`
 );
 
 export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
@@ -83,12 +81,12 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
   comparisonLoading = false,
   comparisonError = null,
 }) => {
+  const { palette: { series } } = usePlotTheme();
   const [globalComparisonData, setGlobalComparisonData] = useState<RockTypeDistributionResponse | null>(null);
   const [globalComparisonLoading, setGlobalComparisonLoading] = useState(false);
   const [globalComparisonError, setGlobalComparisonError] = useState<string | null>(null);
   const [volcanoOptions, setVolcanoOptions] = useState<ComparisonVolcanoOption[]>([]);
   const [volcanoSearch, setVolcanoSearch] = useState(comparisonVolcano?.label ?? comparisonVolcano?.volcano_name ?? '');
-  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const primarySamples = useMemo(
     () => filterSamplesByMethod(samples, selectedMatchMethods).filter(sample => sample.material === 'WR'),
@@ -117,9 +115,9 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
     label: primarySeriesLabel,
     rockTypes: primaryRockTypes,
     sampleCount: primarySampleCount,
-    color: PRIMARY_COLOR,
+    color: series[0],
     sourceType: 'primary',
-  }), [primaryRockTypes, primarySampleCount, primarySeriesLabel]);
+  }), [primaryRockTypes, primarySampleCount, primarySeriesLabel, series]);
 
   const comparisonRockTypes = useMemo(
     () => calculateRockTypeDistribution(
@@ -143,7 +141,7 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
         label: `Filtered DB Baseline (${globalComparisonData.sample_count} WR)`,
         rockTypes: globalComparisonData.rock_types,
         sampleCount: globalComparisonData.sample_count,
-        color: MODE_COLORS.global,
+        color: series[1],
         sourceType: 'global',
       };
     }
@@ -157,7 +155,7 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
         label: `${comparisonVolcano.volcano_name} (${comparisonSampleCount} WR)`,
         rockTypes: comparisonRockTypes,
         sampleCount: comparisonSampleCount,
-        color: MODE_COLORS.volcano,
+        color: series[1],
         sourceType: 'volcano',
       };
     }
@@ -171,13 +169,13 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
         label: `Comparison Area (${comparisonSampleCount} WR)`,
         rockTypes: comparisonRockTypes,
         sampleCount: comparisonSampleCount,
-        color: MODE_COLORS.bbox,
+        color: series[1],
         sourceType: 'bbox',
       };
     }
 
     return null;
-  }, [comparisonMode, comparisonRockTypes, comparisonSampleCount, comparisonVolcano, globalComparisonData]);
+  }, [comparisonMode, comparisonRockTypes, comparisonSampleCount, comparisonVolcano, globalComparisonData, series]);
 
   const radarSeries = useMemo(
     () => comparisonSeries ? [primarySeries, comparisonSeries] : [primarySeries],
@@ -291,47 +289,35 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
 
   return (
     <div className="space-y-4">
-      <div className="border rounded-lg bg-gray-50 p-4 space-y-4">
+      <div className="rounded-lg border border-line bg-surface-sunken p-4 space-y-4">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-gray-700">Compare against:</span>
           <button
             onClick={() => onComparisonModeChange('none')}
-            className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-              comparisonMode === 'none'
-                ? 'bg-volcano-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-            }`}
+            className="seg-btn"
+            aria-pressed={comparisonMode === 'none'}
           >
             None
           </button>
           <button
             onClick={() => onComparisonModeChange('global')}
-            className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-              comparisonMode === 'global'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-            }`}
+            className="seg-btn"
+            aria-pressed={comparisonMode === 'global'}
           >
             <Globe2 className="w-4 h-4 inline mr-2" />
             Filtered DB Baseline
           </button>
           <button
             onClick={() => onComparisonModeChange('volcano')}
-            className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-              comparisonMode === 'volcano'
-                ? 'bg-teal-700 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-            }`}
+            className="seg-btn"
+            aria-pressed={comparisonMode === 'volcano'}
           >
             Another Volcano
           </button>
           <button
             onClick={() => onComparisonModeChange('bbox')}
-            className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-              comparisonMode === 'bbox'
-                ? 'bg-emerald-700 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-            }`}
+            className="seg-btn"
+            aria-pressed={comparisonMode === 'bbox'}
           >
             <MapIcon className="w-4 h-4 inline mr-2" />
             Comparison Area
@@ -344,21 +330,25 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
 
         {comparisonMode === 'volcano' && (
           <div className="relative max-w-xl">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="radar-comparison-volcano" className="block text-sm font-medium text-gray-700 mb-2">
               Compare with another volcano
             </label>
-            <input
-              type="text"
+            <Combobox
+              id="radar-comparison-volcano"
               value={volcanoSearch}
-              onChange={(event) => {
-                setVolcanoSearch(event.target.value);
+              onValueChange={(value) => {
+                setVolcanoSearch(value);
                 onComparisonVolcanoChange(null);
-                setShowSuggestions(true);
               }}
-              onFocus={() => setShowSuggestions(true)}
-              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+              options={filteredVolcanoOptions}
+              getOptionKey={(volcano) => volcano.volcano_number}
+              getOptionLabel={(volcano) => volcano.label}
+              onSelect={(volcano) => {
+                onComparisonVolcanoChange(volcano);
+                setVolcanoSearch(volcano.label);
+              }}
               placeholder="Type to search volcanoes..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-600 focus:border-teal-600"
+              inputClassName="field"
             />
             {comparisonVolcano && (
               <button
@@ -372,24 +362,6 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
                 <X className="w-4 h-4" />
               </button>
             )}
-            {showSuggestions && filteredVolcanoOptions.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                {filteredVolcanoOptions.map(volcano => (
-                  <button
-                    key={volcano.volcano_number}
-                    type="button"
-                    onClick={() => {
-                      onComparisonVolcanoChange(volcano);
-                      setVolcanoSearch(volcano.label);
-                      setShowSuggestions(false);
-                    }}
-                    className="w-full text-left px-4 py-2 hover:bg-teal-50 text-sm text-gray-700"
-                  >
-                    {volcano.label}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
         )}
 
@@ -399,18 +371,14 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
               <button
                 onClick={onStartComparisonBbox}
                 disabled={isDrawingComparisonBbox}
-                className={`px-4 py-2 rounded-md font-medium transition-colors ${
-                  isDrawingComparisonBbox
-                    ? 'bg-emerald-600 text-white cursor-not-allowed'
-                    : 'bg-emerald-700 text-white hover:bg-emerald-800'
-                }`}
+                className="btn-primary disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {isDrawingComparisonBbox ? 'Drawing comparison area...' : 'Draw comparison area'}
               </button>
               {comparisonBbox && (
                 <button
                   onClick={onClearComparisonBbox}
-                  className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100"
+                  className="btn-secondary"
                 >
                   Clear comparison area
                 </button>
@@ -420,7 +388,7 @@ export const RockTypeRadarPanel: React.FC<RockTypeRadarPanelProps> = ({
               Draw a second bbox on the map. It is used only for radar comparison and does not replace the primary map selection.
             </div>
             {comparisonBbox && (
-              <div className="text-sm font-mono text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-md p-3">
+              <div className="note font-mono text-gray-900">
                 {formatBboxLabel(comparisonBbox)}
               </div>
             )}
