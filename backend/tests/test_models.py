@@ -128,12 +128,8 @@ class TestSampleModel:
             sample_name="Test Sample",
             db="GEOROC",
             rock_type="Basalt",
-            tectonic_setting="Intraplate",
-            oxides={
-                "SIO2(WT%)": 54.5,
-                "TIO2(WT%)": 1.2,
-                "AL2O3(WT%)": 15.3
-            },
+            tectonic_setting={"sample": {"r": "intraplate", "c": "oceanic"}, "ui": "Intraplate"},
+            oxides={"SIO2": 54.5, "TIO2": 1.2, "AL2O3": 15.3},
             geometry=Geometry(type=GeometryType.Point, coordinates=[131.6, 34.5]),
             bbox=[131.6, 34.5, 131.6, 34.5]
         )
@@ -141,6 +137,8 @@ class TestSampleModel:
         assert sample.sample_id == "SAMPLE_001"
         assert sample.db == "GEOROC"
         assert sample.rock_type == "Basalt"
+        assert sample.tectonic_setting.ui == "Intraplate"
+        assert sample.oxides.SIO2 == 54.5
     
     def test_minimal_sample(self):
         """Test creating a minimal sample with only required fields."""
@@ -168,7 +166,7 @@ class TestVolcanoModel:
             primary_volcano_type="Shield",
             country="Japan",
             elevation=641,
-            tectonic_setting="Subduction zone",
+            tectonic_setting={"volcano": {"r": "subduction", "c": "continental"}, "ui": "Subduction zone"},
             geometry=Geometry(type=GeometryType.Point, coordinates=[131.6, 34.5]),
             bbox=[131.6, 34.5, 131.6, 34.5]
         )
@@ -279,14 +277,14 @@ class TestVEIDistribution:
 
 
 class TestOxidesModel:
-    """Test Oxides model with field aliases."""
+    """Test Oxides model (documents store plain oxide names, e.g. oxides.SIO2)."""
     
-    def test_oxides_with_parentheses(self):
-        """Test that oxide field aliases work correctly."""
+    def test_oxides_by_name(self):
+        """Test that oxide fields are populated from their stored names."""
         oxides = Oxides(**{
-            "SIO2(WT%)": 54.5,
-            "TIO2(WT%)": 1.2,
-            "AL2O3(WT%)": 15.3
+            "SIO2": 54.5,
+            "TIO2": 1.2,
+            "AL2O3": 15.3
         })
         
         assert oxides.SIO2 == 54.5

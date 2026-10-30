@@ -1,5 +1,6 @@
 import React from 'react';
-import Plot from 'react-plotly.js';
+import { ThemedPlot } from './ThemedPlot';
+import { useIsPhone, chartTitle } from '../../hooks/useIsPhone';
 
 interface VEIBarChartProps {
   /** VEI counts object with VEI levels as keys */
@@ -21,6 +22,7 @@ export const VEIBarChart: React.FC<VEIBarChartProps> = ({
   volcanoName,
   color,
 }) => {
+  const isPhone = useIsPhone();
   // VEI levels in order (0-8 + unknown)
   const veiLevels = ['0', '1', '2', '3', '4', '5', '6', '7', '8', 'unknown'];
   
@@ -80,6 +82,8 @@ export const VEIBarChart: React.FC<VEIBarChartProps> = ({
         opacity: 0.8,
       },
       text: hoverText,
+      // Text is for the hover label only (drawn inside the bars it was unreadable)
+      textposition: 'none',
       hoverinfo: 'text',
       name: volcanoName,
     },
@@ -87,27 +91,23 @@ export const VEIBarChart: React.FC<VEIBarChartProps> = ({
   
   return (
     <div className="w-full h-full">
-      <Plot
+      <ThemedPlot
         data={plotlyData}
         layout={{
           title: {
-            text: `VEI Distribution - ${volcanoName}`,
+            ...chartTitle(`VEI Distribution - ${volcanoName}`, isPhone),
             font: { size: 14 },
           },
           xaxis: {
             title: { text: 'VEI Level' },
-            gridcolor: 'rgba(200, 200, 200, 0.3)',
           },
           yaxis: {
             title: { text: 'Number of Eruptions' },
-            gridcolor: 'rgba(200, 200, 200, 0.3)',
           },
           autosize: true,
           hovermode: 'closest',
           showlegend: false,
           margin: { l: 60, r: 40, t: 60, b: 60 },
-          plot_bgcolor: 'rgba(250, 250, 250, 1)',
-          paper_bgcolor: 'white',
           bargap: 0.2,
         }}
         config={{

@@ -1,3 +1,4 @@
+import { PLOT_PALETTES } from '../hooks/usePlotTheme';
 /**
  * Color utilities for rock types and visualizations
  * Colors are dynamically generated from API data for consistency
@@ -435,3 +436,14 @@ export function hexToRgbArray(hex: string, alpha: number = 255): [number, number
   
   return [rgb.r, rgb.g, rgb.b, alpha];
 }
+
+/**
+ * Text colour for a compared-volcano series colour: the chart colours are kept
+ * for marks, but text uses a variant that is readable in both themes (index.css).
+ */
+const SERIES_TEXT_COLORS: Record<string, string> = Object.fromEntries(
+  [PLOT_PALETTES.light, PLOT_PALETTES.dark].flatMap((palette) =>
+    palette.series.map((color, i) => [color.toLowerCase(), `rgb(var(--series-${i + 1}-text))`]),
+  ),
+);
+export const seriesTextColor = (color: string): string => SERIES_TEXT_COLORS[color.toLowerCase()] ?? color;

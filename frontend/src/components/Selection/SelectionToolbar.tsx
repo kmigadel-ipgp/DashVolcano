@@ -64,7 +64,7 @@ export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({
     ? `Download ${effectiveDownloadCount} ${downloadScopeLabel}`
     : `Download ${effectiveDownloadCount} ${downloadScopeLabel} after confidence filter`;
   return (
-    <div className="bg-white rounded-lg shadow-lg p-2 flex flex-col gap-2 w-fit">
+    <div className="bg-white rounded-lg shadow-md border border-line p-2 flex flex-col gap-2 w-fit">
       {/* Lasso Tool */}
       <button
         onClick={() => onModeChange(mode === 'lasso' ? 'none' : 'lasso')}

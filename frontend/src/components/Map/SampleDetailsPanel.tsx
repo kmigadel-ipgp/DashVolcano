@@ -5,7 +5,6 @@ import {
   getMatchMethod,
   getMatchMethodLabel,
   getMatchMethodColorHex,
-  getMatchMethodIcon,
   getVolcanoName,
   getVolcanoNumber,
   getDistance,
@@ -50,7 +49,6 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
   const method = getMatchMethod(matching_metadata);
   const methodLabel = getMatchMethodLabel(method);
   const methodColor = getMatchMethodColorHex(method);
-  const methodIcon = getMatchMethodIcon(method);
   const volcanoName = getVolcanoName(matching_metadata);
   const volcanoNumber = getVolcanoNumber(matching_metadata);
   const distance = getDistance(matching_metadata);
@@ -94,7 +92,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
     <div className="absolute top-4 right-4 z-20 w-[22rem] max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-2xl overflow-hidden">
       {/* Header */}
       <div className="bg-volcano-600 text-white p-4 flex items-center justify-between">
-        <h3 className="font-semibold text-lg">Sample Details</h3>
+        <h2 className="font-semibold text-lg">Sample Details</h2>
         <button
           onClick={onClose}
           className="hover:bg-volcano-700 rounded p-1 transition-colors"
@@ -179,10 +177,10 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
             <div className="relative group flex-shrink-0">
               <button
                 onClick={() => setShowMethodExplanation(!showMethodExplanation)}
-                className="hover:bg-blue-50 rounded p-0.5 transition-colors mt-0.5"
+                className="hover:bg-gray-100 rounded p-0.5 transition-colors mt-0.5"
                 title="Click to show/hide association method explanation"
               >
-                <Info className="w-4 h-4 text-blue-500" />
+                <Info className="w-4 h-4 text-ink-muted" />
               </button>
             </div>
             <div className="flex-1">
@@ -195,11 +193,10 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                   border: `1px solid ${methodColor}40`,
                 }}
               >
-                <span className="text-sm">{methodIcon}</span>
                 <span>{methodLabel}</span>
               </div>
               {showMethodExplanation && (
-                <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-gray-600 leading-relaxed space-y-2">
+                <div className="mt-2 note text-xs leading-relaxed space-y-2">
                   <p className="font-semibold text-gray-800">How is a sample linked to a volcano?</p>
                   <p>
                     Association is deliberately simple and explainable. A sample is linked to
@@ -207,14 +204,14 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                     explicitly names a volcano — in which case the sample is linked directly to
                     that <strong>named volcano at any distance</strong> (literature override).
                   </p>
-                  <div className="bg-white p-2 rounded border border-blue-200 space-y-1">
+                  <div className="bg-surface p-2 rounded border border-line space-y-1">
                     <p>
-                      <span className="font-mono text-green-700">📚 Literature match</span> — a
+                      <span className="font-mono text-green-700">Literature match</span> — a
                       volcano named in the publication title which is located at ≤ 50 km to avoid false positives matching
                       due to volcano name ambiguity (eg.: "Late" (243090)).
                     </p>
                     <p>
-                      <span className="font-mono text-blue-700">📍 Nearest (≤ 15 km)</span> — the
+                      <span className="font-mono text-blue-700">Nearest (≤ 15 km)</span> — the
                       closest volcano within range.
                     </p>
                     <p>
@@ -233,17 +230,17 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
               <div className="relative group flex-shrink-0">
                 <button
                   onClick={() => setShowLiteratureExplanation(!showLiteratureExplanation)}
-                  className="hover:bg-blue-50 rounded p-0.5 transition-colors mt-0.5"
+                  className="hover:bg-gray-100 rounded p-0.5 transition-colors mt-0.5"
                   title="Click to show/hide literature evidence explanation"
                 >
-                  <BookOpen className="w-4 h-4 text-indigo-500" />
+                  <BookOpen className="w-4 h-4 text-ink-muted" />
                 </button>
               </div>
               <div className="flex-1">
                 <p className="text-xs text-gray-500">Literature Evidence</p>
                 <div className="flex items-center gap-2 flex-wrap">
                   {litEvidence.type && litEvidence.type !== 'none' && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200 capitalize">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 border border-line capitalize">
                       {litEvidence.type}
                     </span>
                   )}
@@ -252,7 +249,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                   </span>
                 </div>
                 {showLiteratureExplanation && (
-                  <div className="mt-2 p-2 bg-indigo-50 border border-indigo-200 rounded text-xs text-gray-600 leading-relaxed">
+                  <div className="mt-2 note text-xs leading-relaxed">
                     <p className="font-semibold mb-1">Literature Evidence</p>
                     <p>
                       Text-based evidence derived from the sample's publication metadata.
@@ -261,7 +258,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
                       weaker textual signal recorded on a nearest-based association.
                     </p>
                     {litEvidence.src && litEvidence.src !== 'none' && (
-                      <p className="mt-1.5 text-indigo-600">
+                      <p className="mt-1.5 text-gray-700">
                         <strong>Source:</strong> {litEvidence.src}
                       </p>
                     )}
@@ -297,7 +294,7 @@ export const SampleDetailsPanel: React.FC<SampleDetailsPanelProps> = ({
         {/* Chemical Composition */}
         {majorOxides.length > 0 && (
           <div className="mt-4 pt-4 border-t border-gray-200">
-            <h4 className="text-sm font-semibold text-gray-700 mb-3">Chemical Composition</h4>
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Chemical Composition</h3>
             <div className="grid grid-cols-2 gap-2">
               {majorOxides.map((oxide) => (
                 <div key={oxide.name} className="flex justify-between text-sm">

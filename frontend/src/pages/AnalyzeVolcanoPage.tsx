@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Mountain, Download, TrendingUp } from 'lucide-react';
+import { Mountain, Download } from 'lucide-react';
 import { TASPlot } from '../components/Charts/TASPlot';
 import { AFMPlot } from '../components/Charts/AFMPlot';
 import { RockTypeDistributionChart } from '../components/Charts/RockTypeDistributionChart';
@@ -24,6 +24,9 @@ import {
 import type { Sample } from '../types';
 import type { MatchMethod } from '../utils/matchMethod';
 import { filterSamplesByMethod, calculateRockTypeDistribution } from '../utils/matchMethod';
+import { Combobox } from '../components/Common/Combobox';
+import { usePlotTheme } from '../hooks/usePlotTheme';
+import { VolcanoSamplesMap } from '../components/Map/VolcanoSamplesMap';
 
 interface ChemicalAnalysisData {
   volcano_number: number;
@@ -46,10 +49,10 @@ interface ChemicalAnalysisData {
  * - CSV data export
  */
 const AnalyzeVolcanoPage: React.FC = () => {
+  const { palette: { series } } = usePlotTheme();
   const [volcanoes, setVolcanoes] = useState<VolcanoAutocompleteSource[]>([]);
   const [selectedVolcano, setSelectedVolcano] = useState<VolcanoAutocompleteOption | null>(null);
   const [searchInput, setSearchInput] = useState('');
-  const [showSuggestions, setShowSuggestions] = useState(false);
   
   const [chemicalData, setChemicalData] = useState<ChemicalAnalysisData | null>(null);
   const [samples, setSamples] = useState<Sample[]>([]);
@@ -160,7 +163,6 @@ const AnalyzeVolcanoPage: React.FC = () => {
   const handleVolcanoSelect = (volcano: VolcanoAutocompleteOption) => {
     setSelectedVolcano(volcano);
     setSearchInput(volcano.label);
-    setShowSuggestions(false);
   };
 
   // Filter samples by confidence level
@@ -188,7 +190,7 @@ const AnalyzeVolcanoPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+      <header className="bg-surface border-b border-line">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-3">
             <Mountain className="w-8 h-8 text-volcano-600" aria-hidden="true" />
@@ -201,41 +203,23 @@ const AnalyzeVolcanoPage: React.FC = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" role="main">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Volcano Selection */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="card p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Select Volcano</h2>
           
           <div className="relative max-w-md">
-            <input
-              type="text"
+            <Combobox
               value={searchInput}
-              onChange={(e) => {
-                setSearchInput(e.target.value);
-                setShowSuggestions(true);
-              }}
-              onFocus={() => setShowSuggestions(true)}
-              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+              onValueChange={setSearchInput}
+              options={filteredVolcanoNames}
+              getOptionKey={(volcano) => volcano.volcano_number}
+              getOptionLabel={(volcano) => volcano.label}
+              onSelect={handleVolcanoSelect}
               placeholder="Type to search volcanoes..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-volcano-500 focus:border-volcano-500"
-              aria-label="Search for volcano"
+              ariaLabel="Search for volcano"
+              inputClassName="field"
             />
-            
-            {showSuggestions && filteredVolcanoNames.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                {filteredVolcanoNames.map((volcano) => (
-                  <button
-                    key={volcano.volcano_number}
-                    type="button"
-                    onClick={() => handleVolcanoSelect(volcano)}
-                    className="w-full text-left px-4 py-2 hover:bg-volcano-50 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-volcano-500 transition-colors duration-200"
-                    aria-label={`Select ${volcano.label}`}
-                  >
-                    {volcano.label}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
         </div>
 
@@ -277,7 +261,7 @@ const AnalyzeVolcanoPage: React.FC = () => {
         {chemicalData && !loading && selectedVolcano && (
           <>
             {/* Summary Stats */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+            <div className="card p-6 mb-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900">
                   {chemicalData.volcano_name}
@@ -285,7 +269,7 @@ const AnalyzeVolcanoPage: React.FC = () => {
                 <button
                   onClick={handleDownloadCSV}
                   className="flex items-center gap-2 px-4 py-2 bg-volcano-600 text-white rounded-lg hover:bg-volcano-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-volcano-500 focus:ring-offset-2"
-                  aria-label="Download chemical analysis data as CSV"
+                  aria-label="Download CSV of the chemical analysis data"
                   title="Download CSV (Ctrl+D / Cmd+D)"
                 >
                   <Download className="w-4 h-4" aria-hidden="true" />
@@ -328,7 +312,7 @@ const AnalyzeVolcanoPage: React.FC = () => {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                     {Object.entries(filteredRockTypes).map(([rockType, count]) => (
                       <div key={rockType} className="flex justify-between items-center bg-gray-50 rounded px-3 py-2">
-                        <span className="text-xs text-gray-600 truncate">{rockType}</span>
+                        <span className="text-xs text-gray-600 min-w-0 break-words">{rockType}</span>
                         <span className="text-xs font-semibold text-gray-900 ml-2">{count}</span>
                       </div>
                     ))}
@@ -337,15 +321,27 @@ const AnalyzeVolcanoPage: React.FC = () => {
               )}
             </div>
 
+            {/* Location of the volcano and of its samples */}
+            {selectedVolcano && (
+              <section className="card p-6 mb-6" aria-labelledby="analyze-location">
+                <h3 id="analyze-location" className="eyebrow mb-3">Location and Samples</h3>
+                <VolcanoSamplesMap
+                  volcanoNumber={selectedVolcano.volcano_number}
+                  volcanoName={selectedVolcano.volcano_name}
+                  matchMethods={selectedMatchMethods}
+                />
+              </section>
+            )}
+
             {/* Rock Type Distribution */}
             {Object.keys(filteredRockTypes).length > 0 && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Rock Type Distribution</h3>
+              <div className="card p-6 mb-6">
+                <h3 className="eyebrow mb-3">Rock Type Distribution</h3>
                 <RockTypeDistributionChart
                   volcanoes={[{
                     volcanoName: chemicalData.volcano_name,
                     rockTypes: filteredRockTypes,
-                    color: "#DC2626"
+                    color: series[0]
                   }]}
                 />
               </div>
@@ -354,12 +350,11 @@ const AnalyzeVolcanoPage: React.FC = () => {
             {/* Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* TAS Diagram - Rock Type */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="card p-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <TrendingUp className="w-5 h-5 text-volcano-600" />
-                  <h3 className="text-lg font-semibold text-gray-900">TAS Diagram (by Rock Type)</h3>
+                  <h3 className="eyebrow">TAS Diagram (by Rock Type)</h3>
                 </div>
-                <div className="h-[500px]">
+                <div className="h-[640px] sm:h-[500px]">
                   <TASPlot 
                     samples={filteredSamples}
                     colorBy="rock_type"
@@ -368,22 +363,21 @@ const AnalyzeVolcanoPage: React.FC = () => {
               </div>
 
               {/* TAS Diagram - VEI */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="card p-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <TrendingUp className="w-5 h-5 text-volcano-600" />
-                  <h3 className="text-lg font-semibold text-gray-900">TAS Diagram (by VEI)</h3>
+                  <h3 className="eyebrow">TAS Diagram (by VEI)</h3>
                 </div>
                 {veiLoading ? (
                   <ChartSkeleton height="500px" />
                 ) : filteredSamplesWithVEI.length > 0 ? (
                   <>
-                    <div className="h-[500px]">
+                    <div className="h-[640px] sm:h-[500px]">
                       <TASPlot 
                         samples={filteredSamplesWithVEI}
                         colorBy="vei"
                       />
                     </div>
-                    <div className="mt-3 text-sm text-gray-600 bg-blue-50 border-l-4 border-blue-400 p-3">
+                    <div className="mt-3 note">
                       <strong>VEI Mode:</strong> Showing {filteredSamplesWithVEI.length} of {samplesWithVEI.length} samples (
                       {samplesWithVEI.length > 0 ? ((filteredSamplesWithVEI.length / samplesWithVEI.length) * 100).toFixed(1) : 0}% after filtering) matched with eruption VEI by year. 
                       Samples are colored by Volcanic Explosivity Index (0-8).
@@ -409,19 +403,18 @@ const AnalyzeVolcanoPage: React.FC = () => {
               </div>
 
               {/* AFM Diagram */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="card p-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <TrendingUp className="w-5 h-5 text-volcano-600" />
-                  <h3 className="text-lg font-semibold text-gray-900">AFM Diagram</h3>
+                  <h3 className="eyebrow">AFM Diagram</h3>
                 </div>
-                <div className="h-[500px]">
+                <div className="h-[640px] sm:h-[500px]">
                   <AFMPlot samples={filteredSamples} />
                 </div>
               </div>
             </div>
           </>
         )}
-      </main>
+      </div>
     </div>
   );
 };

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import Plot from 'react-plotly.js';
+import { ThemedPlot } from './ThemedPlot';
 import type { Sample } from '../../types';
 import { fetchAFMBoundary } from '../../api/analytics';
 import { getRockTypeColor } from '../../utils/colors';
 import { getMatchMethod, getMatchMethodLabel, getVolcanoName } from '../../utils/matchMethod';
+import { useIsPhone, PHONE_LEGEND, chartTitle } from '../../hooks/useIsPhone';
+import { usePlotTheme } from '../../hooks/usePlotTheme';
 
 interface AFMPlotProps {
   /** Array of samples to plot */
@@ -28,6 +30,8 @@ export const AFMPlot: React.FC<AFMPlotProps> = React.memo(({
   samples,
   loading = false,
 }) => {
+  const isPhone = useIsPhone();
+  const { palette } = usePlotTheme();
   const [error, setError] = useState<string | null>(null);
   const [boundaryData, setBoundaryData] = useState<Array<{a: number; f: number; m: number}>>([]);
 
@@ -177,7 +181,7 @@ export const AFMPlot: React.FC<AFMPlotProps> = React.memo(({
     mode: 'lines',
     x: triangleX,
     y: triangleY,
-    line: { color: 'black' },
+    line: { color: palette.reference },
     name: 'Triangle',
     hoverinfo: 'skip',
     showlegend: false,
@@ -244,7 +248,7 @@ export const AFMPlot: React.FC<AFMPlotProps> = React.memo(({
       mode: 'lines',
       x: boundaryCoords.map(c => c.x),
       y: boundaryCoords.map(c => c.y),
-      line: { color: 'black', width: 2, dash: 'dash' },
+      line: { color: palette.reference, width: 2, dash: 'dash' },
       name: 'Tholeiitic/Calc-Alkaline',
       hoverinfo: 'name',
       showlegend: true,
@@ -296,11 +300,11 @@ export const AFMPlot: React.FC<AFMPlotProps> = React.memo(({
 
   return (
     <div className="w-full h-full">
-      <Plot
+      <ThemedPlot
         data={plotlyData}
         layout={{
           title: {
-            text: 'AFM (Alkali-FeO-MgO) Ternary Diagram',
+            ...chartTitle('AFM (Alkali-FeO-MgO) Ternary Diagram', isPhone),
             font: { size: 16 },
           },
           xaxis: {
@@ -316,14 +320,12 @@ export const AFMPlot: React.FC<AFMPlotProps> = React.memo(({
           autosize: true,
           hovermode: 'closest',
           showlegend: true,
-          legend: {
+          legend: isPhone ? PHONE_LEGEND : {
             x: 1.05,
             y: 1,
             orientation: 'v',
           },
-          margin: { l: 60, r: 150, t: 60, b: 60 },
-          plot_bgcolor: 'rgba(250, 250, 250, 1)',
-          paper_bgcolor: 'white',
+          margin: isPhone ? { l: 50, r: 16, t: 60, b: 40 } : { l: 60, r: 150, t: 60, b: 60 },
           annotations: [
             // Vertex labels
             {
@@ -353,7 +355,7 @@ export const AFMPlot: React.FC<AFMPlotProps> = React.memo(({
               y: -0.04,
               text: `${pct}`,
               showarrow: false,
-              font: { size: 10, color: 'gray' },
+              font: { size: 10, color: palette.muted },
               xanchor: 'center' as const,
             })),
             // Percentage labels along right edge (MgO axis, 0-100% bottom to top)
@@ -364,7 +366,7 @@ export const AFMPlot: React.FC<AFMPlotProps> = React.memo(({
                 y: pos.y,
                 text: `${pct}`,
                 showarrow: false,
-                font: { size: 10, color: 'gray' },
+                font: { size: 10, color: palette.muted },
                 xanchor: 'left' as const,
                 textangle: '60' as const,
               };
@@ -377,7 +379,7 @@ export const AFMPlot: React.FC<AFMPlotProps> = React.memo(({
                 y: pos.y,
                 text: `${pct}`,
                 showarrow: false,
-                font: { size: 10, color: 'gray' },
+                font: { size: 10, color: palette.muted },
                 xanchor: 'right' as const,
                 textangle: '-60' as const,
               };
@@ -388,14 +390,14 @@ export const AFMPlot: React.FC<AFMPlotProps> = React.memo(({
               y: 0.4,
               text: 'Tholeiitic',
               showarrow: false,
-              font: { size: 12, color: 'gray' },
+              font: { size: 12, color: palette.muted },
             },
             {
               x: 0.35,
               y: 0.2,
               text: 'Calc-Alkaline',
               showarrow: false,
-              font: { size: 12, color: 'gray' },
+              font: { size: 12, color: palette.muted },
             },
           ],
         }}

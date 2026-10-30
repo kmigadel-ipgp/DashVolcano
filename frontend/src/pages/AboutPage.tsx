@@ -17,7 +17,7 @@ const AboutPage = () => {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4 max-w-7xl">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="card p-6 mb-6">
           <div className="flex items-start gap-4">
             <div className="p-3 bg-volcano-50 rounded-lg">
               <Info className="w-8 h-8 text-volcano-600" />
@@ -35,7 +35,7 @@ const AboutPage = () => {
         </div>
 
         {/* Project Overview */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="card p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
             <Mountain className="w-6 h-6 text-volcano-600" />
             <h2 className="text-2xl font-bold text-gray-900">Project Overview</h2>
@@ -54,7 +54,7 @@ const AboutPage = () => {
               and their eruption history.
             </p>
             <p>
-              Key capabilities include interactive 3D globe visualization, geochemical classification diagrams, 
+              Key capabilities include interactive map visualization, geochemical classification diagrams, 
               comparative analysis between volcanoes, timeline visualization of eruption patterns, and 
               comprehensive filtering by tectonic setting, rock type, and eruption characteristics.
             </p>
@@ -62,7 +62,7 @@ const AboutPage = () => {
         </div>
 
         {/* Data Sources */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="card p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
             <Database className="w-6 h-6 text-volcano-600" />
             <h2 className="text-2xl font-bold text-gray-900">Data Sources</h2>
@@ -123,7 +123,7 @@ const AboutPage = () => {
         </div>
 
         {/* Methodology */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="card p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
             <Microscope className="w-6 h-6 text-volcano-600" />
             <h2 className="text-2xl font-bold text-gray-900">Scientific Methodology</h2>
@@ -176,7 +176,7 @@ const AboutPage = () => {
         </div>
 
         {/* Latest Publications */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="card p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
             <FileText className="w-6 h-6 text-volcano-600" />
             <h2 className="text-2xl font-bold text-gray-900">Latest Publications</h2>
@@ -207,7 +207,7 @@ const AboutPage = () => {
         </div>
 
         {/* Technology Stack */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="card p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
             <Code className="w-6 h-6 text-volcano-600" />
             <h2 className="text-2xl font-bold text-gray-900">Technology Stack</h2>
@@ -335,22 +335,22 @@ const AboutPage = () => {
         </div>
 
         {/* Key Features */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="card p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
             <Star className="w-6 h-6 text-volcano-600" />
             <h2 className="text-2xl font-bold text-gray-900">Key Features</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-              <h3 className="font-semibold text-gray-800 mb-2">🗺️ Interactive 3D Globe</h3>
+              <h3 className="font-semibold text-gray-800 mb-2">Interactive Map</h3>
               <p className="text-gray-600 text-sm">
-                Explore volcanoes worldwide with an interactive 3D globe powered by Deck.gl, 
+                Explore volcanoes worldwide on an interactive map powered by Deck.gl, 
                 with tectonic plate boundaries and spatial filtering
               </p>
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-              <h3 className="font-semibold text-gray-800 mb-2">📊 Geochemical Analysis</h3>
+              <h3 className="font-semibold text-gray-800 mb-2">Geochemical Analysis</h3>
               <p className="text-gray-600 text-sm">
                 Visualize rock compositions with TAS and AFM diagrams, analyze chemical trends, 
                 and classify volcanic rock types
@@ -358,7 +358,7 @@ const AboutPage = () => {
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-              <h3 className="font-semibold text-gray-800 mb-2">🌋 Eruption History</h3>
+              <h3 className="font-semibold text-gray-800 mb-2">Eruption History</h3>
               <p className="text-gray-600 text-sm">
                 Track historical eruptions with timeline visualizations, VEI analysis, 
                 and frequency patterns over time
@@ -366,7 +366,7 @@ const AboutPage = () => {
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-              <h3 className="font-semibold text-gray-800 mb-2">🔍 Comparative Analysis</h3>
+              <h3 className="font-semibold text-gray-800 mb-2">Comparative Analysis</h3>
               <p className="text-gray-600 text-sm">
                 Compare multiple volcanoes side-by-side for geochemical composition, 
                 eruption patterns, and VEI statistics
@@ -374,7 +374,7 @@ const AboutPage = () => {
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-              <h3 className="font-semibold text-gray-800 mb-2">🎯 Advanced Filtering</h3>
+              <h3 className="font-semibold text-gray-800 mb-2">Advanced Filtering</h3>
               <p className="text-gray-600 text-sm">
                 Filter by tectonic setting, rock type, VEI range, geographic region, 
                 and eruption characteristics
@@ -382,7 +382,7 @@ const AboutPage = () => {
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-              <h3 className="font-semibold text-gray-800 mb-2">📥 Data Export</h3>
+              <h3 className="font-semibold text-gray-800 mb-2">Data Export</h3>
               <p className="text-gray-600 text-sm">
                 Export filtered data and analysis results to CSV format for further 
                 research and analysis
@@ -392,7 +392,7 @@ const AboutPage = () => {
         </div>
 
         {/* Contributors */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="card p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
             <Users className="w-6 h-6 text-volcano-600" />
             <h2 className="text-2xl font-bold text-gray-900">Contributors</h2>
@@ -499,7 +499,7 @@ const AboutPage = () => {
         </div>
 
         {/* Data Sources and Citation */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="card p-6">
           <div className="flex items-center gap-3 mb-4">
             <FileText className="w-6 h-6 text-volcano-600" />
             <h2 className="text-2xl font-bold text-gray-900">Data Sources and Citation</h2>
@@ -515,9 +515,10 @@ const AboutPage = () => {
             {/* GEOROC Section */}
             <div className="border border-gray-200 rounded-lg p-5 bg-gray-50">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xl font-bold text-gray-900">🔸 GEOROC</h3>
+                <h3 className="text-xl font-bold text-gray-900">GEOROC</h3>
                 <a 
                   href={externalLinks.georoc}
+                  aria-label="Open GEOROC website (new tab)"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-volcano-600 hover:text-volcano-700"
@@ -546,17 +547,17 @@ const AboutPage = () => {
               </p>
               
               <ul className="space-y-1 text-xs ml-4 mb-3">
-                <li>• Archaean Cratons: <a href="https://doi.org/10.25625/1KRR1P" target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:underline">10.25625/1KRR1P</a></li>
-                <li>• Continental Flood Basalts: <a href="https://doi.org/10.25625/WSTPOX" target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:underline">10.25625/WSTPOX</a></li>
-                <li>• Convergent Margins: <a href="https://doi.org/10.25625/PVFZCE" target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:underline">10.25625/PVFZCE</a></li>
-                <li>• Complex Volcanic Settings: <a href="https://doi.org/10.25625/1VOFM5" target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:underline">10.25625/1VOFM5</a></li>
-                <li>• Intraplate Volcanic Rocks: <a href="https://doi.org/10.25625/RZZ9VM" target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:underline">10.25625/RZZ9VM</a></li>
-                <li>• Rift Volcanics: <a href="https://doi.org/10.25625/KAIVCT" target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:underline">10.25625/KAIVCT</a></li>
-                <li>• Oceanic Plateaus: <a href="https://doi.org/10.25625/JRZIJF" target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:underline">10.25625/JRZIJF</a></li>
-                <li>• Ocean Basin Flood Basalts: <a href="https://doi.org/10.25625/AVLFC2" target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:underline">10.25625/AVLFC2</a></li>
-                <li>• Ocean Island Groups: <a href="https://doi.org/10.25625/WFJZKY" target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:underline">10.25625/WFJZKY</a></li>
-                <li>• Seamounts: <a href="https://doi.org/10.25625/JUQK7N" target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:underline">10.25625/JUQK7N</a></li>
-                <li>• Inclusions: <a href="https://doi.org/10.25625/7JW6XU" target="_blank" rel="noopener noreferrer" className="text-volcano-600 hover:underline">10.25625/7JW6XU</a></li>
+                <li>• Archaean Cratons: <a href="https://doi.org/10.25625/1KRR1P" target="_blank" rel="noopener noreferrer" className="text-volcano-600 underline hover:text-volcano-700">10.25625/1KRR1P</a></li>
+                <li>• Continental Flood Basalts: <a href="https://doi.org/10.25625/WSTPOX" target="_blank" rel="noopener noreferrer" className="text-volcano-600 underline hover:text-volcano-700">10.25625/WSTPOX</a></li>
+                <li>• Convergent Margins: <a href="https://doi.org/10.25625/PVFZCE" target="_blank" rel="noopener noreferrer" className="text-volcano-600 underline hover:text-volcano-700">10.25625/PVFZCE</a></li>
+                <li>• Complex Volcanic Settings: <a href="https://doi.org/10.25625/1VOFM5" target="_blank" rel="noopener noreferrer" className="text-volcano-600 underline hover:text-volcano-700">10.25625/1VOFM5</a></li>
+                <li>• Intraplate Volcanic Rocks: <a href="https://doi.org/10.25625/RZZ9VM" target="_blank" rel="noopener noreferrer" className="text-volcano-600 underline hover:text-volcano-700">10.25625/RZZ9VM</a></li>
+                <li>• Rift Volcanics: <a href="https://doi.org/10.25625/KAIVCT" target="_blank" rel="noopener noreferrer" className="text-volcano-600 underline hover:text-volcano-700">10.25625/KAIVCT</a></li>
+                <li>• Oceanic Plateaus: <a href="https://doi.org/10.25625/JRZIJF" target="_blank" rel="noopener noreferrer" className="text-volcano-600 underline hover:text-volcano-700">10.25625/JRZIJF</a></li>
+                <li>• Ocean Basin Flood Basalts: <a href="https://doi.org/10.25625/AVLFC2" target="_blank" rel="noopener noreferrer" className="text-volcano-600 underline hover:text-volcano-700">10.25625/AVLFC2</a></li>
+                <li>• Ocean Island Groups: <a href="https://doi.org/10.25625/WFJZKY" target="_blank" rel="noopener noreferrer" className="text-volcano-600 underline hover:text-volcano-700">10.25625/WFJZKY</a></li>
+                <li>• Seamounts: <a href="https://doi.org/10.25625/JUQK7N" target="_blank" rel="noopener noreferrer" className="text-volcano-600 underline hover:text-volcano-700">10.25625/JUQK7N</a></li>
+                <li>• Inclusions: <a href="https://doi.org/10.25625/7JW6XU" target="_blank" rel="noopener noreferrer" className="text-volcano-600 underline hover:text-volcano-700">10.25625/7JW6XU</a></li>
               </ul>
               
               <div className="bg-volcano-50 border border-volcano-200 rounded p-3">
@@ -569,7 +570,7 @@ const AboutPage = () => {
                     href="https://doi.org/10.1029/1999GC000026"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-volcano-600 hover:underline"
+                    className="text-volcano-600 underline hover:text-volcano-700"
                   >
                     https://doi.org/10.1029/1999GC000026
                   </a>
@@ -580,9 +581,10 @@ const AboutPage = () => {
             {/* PetDB Section */}
             <div className="border border-gray-200 rounded-lg p-5 bg-gray-50">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xl font-bold text-gray-900">🔸 PetDB</h3>
+                <h3 className="text-xl font-bold text-gray-900">PetDB</h3>
                 <a 
                   href="https://search.earthchem.org/"
+                  aria-label="Open PetDB / EarthChem search (new tab)"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-volcano-600 hover:text-volcano-700"
@@ -628,7 +630,7 @@ const AboutPage = () => {
                     href="https://doi.org/10.1029/1999GC000026"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-volcano-600 hover:underline"
+                    className="text-volcano-600 underline hover:text-volcano-700"
                   >
                     https://doi.org/10.1029/1999GC000026
                   </a>
@@ -640,9 +642,10 @@ const AboutPage = () => {
             {/* GVP Section */}
             <div className="border border-gray-200 rounded-lg p-5 bg-gray-50">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xl font-bold text-gray-900">🔸 Global Volcanism Program</h3>
+                <h3 className="text-xl font-bold text-gray-900">Global Volcanism Program</h3>
                 <a 
                   href={externalLinks.gvp}
+                  aria-label="Open Global Volcanism Program website (new tab)"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-volcano-600 hover:text-volcano-700"
@@ -680,7 +683,7 @@ const AboutPage = () => {
                     href="https://doi.org/10.5479/si.GVP.VOTW4-2013"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-volcano-600 hover:underline"
+                    className="text-volcano-600 underline hover:text-volcano-700"
                   >
                     https://doi.org/10.5479/si.GVP.VOTW4-2013
                   </a>
@@ -692,7 +695,7 @@ const AboutPage = () => {
                     href="https://doi.org/10.5479/si.GVP.VOTW5-2025.5.3"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-volcano-600 hover:underline"
+                    className="text-volcano-600 underline hover:text-volcano-700"
                   >
                     https://doi.org/10.5479/si.GVP.VOTW5-2025.5.3
                   </a>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import Plot from 'react-plotly.js';
+import { ThemedPlot } from './ThemedPlot';
 import { getMatchMethod, getMatchMethodLabel } from '../../utils/matchMethod';
 import type { MatchingMetadata, Petro } from '../../types';
 
@@ -137,7 +137,7 @@ export const HarkerDiagrams: React.FC<HarkerDiagramsProps> = React.memo(({ volca
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+    <div className="card p-4">
       <div className="mb-4">
         <h3 className="text-lg font-bold text-gray-900 mb-2">Harker Variation Diagrams</h3>
         <p className="text-sm text-gray-600">
@@ -147,10 +147,10 @@ export const HarkerDiagrams: React.FC<HarkerDiagramsProps> = React.memo(({ volca
       </div>
 
       {/* WR Filter Notice */}
-      <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+      <div className="mb-4 note">
         <div className="flex items-start gap-2">
-          <span className="text-blue-600 font-semibold text-sm">📊 Data Filter:</span>
-          <p className="text-sm text-blue-900">
+          <span className="font-semibold text-gray-900 whitespace-nowrap">Data filter:</span>
+          <p>
             Displaying <strong>Whole Rock (WR) samples only</strong> for accurate geochemical interpretation. 
             Minerals, glasses, and inclusions are excluded to ensure representative bulk compositions.
           </p>
@@ -161,7 +161,7 @@ export const HarkerDiagrams: React.FC<HarkerDiagramsProps> = React.memo(({ volca
       {!diagramsReady && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {HARKER_DIAGRAMS.map(({ oxide }) => (
-            <div key={`skeleton-${oxide}`} className="bg-white rounded-lg border border-gray-200 p-4">
+            <div key={`skeleton-${oxide}`} className="card p-4">
               <div className="animate-pulse">
                 <div className="h-4 bg-gray-300 rounded w-3/4 mb-3"></div>
                 <div className="h-[240px] bg-gray-200 rounded mb-3"></div>
@@ -229,8 +229,8 @@ export const HarkerDiagrams: React.FC<HarkerDiagramsProps> = React.memo(({ volca
           }
 
           return (
-            <div key={oxide} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              <Plot
+            <div key={oxide} className="card overflow-hidden">
+              <ThemedPlot
                 data={traces}
                 layout={{
                   title: { 
@@ -241,28 +241,25 @@ export const HarkerDiagrams: React.FC<HarkerDiagramsProps> = React.memo(({ volca
                     title: { text: 'SiO₂ (wt%)', font: { size: 10 } },
                     range: [40, 80],
                     showgrid: true,
-                    gridcolor: '#e5e7eb',
                     tickfont: { size: 9 }
                   },
                   yaxis: { 
                     title: { text: yaxis, font: { size: 10 } },
                     range: range,
                     showgrid: true,
-                    gridcolor: '#e5e7eb',
                     tickfont: { size: 9 }
                   },
                   height: 280,
                   margin: { l: 50, r: 20, t: 40, b: 50 },
                   showlegend: false,
                   hovermode: 'closest',
-                  paper_bgcolor: 'white',
-                  plot_bgcolor: 'white'
                 }}
                 config={{
                   displayModeBar: false,
                   responsive: true
                 }}
                 style={{ width: '100%', height: '100%' }}
+                className="plot-no-modebar"
               />
               <div className="px-3 pb-3">
                 <p className="text-xs text-gray-500 italic">{description}</p>
@@ -307,8 +304,8 @@ export const HarkerDiagrams: React.FC<HarkerDiagramsProps> = React.memo(({ volca
       </div>
 
       {/* Information Box */}
-      <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
-        <p className="text-sm text-blue-900">
+      <div className="mt-4 note">
+        <p>
           <strong>About Harker Diagrams:</strong> These diagrams plot major element oxides against SiO₂ 
           to visualize magma differentiation trends. As magma evolves from mafic to felsic compositions, 
           SiO₂ increases while MgO, FeO, and CaO generally decrease, and alkalis (Na₂O, K₂O) increase. 

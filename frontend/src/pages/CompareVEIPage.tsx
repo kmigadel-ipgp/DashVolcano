@@ -14,6 +14,10 @@ import {
   type VolcanoAutocompleteSource,
 } from '../utils/volcanoAutocomplete';
 import type { VEIDistribution, RockType } from '../types';
+import { Combobox } from '../components/Common/Combobox';
+import { HelpTooltip } from '../components/Common/HelpTooltip';
+import { usePlotTheme } from '../hooks/usePlotTheme';
+import { VolcanoSamplesMap } from '../components/Map/VolcanoSamplesMap';
 
 interface VolcanoVEISelection {
   name: string;
@@ -24,12 +28,14 @@ interface VolcanoVEISelection {
   error: string | null;
 }
 
-const VOLCANO_COLORS = ['#DC2626', '#2563EB', '#16A34A']; // red, blue, green
+// Compared volcanoes: marks use the theme series colours (hooks/usePlotTheme),
+// text uses their readable variants (index.css)
+const VOLCANO_TEXT_COLORS = ['rgb(var(--series-1-text))', 'rgb(var(--series-2-text))', 'rgb(var(--series-3-text))'];
 
 const CompareVEIPage = () => {
+  const { palette: { series } } = usePlotTheme();
   const [volcanoes, setVolcanoes] = useState<VolcanoAutocompleteSource[]>([]);
   const [searchInputs, setSearchInputs] = useState<string[]>(['', '']);
-  const [showSuggestions, setShowSuggestions] = useState<boolean[]>([false, false]);
   
   const [selections, setSelections] = useState<VolcanoVEISelection[]>([
     { name: '', number: 0, data: null, rockTypes: null, loading: false, error: null },
@@ -156,9 +162,9 @@ const CompareVEIPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+      <header className="bg-surface border-b border-line">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-3">
                 <Mountain className="w-8 h-8 text-volcano-600" aria-hidden="true" />
@@ -172,7 +178,7 @@ const CompareVEIPage = () => {
               <button
                 onClick={exportToCSV}
                 className="flex items-center gap-2 px-4 py-2 bg-volcano-600 text-white rounded-lg hover:bg-volcano-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-volcano-500 focus:ring-offset-2"
-                aria-label="Download VEI comparison data as CSV"
+                aria-label="Download Combined CSV of the VEI comparison"
                 title="Download CSV (Ctrl+D / Cmd+D)"
               >
                 <Download className="w-4 h-4" aria-hidden="true" />
@@ -184,10 +190,10 @@ const CompareVEIPage = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-8" role="main" aria-label="Compare VEI distributions">
+      <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* About VEI Info Box */}
-        <div className="mb-6 text-sm text-gray-500 bg-blue-50 p-4 rounded-lg">
-          <p className="font-semibold mb-1">About VEI:</p>
+        <div className="mb-6 note">
+          <p className="font-semibold text-gray-900 mb-1">About VEI</p>
           <p>
             The Volcanic Explosivity Index (VEI) is a logarithmic scale (0-8) measuring the
             explosiveness of volcanic eruptions based on ejecta volume and eruption column height.
@@ -199,63 +205,32 @@ const CompareVEIPage = () => {
         {selections.map((selection, index) => (
           <div
             key={selection.number || `empty-${index}`}
-            className="border-4 rounded-lg p-6 bg-white shadow-lg"
-            style={{ borderColor: VOLCANO_COLORS[index] }}
+            className="card p-6"
           >
             {/* Volcano Selector */}
             <div className="mb-6">
-              <h2 className="text-lg font-semibold mb-3" style={{ color: VOLCANO_COLORS[index] }}>
+              <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900 mb-3">
+                <span className="series-swatch" style={{ backgroundColor: series[index] }} aria-hidden="true" />
                 Volcano {index + 1}
               </h2>
               <div className="relative">
-                <input
-                  type="text"
-                  aria-label={`Search for volcano ${index + 1}`}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  placeholder={`Select volcano ${index + 1}...`}
+                <Combobox
                   value={searchInputs[index]}
-                  onChange={(e) => {
-                    const newInputs = [...searchInputs];
-                    newInputs[index] = e.target.value;
-                    setSearchInputs(newInputs);
-                    const newShow = [...showSuggestions];
-                    newShow[index] = true;
-                    setShowSuggestions(newShow);
-                  }}
-                  onFocus={() => {
-                    const newShow = [...showSuggestions];
-                    newShow[index] = true;
-                    setShowSuggestions(newShow);
-                  }}
-                  onBlur={() => {
-                    setTimeout(() => {
-                      const newShow = [...showSuggestions];
-                      newShow[index] = false;
-                      setShowSuggestions(newShow);
-                    }, 200);
-                  }}
+                  onValueChange={(value) =>
+                    setSearchInputs((prev) => prev.map((input, i) => (i === index ? value : input)))
+                  }
+                  options={
+                    searchInputs[index]
+                      ? filterVolcanoAutocompleteOptions(volcanoOptions, searchInputs[index]).slice(0, 10)
+                      : []
+                  }
+                  getOptionKey={(volcano) => volcano.volcano_number}
+                  getOptionLabel={(volcano) => volcano.label}
+                  onSelect={(volcano) => handleVolcanoSelect(index, volcano)}
+                  placeholder={`Select volcano ${index + 1}...`}
+                  ariaLabel={`Search for volcano ${index + 1}`}
+                  inputClassName="field"
                 />
-                {showSuggestions[index] && searchInputs[index] && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                    {filterVolcanoAutocompleteOptions(volcanoOptions, searchInputs[index])
-                      .slice(0, 10)
-                      .map((volcano) => (
-                        <button
-                          key={volcano.volcano_number}
-                          type="button"
-                          onClick={() => {
-                            handleVolcanoSelect(index, volcano);
-                            const newShow = [...showSuggestions];
-                            newShow[index] = false;
-                            setShowSuggestions(newShow);
-                          }}
-                          className="w-full px-4 py-2 text-left hover:bg-blue-50 transition-colors"
-                        >
-                          {volcano.label}
-                        </button>
-                      ))}
-                  </div>
-                )}
               </div>
               {selection.name && (
                 <button
@@ -265,7 +240,7 @@ const CompareVEIPage = () => {
                     newInputs[index] = '';
                     setSearchInputs(newInputs);
                   }}
-                  aria-label={`Clear volcano ${index + 1} selection`}
+                  aria-label={`Clear selection of volcano ${index + 1}`}
                   className="mt-2 text-sm text-red-600 hover:text-red-800 transition-colors duration-200"
                 >
                   Clear selection
@@ -297,16 +272,24 @@ const CompareVEIPage = () => {
                   <VEIBarChart
                     veiCounts={selection.data.vei_counts}
                     volcanoName={selection.data.volcano_name}
-                    color={VOLCANO_COLORS[index]}
+                    color={series[index]}
                   />
                 </div>
+
+                {/* Location of the volcano and of its samples */}
+                {selection.number > 0 && (
+                  <div className="mb-6">
+                    <h3 className="eyebrow mb-3">Location and Samples</h3>
+                    <VolcanoSamplesMap volcanoNumber={selection.number} volcanoName={selection.name} height={260} />
+                  </div>
+                )}
 
                 {/* Rock Type Badges */}
                 {selection.rockTypes && (
                   <div className="mb-6">
                     <RockTypeBadges 
                       rockTypes={selection.rockTypes}
-                      color={VOLCANO_COLORS[index]}
+                      color={series[index]}
                     />
                   </div>
                 )}
@@ -366,12 +349,12 @@ const CompareVEIPage = () => {
 
       {/* Comparison Insights */}
       {selections[0].data && selections[1].data && (
-        <div className="mt-8 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6">
+        <section className="mt-8 card p-6" aria-labelledby="vei-insights">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-semibold">📊 Comparison Insights</h3>
+            <h2 id="vei-insights" className="text-xl font-semibold text-gray-900">Comparison insights</h2>
             <details className="text-xs">
-              <summary className="cursor-pointer text-blue-700 hover:text-blue-900 font-medium">How are these calculated?</summary>
-              <div className="mt-2 p-3 bg-white rounded-lg shadow-sm space-y-2 max-w-md">
+              <summary className="cursor-pointer text-volcano-700 hover:text-volcano-800 font-medium">How are these calculated?</summary>
+              <div className="mt-2 p-3 card space-y-2 max-w-md">
                 <div>
                   <p className="font-semibold text-gray-700">More Explosive:</p>
                   <p className="text-gray-600">Compares average VEI across all eruptions for each volcano.</p>
@@ -409,7 +392,7 @@ const CompareVEIPage = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* More Explosive */}
-            <div className="bg-white rounded-lg p-4 shadow">
+            <div className="card p-4">
               <p className="text-sm text-gray-600 mb-1">More Explosive</p>
               <p className="text-lg font-bold" style={{ color: getMoreExplosiveColor(selections) }}>
                 {getMoreExplosiveVolcano(selections)}
@@ -418,7 +401,7 @@ const CompareVEIPage = () => {
             </div>
 
             {/* More Active */}
-            <div className="bg-white rounded-lg p-4 shadow">
+            <div className="card p-4">
               <p className="text-sm text-gray-600 mb-1">More Active</p>
               <p className="text-lg font-bold" style={{ color: getMoreActiveColor(selections) }}>
                 {getMoreActiveVolcano(selections)}
@@ -427,12 +410,14 @@ const CompareVEIPage = () => {
             </div>
 
             {/* Similar VEI */}
-            <div className="bg-white rounded-lg p-4 shadow">
+            <div className="card p-4">
               <div className="flex items-center gap-2 mb-1">
                 <p className="text-sm text-gray-600">Similarity Score</p>
-                <div className="group relative">
-                  <span className="text-blue-500 cursor-help text-xs border border-blue-500 rounded-full w-4 h-4 inline-flex items-center justify-center relative -translate-y-px">?</span>
-                  <div className="hidden group-hover:block absolute z-50 w-80 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg -left-36 top-6">
+                <HelpTooltip
+                  id="vei-similarity-help"
+                  label="How the similarity score is calculated"
+                  className="w-80 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg -left-36 top-6"
+                >
                     <p className="font-semibold mb-1">How it's calculated:</p>
                     <p>Compares the percentage distribution of eruptions across VEI levels. For each VEI level, calculates how similar the proportions are, weighted by the total number of eruptions at that level.</p>
                     {(() => {
@@ -466,18 +451,17 @@ const CompareVEIPage = () => {
                       return null;
                     })()}
                     <p className="mt-1 text-gray-300">100% = identical distributions, 0% = completely different</p>
-                  </div>
-                </div>
+                </HelpTooltip>
               </div>
-              <p className="text-lg font-bold text-purple-600">
+              <p className="text-lg font-bold text-gray-900">
                 {getVEISimilarity(selections)}%
               </p>
               <p className="text-xs text-gray-500 mt-1">Distribution overlap</p>
             </div>
           </div>
-        </div>
+        </section>
       )}
-      </main>
+      </div>
     </div>
   );
 };
@@ -529,7 +513,6 @@ function formatDateRange(dateRange?: { start?: string; end?: string }): string {
     
     // Extract year, handling BCE dates (negative years)
     let startYear: number;
-    let endYear: number;
     
     if (dateRange.start.startsWith('-')) {
       // BCE date: extract year from string like "-032-12-31T00:00:00Z"
@@ -540,7 +523,7 @@ function formatDateRange(dateRange?: { start?: string; end?: string }): string {
       startYear = startDate.getFullYear();
     }
     
-    endYear = endDate.getFullYear();
+    const endYear = endDate.getFullYear();
     
     // Format with BCE/CE notation if needed
     const startStr = startYear < 0 ? `${Math.abs(startYear)} BCE` : String(startYear);
@@ -582,8 +565,8 @@ function getMoreExplosiveColor(selections: VolcanoVEISelection[]): string {
   const avg0 = selections[0].data ? getAverageVEI(selections[0].data.vei_counts) : 0;
   const avg1 = selections[1].data ? getAverageVEI(selections[1].data.vei_counts) : 0;
 
-  if (Math.abs(avg0 - avg1) < 0.1) return '#6B7280';
-  return avg0 > avg1 ? VOLCANO_COLORS[0] : VOLCANO_COLORS[1];
+  if (Math.abs(avg0 - avg1) < 0.1) return 'rgb(var(--series-neutral-text))';
+  return avg0 > avg1 ? VOLCANO_TEXT_COLORS[0] : VOLCANO_TEXT_COLORS[1];
 }
 
 function getMoreActiveVolcano(selections: VolcanoVEISelection[]): string {
@@ -598,8 +581,8 @@ function getMoreActiveColor(selections: VolcanoVEISelection[]): string {
   const total0 = selections[0].data?.total_eruptions || 0;
   const total1 = selections[1].data?.total_eruptions || 0;
 
-  if (total0 === total1) return '#6B7280';
-  return total0 > total1 ? VOLCANO_COLORS[0] : VOLCANO_COLORS[1];
+  if (total0 === total1) return 'rgb(var(--series-neutral-text))';
+  return total0 > total1 ? VOLCANO_TEXT_COLORS[0] : VOLCANO_TEXT_COLORS[1];
 }
 
 function getVEISimilarity(selections: VolcanoVEISelection[]): number {

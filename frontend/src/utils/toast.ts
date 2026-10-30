@@ -12,7 +12,7 @@ export const showSuccess = (message: string) => {
   return toast.success(message, {
     duration: 3000,
     style: {
-      background: '#10b981', // green-500
+      background: '#047857', // emerald-700 (white text ≥ 4.5:1)
       color: '#ffffff',
       fontWeight: '500',
       padding: '12px 16px',
@@ -20,7 +20,7 @@ export const showSuccess = (message: string) => {
     },
     iconTheme: {
       primary: '#ffffff',
-      secondary: '#10b981',
+      secondary: '#047857',
     },
   });
 };
@@ -32,7 +32,7 @@ export const showError = (message: string) => {
   return toast.error(message, {
     duration: 4000,
     style: {
-      background: '#ef4444', // red-500
+      background: '#b91c1c', // red-700 (white text ≥ 4.5:1)
       color: '#ffffff',
       fontWeight: '500',
       padding: '12px 16px',
@@ -40,7 +40,7 @@ export const showError = (message: string) => {
     },
     iconTheme: {
       primary: '#ffffff',
-      secondary: '#ef4444',
+      secondary: '#b91c1c',
     },
   });
 };
@@ -53,7 +53,7 @@ export const showInfo = (message: string) => {
     duration: 3000,
     icon: 'ℹ️',
     style: {
-      background: '#dc2626', // volcano-600
+      background: '#b91c1c', // volcano-700 (white text ≥ 4.5:1)
       color: '#ffffff',
       fontWeight: '500',
       padding: '12px 16px',
@@ -68,8 +68,9 @@ export const showInfo = (message: string) => {
 export const showLoading = (message: string) => {
   return toast.loading(message, {
     style: {
-      background: '#f3f4f6', // gray-100
-      color: '#1f2937', // gray-800
+      background: 'rgb(var(--surface))',
+      color: 'rgb(var(--ink))',
+      border: '1px solid rgb(var(--line))',
       fontWeight: '500',
       padding: '12px 16px',
       borderRadius: '8px',

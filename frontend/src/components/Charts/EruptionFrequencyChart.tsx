@@ -1,7 +1,8 @@
 import React from 'react';
-import Plot from 'react-plotly.js';
+import { ThemedPlot } from './ThemedPlot';
 import type { Eruption } from '../../types';
 import { dateInfoToYear, groupByPeriod, formatDecade, formatCentury } from '../../utils/dateUtils';
+import { useIsPhone, chartTitle } from '../../hooks/useIsPhone';
 
 interface EruptionFrequencyChartProps {
   eruptions: Eruption[];
@@ -18,10 +19,11 @@ const EruptionFrequencyChart: React.FC<EruptionFrequencyChartProps> = ({
   volcanoName,
   period,
 }) => {
+  const isPhone = useIsPhone();
   if (eruptions.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-sm p-4">
-        <p className="text-gray-500 text-center py-8">No eruptions found</p>
+      <div className="note text-center py-8">
+        <p>No eruptions found</p>
       </div>
     );
   }
@@ -33,8 +35,8 @@ const EruptionFrequencyChart: React.FC<EruptionFrequencyChartProps> = ({
 
   if (years.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-sm p-4">
-        <p className="text-gray-500 text-center py-8">No eruptions with known dates</p>
+      <div className="note text-center py-8">
+        <p>No eruptions with known dates</p>
       </div>
     );
   }
@@ -62,13 +64,15 @@ const EruptionFrequencyChart: React.FC<EruptionFrequencyChartProps> = ({
       line: { width: 1, color: '#1f2937' },
     },
     text: yCounts.map((count) => `${count} eruption${count === 1 ? '' : 's'}`),
+    // Counts are read on the y axis and in the hover label (in-bar text was too small to read)
+    textposition: 'none',
     hoverinfo: 'text',
     hovertext: yCounts.map((count, i) => `<b>${xLabels[i]}</b><br>${count} eruption${count === 1 ? '' : 's'}`),
   };
 
   const layout: Partial<Plotly.Layout> = {
     title: {
-      text: `${volcanoName} - Eruption Frequency (${period === 'decade' ? 'by Decade' : 'by Century'})`,
+      ...chartTitle(`${volcanoName} - Eruption Frequency (${period === 'decade' ? 'by Decade' : 'by Century'})`, isPhone),
     },
     xaxis: {
       title: { text: period === 'decade' ? 'Decade' : 'Century' },
@@ -94,8 +98,8 @@ const EruptionFrequencyChart: React.FC<EruptionFrequencyChartProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-4">
-      <Plot data={[trace]} layout={layout} config={config} style={{ width: '100%', height: '100%' }} />
+    <div className="h-full">
+      <ThemedPlot data={[trace]} layout={layout} config={config} style={{ width: '100%', height: '100%' }} />
     </div>
   );
 };
