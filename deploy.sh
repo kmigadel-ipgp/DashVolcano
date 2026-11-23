@@ -89,6 +89,11 @@ cd "$ROOT"
 step "API restart"
 mkdir -p logs
 # Restarting from the ecosystem file also applies changes to the PM2 configuration
+# startOrRestart does not apply every change (e.g. the script path): recreate the app when the file changed
+if [[ "$PREV" != "$NEW" ]] && ! git diff --quiet "$PREV" "$NEW" -- "$ECOSYSTEM"; then
+  echo "$ECOSYSTEM changed: recreating the PM2 app."
+  pm2 delete dashvolcano-api >/dev/null 2>&1 || true
+fi
 pm2 startOrRestart "$ECOSYSTEM" --update-env
 
 rollback() {
