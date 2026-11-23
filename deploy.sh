@@ -18,7 +18,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PYTHON="${PYTHON:-/root/.pyenv/versions/3.10.12/bin/python3}"
+PYTHON="$ROOT/backend/.venv/bin/python"
+UV="${UV:-$(command -v uv || echo "$HOME/.local/bin/uv")}"
 BRANCH="${BRANCH:-main}"
 API_URL="${API_URL:-http://127.0.0.1:8000}"
 ECOSYSTEM="ecosystem.production.config.js"
@@ -55,9 +56,14 @@ if [[ "$PREV" != "$NEW" ]] && ! git diff --quiet "$PREV" "$NEW" -- backend/pypro
   echo "Backend dependencies changed since the previous deployment:"
   git diff "$PREV" "$NEW" -- backend/pyproject.toml | grep -E '^[+-] ' || true
 fi
+# Install exactly the versions of backend/uv.lock in backend/.venv, with Ubuntu's Python
+# (its security updates come with apt). --locked: stop if uv.lock does not match pyproject.toml.
+[[ -x "$UV" ]] || fail "uv is not installed (see README, First Installation)."
+(cd backend && UV_PYTHON_PREFERENCE=only-system "$UV" sync --locked) \
+  || fail "uv sync failed; the site is unchanged. To go back: git reset --keep $PREV"
 # Importing the app loads the settings (.env) and every router, without connecting to MongoDB
 if ! PYTHONPATH="$ROOT" "$PYTHON" -c "import backend.main" ; then
-  fail "The backend does not import with $PYTHON (missing dependency?). Install it, then run: $0 --no-pull
+  fail "The backend does not import with $PYTHON. Check backend/pyproject.toml, then run: $0 --no-pull
    To go back instead: git reset --keep $PREV"
 fi
 echo "Backend imports with $("$PYTHON" -V 2>&1)."

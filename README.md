@@ -7,7 +7,7 @@ Modern web application for exploring volcanic geochemical data with interactive 
 ### Prerequisites
 
 **Backend:**
-- Python 3.10+
+- Python 3.12+
 - MongoDB access (Atlas or local)
 - `uv` package manager (recommended) or `pip`
 
@@ -184,7 +184,7 @@ browser ──https──> nginx ──┬── /                      → fron
 
 - **nginx** serves the frontend build and proxies the API. It is the only entry point: the API listens on `127.0.0.1` only.
 - **PM2** runs the API (`ecosystem.production.config.js`) and restarts it if it stops. PM2 itself is started at boot by systemd (`pm2-root` service) and restores the list saved by `pm2 save`.
-- **Python**: the production config uses the pyenv Python 3.10 (`/root/.pyenv/versions/3.10.12/bin/python3`), where the backend dependencies are installed. No virtual environment. Do not use `/usr/bin/python3`: it is Ubuntu's own Python, which apt and `do-release-upgrade` depend on. 
+- **Python**: the API runs in `backend/.venv`, created by `uv sync` from `backend/uv.lock` with Ubuntu's Python 3.12 (`/usr/bin/python3.12`, security updates through apt). `deploy.sh` runs `uv sync` at each deployment.
 - **Monitoring**: PM2 restarts the API if it stops (up to 10 failed restarts in a row, then it marks it `errored`). Check with `pm2 ls`.
 - **Configuration**: `/root/DashVolcano/.env` (repository root).
 
@@ -209,12 +209,7 @@ cd /root/DashVolcano
 
 ⚠️ `git pull` alone does not update the site: `frontend/dist` is not versioned and must be rebuilt. Always deploy with `deploy.sh`.
 
-**New backend dependency:** when `backend/pyproject.toml` changes, `deploy.sh` prints the change. Install it for the production Python, then deploy again:
-
-```bash
-/root/.pyenv/versions/3.10.12/bin/python3 -m pip install "certifi>=2024.2.2"   # example
-./deploy.sh --no-pull
-```
+**New backend dependency:** add it to `backend/pyproject.toml` and run `uv lock` on your machine, then commit both files. `deploy.sh` installs it on the server (`uv sync --locked`).
 
 ### Rollback
 
@@ -224,6 +219,7 @@ cd /root/DashVolcano
 ### First Installation (or Migration to This Setup)
 
 ```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh   # installs uv in /root/.local/bin
 cd /root/DashVolcano
 npm install -g pm2
 pm2 update                              # if `pm2 ls` reports that the in-memory PM2 is out of date
@@ -259,7 +255,7 @@ They are not rotated automatically. To rotate them: `pm2 install pm2-logrotate`.
 ### Troubleshooting
 
 **The API does not start** (`pm2 logs dashvolcano-api`):
-- Missing module: install it for the interpreter shown by `pm2 describe dashvolcano-api`.
+- Missing module: run `cd backend && uv sync --locked`, then `pm2 restart dashvolcano-api`.
 - MongoDB errors: check `.env` at the repository root.
 - Port in use: `ss -ltnp | grep :8000`.
 

@@ -12,10 +12,10 @@ module.exports = {
     {
       name: 'dashvolcano-api',
       // Absolute paths: PM2 started at boot by systemd must not depend on the shell PATH.
-      // The backend runs on the pyenv Python 3.10, where its dependencies are installed.
-      // Not /usr/bin/python3: that one belongs to Ubuntu (apt, do-release-upgrade, lsb_release).
-      script: '/usr/local/bin/uvicorn',
-      interpreter: '/root/.pyenv/versions/3.10.12/bin/python3',
+      // uvicorn of backend/.venv, created by `uv sync` (deploy.sh) with Ubuntu's Python 3.12:
+      // its shebang points to the venv's Python, so PM2 runs it as is.
+      script: `${ROOT}/backend/.venv/bin/uvicorn`,
+      interpreter: 'none',
       args: [
         'backend.main:app',
         // Only nginx talks to the API
