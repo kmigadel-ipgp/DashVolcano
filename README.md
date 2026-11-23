@@ -222,7 +222,9 @@ cd /root/DashVolcano
 curl -LsSf https://astral.sh/uv/install.sh | sh   # installs uv in /root/.local/bin
 cd /root/DashVolcano
 npm install -g pm2
-pm2 update                              # if `pm2 ls` reports that the in-memory PM2 is out of date
+apt install -y nodejs
+systemctl restart pm2-root
+pm2 ls                                  # if `pm2 ls` reports that the in-memory PM2 is out of date
 git pull --ff-only                      # brings deploy.sh and the PM2 configuration
 ./deploy.sh --no-pull
 pm2 startup systemd                     # once: start PM2 at boot
