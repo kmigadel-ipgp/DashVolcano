@@ -3,7 +3,7 @@ name = "dashvolcano-backend"
 version = "3.0.0"
 description = "FastAPI backend for DashVolcano volcanic data visualization"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.109.0",
     "uvicorn[standard]>=0.25.0",
@@ -35,8 +35,8 @@ packages = ["."]
 
 [tool.ruff]
 line-length = 120
-target-version = "py310"
+target-version = "py312"
 
 [tool.black]
 line-length = 120
-target-version = ["py310"]
+target-version = ["py312"]
