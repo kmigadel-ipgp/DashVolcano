@@ -12,7 +12,7 @@ Modern web application for exploring volcanic geochemical data with interactive 
 - `uv` package manager (recommended) or `pip`
 
 **Frontend:**
-- Node.js 20.19+ (or 22.12+)
+- Node.js 24 LTS (see .nvmrc)
 - npm 10+
 
 **System:**
@@ -263,7 +263,7 @@ They are not rotated automatically. To rotate them: `pm2 install pm2-logrotate`.
 
 **Frontend build issues:**
 - Install dependencies: `cd frontend && npm ci`
-- Verify Node.js version: `node --version` (should be 20.19+)
+- Verify Node.js version: `node --version` (should be 24.x)
 
 ---
 
