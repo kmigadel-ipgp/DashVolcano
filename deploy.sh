@@ -18,7 +18,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PYTHON="${PYTHON:-/usr/bin/python3}"
+PYTHON="${PYTHON:-/root/.pyenv/versions/3.10.12/bin/python3}"
 BRANCH="${BRANCH:-main}"
 API_URL="${API_URL:-http://127.0.0.1:8000}"
 ECOSYSTEM="ecosystem.production.config.js"
