@@ -184,7 +184,7 @@ browser ──https──> nginx ──┬── /                      → fron
 
 - **nginx** serves the frontend build and proxies the API. It is the only entry point: the API listens on `127.0.0.1` only.
 - **PM2** runs the API (`ecosystem.production.config.js`) and restarts it if it stops. PM2 itself is started at boot by systemd (`pm2-root` service) and restores the list saved by `pm2 save`.
-- **Python**: the production config uses `/usr/bin/python3` (Python 3.10), where the backend dependencies are installed. No virtual environment.
+- **Python**: the production config uses the pyenv Python 3.10 (`/root/.pyenv/versions/3.10.12/bin/python3`), where the backend dependencies are installed. No virtual environment. Do not use `/usr/bin/python3`: it is Ubuntu's own Python, which apt and `do-release-upgrade` depend on. 
 - **Monitoring**: PM2 restarts the API if it stops (up to 10 failed restarts in a row, then it marks it `errored`). Check with `pm2 ls`.
 - **Configuration**: `/root/DashVolcano/.env` (repository root).
 
@@ -199,7 +199,7 @@ cd /root/DashVolcano
 
 `deploy.sh`:
 1. updates `main` (`git pull --ff-only`; it stops if tracked files have local changes);
-2. checks that the backend imports with `/usr/bin/python3` (catches a missing dependency **before** restarting);
+2. checks that the backend imports with the production Python (`$PYTHON`, see above) (catches a missing dependency **before** restarting);
 3. builds the frontend in `frontend/dist.new` (running `npm ci` first if `package-lock.json` changed), then swaps it with `frontend/dist`; the previous build is kept in `frontend/dist.prev`;
 4. restarts the API from `ecosystem.production.config.js` (changes to that file are applied);
 5. checks `/health` and a database query; **if a check fails, the previous frontend build is restored** and the command to go back to the previous commit is printed;
@@ -212,7 +212,7 @@ cd /root/DashVolcano
 **New backend dependency:** when `backend/pyproject.toml` changes, `deploy.sh` prints the change. Install it for the production Python, then deploy again:
 
 ```bash
-/usr/bin/python3 -m pip install "certifi>=2024.2.2"   # example
+/root/.pyenv/versions/3.10.12/bin/python3 -m pip install "certifi>=2024.2.2"   # example
 ./deploy.sh --no-pull
 ```
 
