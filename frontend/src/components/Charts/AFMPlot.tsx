@@ -6,7 +6,6 @@ import { getRockTypeColor } from '../../utils/colors';
 import { getMatchMethod, getMatchMethodLabel, getVolcanoName } from '../../utils/matchMethod';
 import { useIsPhone, PHONE_LEGEND, chartTitle } from '../../hooks/useIsPhone';
 import { usePlotTheme } from '../../hooks/usePlotTheme';
-
 interface AFMPlotProps {
   /** Array of samples to plot */
   samples: Sample[];
@@ -114,13 +113,13 @@ export const AFMPlot: React.FC<AFMPlotProps> = React.memo(({
   const sampleData = prepareSampleData();
 
   // Material shapes mapping
-  const materialShapes: Record<string, string> = {
+  const materialShapes = {
     'WR': 'circle',
     'GL': 'square',
     'MIN': 'diamond',
     'INC': 'triangle-up',
     'Unknown': 'x',
-  };
+  } as const;
 
   const sampleMarkerOutline = {
     color: '#000000',
@@ -261,7 +260,7 @@ export const AFMPlot: React.FC<AFMPlotProps> = React.memo(({
   // Add sample points grouped by rock_type (colors) and material (shapes)
   for (const [key, samples] of Object.entries(samplesByRockTypeAndMaterial)) {
     const [rockType, material] = key.split('|');
-    const shape = materialShapes[material] || materialShapes['Unknown'];
+    const shape = materialShapes[material as keyof typeof materialShapes] ?? materialShapes.Unknown
     const color = rockTypeColors[rockType] || '#999999';
     const showLegend = !materialLegendShown.has(material);
     
@@ -368,7 +367,7 @@ export const AFMPlot: React.FC<AFMPlotProps> = React.memo(({
                 showarrow: false,
                 font: { size: 10, color: palette.muted },
                 xanchor: 'left' as const,
-                textangle: '60' as const,
+                textangle: 60,
               };
             }),
             // Percentage labels along left edge (FeOT axis, 0-100% bottom to top)
@@ -381,7 +380,7 @@ export const AFMPlot: React.FC<AFMPlotProps> = React.memo(({
                 showarrow: false,
                 font: { size: 10, color: palette.muted },
                 xanchor: 'right' as const,
-                textangle: '-60' as const,
+                textangle: -60,
               };
             }),
             // Field labels
