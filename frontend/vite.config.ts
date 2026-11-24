@@ -35,7 +35,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'deck-gl': ['deck.gl', '@deck.gl/react', '@deck.gl/layers', '@deck.gl/geo-layers'],
+          'deck-gl': ['@deck.gl/core', '@deck.gl/react', '@deck.gl/layers'],
           'plotly': ['plotly.js', 'react-plotly.js'],
         },
       },
