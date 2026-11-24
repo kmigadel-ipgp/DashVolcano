@@ -101,13 +101,13 @@ export const TASPlot: React.FC<TASPlotProps> = React.memo(({
   const sampleData = prepareSampleData();
 
   // Material shapes mapping
-  const materialShapes: Record<string, string> = {
+  const materialShapes = {
     'WR': 'circle',
     'GL': 'square',
     'MIN': 'diamond',
     'INC': 'triangle-up',
     'Unknown': 'x',
-  };
+  } as const;
 
   const sampleMarkerOutline = {
     color: '#000000',
@@ -199,7 +199,7 @@ export const TASPlot: React.FC<TASPlotProps> = React.memo(({
 
     for (const [key, samples] of Object.entries(samplesByRockTypeAndMaterial)) {
       const [rockType, material] = key.split('|');
-      const shape = materialShapes[material] || materialShapes['Unknown'];
+      const shape = materialShapes[material as keyof typeof materialShapes] ?? materialShapes.Unknown
       const color = rockTypeColors[rockType] || '#808080';
       const showLegend = !materialLegendShown.has(material);
       
@@ -260,7 +260,7 @@ export const TASPlot: React.FC<TASPlotProps> = React.memo(({
 
     for (const [key, samples] of Object.entries(samplesByVEIAndMaterial)) {
       const [veiKey, material] = key.split('|');
-      const shape = materialShapes[material] || materialShapes['Unknown'];
+      const shape = materialShapes[material as keyof typeof materialShapes] ?? materialShapes.Unknown
       const color = veiColors[veiKey] || '#808080';
       const showLegend = !materialLegendShown.has(material);
       

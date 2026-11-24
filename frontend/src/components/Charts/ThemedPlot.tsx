@@ -34,7 +34,7 @@ export const ThemedPlot = ({ layout, config, ...props }: PlotParams) => {
   const { mergeLayout: themed } = usePlotTheme();
   const themedLayout = useMemo(() => themed(layout), [themed, layout]);
   const themedConfig = useMemo<Partial<Config>>(() => {
-    const base: Partial<Config> = { displaylogo: false, responsive: true, ...config };
+    const base: Partial<Config> = { displaylogo: false, showSendToCloud: false, responsive: true, ...config };
     if (base.displayModeBar === false) return base;
     const exportButton: ModeBarButtonAny = {
       name: 'downloadPng',
