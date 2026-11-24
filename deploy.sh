@@ -71,7 +71,9 @@ echo "Backend imports with $("$PYTHON" -V 2>&1)."
 # 3. Frontend --------------------------------------------------------------------
 step "Frontend build"
 cd "$ROOT/frontend"
-if [[ ! -d node_modules ]] || { [[ "$PREV" != "$NEW" ]] && ! git diff --quiet "$PREV" "$NEW" -- package-lock.json; }; then
+# node_modules/.package-lock.json is written by npm ci: reinstall whenever the lock file
+# is newer than what is installed (also after a manual git pull)
+if [[ ! -d node_modules ]] || [[ package-lock.json -nt node_modules/.package-lock.json ]]; then
   npm ci
 fi
 rm -rf dist.new
