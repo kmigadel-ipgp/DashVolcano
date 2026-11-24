@@ -119,15 +119,12 @@ npm install
 
 ### 2. Configure Environment (Optional)
 
-The default backend URL is `http://localhost:8000/api`. To change it, or to set a Mapbox token:
-
 ```bash
 cp .env.example .env
 ```
 
 ```bash
 VITE_API_BASE_URL=http://localhost:8000/api
-# VITE_MAPBOX_TOKEN=pk.your_mapbox_token_here
 ```
 
 ### 3. Run the Development Server
