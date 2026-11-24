@@ -97,7 +97,7 @@ frontend/
   - TAS diagram (Total Alkali vs Silica)
   - AFM diagram (Alkali-Iron-Magnesium)
   - VEI bar charts and timelines
-- **Mapbox GL 1.13** - Base map rendering
+- **MapLibre GL 6** - Base map rendering (OpenStreetMap tiles)
 
 ### State Management & Routing
 - **Zustand 5.0** - Lightweight state management
@@ -299,7 +299,6 @@ npm install --save-dev @types/package-name
 - **Check Node version**: `node --version` (should be 20.19+)
 
 ### Map not rendering
-- **Check Mapbox token**: Not required for basic functionality, but may need for satellite layers
 - **Check WebGL support**: Visit `https://get.webgl.org/` to verify browser support
 - **Check console errors**: Look for Deck.gl initialization errors
 

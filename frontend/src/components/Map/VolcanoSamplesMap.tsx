@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import DeckGL from '@deck.gl/react';
-import { Map as MapboxMap } from 'react-map-gl/mapbox';
+import { Map as MaplibreMap } from 'react-map-gl/maplibre';
 import { IconLayer, ScatterplotLayer } from '@deck.gl/layers';
 import { WebMercatorViewport } from '@deck.gl/core';
 import type { MapViewState, PickingInfo } from '@deck.gl/core';
@@ -17,11 +17,11 @@ import {
   type MatchMethod,
 } from '../../utils/matchMethod';
 import { wrapLongitude } from '../../utils/longitude';
-import { MAP_STYLE, MAPBOX_TOKEN, VOLCANO_ICON } from './mapStyle';
+import { MAP_STYLE, VOLCANO_ICON } from './mapStyle';
 import { MapTooltip } from './MapTooltip';
 import { sampleHoverObject, useMapHover } from './mapHover';
 
-import 'mapbox-gl/dist/mapbox-gl.css';
+import 'maplibre-gl/dist/maplibre-gl.css';
 
 interface VolcanoSamplesMapProps {
   volcanoNumber: number;
@@ -135,7 +135,7 @@ export const VolcanoSamplesMap = ({ volcanoNumber, volcanoName, matchMethods, he
       deckTarget.setAttribute('aria-roledescription', 'map');
       deckTarget.setAttribute('aria-label', `Map of ${volcanoName} and its samples. Use the arrow keys to pan and the + and - keys to zoom.`);
     }
-    wrapper?.querySelector('.mapboxgl-canvas')?.setAttribute('tabindex', '-1');
+    wrapper?.querySelector('.maplibregl-canvas')?.setAttribute('tabindex', '-1');
   });
 
   const layers = volcano && center ? [
@@ -196,7 +196,7 @@ export const VolcanoSamplesMap = ({ volcanoNumber, volcanoName, matchMethods, he
               controller={{ dragRotate: false, touchRotate: false }}
               layers={layers}
             >
-              <MapboxMap mapboxAccessToken={MAPBOX_TOKEN} mapStyle={MAP_STYLE} attributionControl={false} />
+              <MaplibreMap mapStyle={MAP_STYLE} attributionControl={false} />
             </DeckGL>
           )}
 

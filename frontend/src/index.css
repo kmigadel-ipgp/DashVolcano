@@ -310,7 +310,7 @@
 /* Basemap in dark theme: same treatment as VolcashDB, applied to the basemap
    canvas only. deck.gl draws data layers on its own canvas, so their colours
    are not filtered. */
-:root[data-theme="dark"] .mapboxgl-canvas {
+:root[data-theme="dark"] .maplibregl-canvas {
   filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9) saturate(0.55);
 }
 
