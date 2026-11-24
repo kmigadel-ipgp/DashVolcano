@@ -72,6 +72,11 @@ def _has_nested_value(document, path):
     current = document
 
     for part in path.split("."):
+        if isinstance(current, list) and part.isdigit():
+            if int(part) >= len(current):
+                return False
+            current = current[int(part)]
+            continue
         if not isinstance(current, dict) or part not in current:
             return False
         current = current[part]
@@ -306,7 +311,30 @@ class FakeAnalyticsDatabase:
         self.samples = FakeAnalyticsSamplesCollection(sample_documents, eruption_documents)
         self.eruptions = FakeAnalyticsEruptionsCollection(eruption_documents)
 
+class _EmptyCursor:
+    def batch_size(self, _size):
+        return self
 
+    def limit(self, _limit):
+        return self
+
+    def __iter__(self):
+        return iter([])
+
+
+class _VolcanoWithoutSamplesDatabase:
+    """A volcano that exists in the volcanoes collection but has no matched sample."""
+
+    class volcanoes:
+        @staticmethod
+        def find_one(query):
+            return {"volcano_number": query["volcano_number"], "volcano_name": "Test volcano"}
+
+    class samples:
+        @staticmethod
+        def find(_query, _projection=None):
+            return _EmptyCursor()
+        
 @contextmanager
 def samples_with_vei_test_client(sample_documents, eruption_documents):
     fake_db = FakeAnalyticsDatabase(sample_documents, eruption_documents)
@@ -376,13 +404,13 @@ class TestTASPolygonsEndpoint:
         assert "axes" in data
     
     def test_tas_polygon_count(self):
-        """Test TAS diagram has 14 rock classification polygons."""
+        """Test TAS diagram has 15 rock classification polygons."""
         response = client.get("/api/analytics/tas-polygons")
         assert response.status_code == 200
         data = response.json()
         
         polygons = data["polygons"]
-        assert len(polygons) == 14  # Standard TAS diagram has 14 regions
+        assert len(polygons) == 15  # Standard TAS diagram has 15 regions
     
     def test_tas_polygon_structure(self):
         """Test each TAS polygon has required fields."""
@@ -836,12 +864,19 @@ class TestChemicalAnalysisEndpoint:
         assert default_wr_count >= limited_wr_count
     
     def test_chemical_analysis_no_samples(self):
-        """Test chemical analysis for volcano with no samples (Afdera 221110)."""
-        response = client.get("/api/volcanoes/221110/chemical-analysis")
+        """A volcano without matched samples returns an empty payload, not an error."""
+        def override_get_database():
+            yield _VolcanoWithoutSamplesDatabase()
+
+        app.dependency_overrides[get_database] = override_get_database
+        try:
+            # Number used by no other test: the endpoint caches its results in memory
+            response = TestClient(app).get("/api/volcanoes/999001/chemical-analysis")
+        finally:
+            app.dependency_overrides.pop(get_database, None)
+
         assert response.status_code == 200
         data = response.json()
-        
-        # Should return gracefully with empty data
         assert data["samples_count"] == 0
         assert data["samples"] == []
     
@@ -874,8 +909,8 @@ class TestAnalyticsCaching:
         # Analytics endpoints should cache for 15 minutes (900s)
         assert "cache-control" in response.headers
         cache_control = response.headers["cache-control"]
-        assert "max-age=900" in cache_control
-        assert "public" in cache_control
+        # tas-polygons is never cached, so the frontend always gets the latest boundaries
+        assert "no-store" in cache_control
     
     def test_afm_boundary_cache_headers(self):
         """Test AFM boundary endpoint has cache headers."""
