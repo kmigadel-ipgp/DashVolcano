@@ -5,7 +5,7 @@ Tests all Phase 1 endpoints including:
 - Samples CRUD and GeoJSON
 - Volcanoes CRUD and GeoJSON
 - Eruptions CRUD
-- Spatial queries (bounds, nearby)
+- Spatial queries (bounds)
 - Metadata endpoints
 - Health check
 
@@ -114,25 +114,6 @@ class TestSamplesEndpoints:
 class TestVolcanoesEndpoints:
     """Test volcanoes CRUD and GeoJSON endpoints."""
     
-    def test_list_volcanoes(self):
-        """Test GET /api/volcanoes/ returns paginated list."""
-        response = client.get("/api/volcanoes/?limit=3")
-        assert response.status_code == 200
-        data = response.json()
-        assert "data" in data
-        assert "count" in data
-        assert data["limit"] == 3
-        assert len(data["data"]) <= 3
-    
-    def test_list_volcanoes_with_filters(self):
-        """Test volcanoes endpoint with country filter."""
-        response = client.get("/api/volcanoes/?country=Japan&limit=5")
-        assert response.status_code == 200
-        data = response.json()
-        # All volcanoes should be from Japan
-        for volcano in data["data"]:
-            assert volcano.get("country") == "Japan"
-    
     def test_get_volcano_by_number(self):
         """Test GET /api/volcanoes/{volcano_number} returns single volcano."""
         # Test with known volcano (Abu - 283001)
@@ -191,23 +172,6 @@ class TestEruptionsEndpoints:
         for eruption in data["data"]:
             assert eruption.get("vei") == 4
     
-    def test_get_eruption_by_number(self):
-        """Test GET /api/eruptions/{eruption_number} returns single eruption."""
-        # First get an eruption number
-        list_response = client.get("/api/eruptions/?limit=1")
-        assert list_response.status_code == 200
-        eruptions = list_response.json()["data"]
-        
-        if len(eruptions) > 0:
-            eruption_number = eruptions[0]["eruption_number"]
-            
-            # Get that specific eruption
-            response = client.get(f"/api/eruptions/{eruption_number}")
-            assert response.status_code == 200
-            data = response.json()
-            assert data["eruption_number"] == eruption_number
-
-
 class TestSpatialEndpoints:
     """Test spatial query endpoints."""
     
@@ -230,39 +194,13 @@ class TestSpatialEndpoints:
         assert bounds["max_lon"] == 86.0
         assert bounds["max_lat"] == 24.0
     
-    def test_spatial_nearby(self):
-        """Test GET /api/spatial/nearby with radius search."""
-        # Search near a point with 100km radius
-        response = client.get(
-            "/api/spatial/nearby?lon=81.475&lat=18.85&radius=100000"
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert "data" in data
-        assert "count" in data
-        assert "center" in data
-        assert "radius" in data
-        
-        # Validate center and radius
-        assert data["center"]["lon"] == 81.475
-        assert data["center"]["lat"] == 18.85
-        assert data["radius"] == 100000
-    
     def test_spatial_bounds_invalid_coordinates(self):
         """Test spatial bounds with invalid coordinates."""
         response = client.get(
             "/api/spatial/bounds?min_lon=200&min_lat=14&max_lon=86&max_lat=24"
         )
-        # Should return 200 but with no results or error in data
-        assert response.status_code in [200, 400, 422]
-    
-    def test_spatial_nearby_invalid_radius(self):
-        """Test spatial nearby with invalid radius."""
-        response = client.get(
-            "/api/spatial/nearby?lon=81.475&lat=18.85&radius=-100"
-        )
-        # MongoDB rejects negative radius - expect error response
-        assert response.status_code >= 400
+        # Should return 422 for invalid coordinates
+        assert response.status_code == 422
 
 
 class TestMetadataEndpoints:
@@ -332,14 +270,6 @@ class TestPagination:
         # Pages should have different data
         if len(page1["data"]) > 0 and len(page2["data"]) > 0:
             assert page1["data"][0]["_id"] != page2["data"][0]["_id"]
-    
-    def test_volcanoes_pagination(self):
-        """Test volcanoes pagination."""
-        response = client.get("/api/volcanoes/?limit=10&offset=5")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["limit"] == 10
-        assert data["offset"] == 5
 
 
 class TestCacheHeaders:

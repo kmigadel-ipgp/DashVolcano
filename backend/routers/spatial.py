@@ -19,10 +19,10 @@ TECTONIC_DATA_PATH = Path(__file__).parent.parent.parent / "data" / "tectonicpla
 @router.get("/bounds")
 async def get_samples_in_bounds(
     db: Database = Depends(get_database),
-    min_lon: float = Query(..., description="Minimum longitude"),
-    min_lat: float = Query(..., description="Minimum latitude"),
-    max_lon: float = Query(..., description="Maximum longitude"),
-    max_lat: float = Query(..., description="Maximum latitude"),
+    min_lon: float = Query(..., ge=-180, le=180, description="Minimum longitude"),
+    min_lat: float = Query(..., ge=-90, le=90, description="Minimum latitude"),
+    max_lon: float = Query(..., ge=-180, le=180, description="Maximum longitude"),
+    max_lat: float = Query(..., ge=-90, le=90, description="Maximum latitude"),
     limit: int = Query(5000, le=10000)
 ):
     """

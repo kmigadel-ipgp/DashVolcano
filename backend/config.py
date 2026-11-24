@@ -3,7 +3,7 @@ Configuration management for DashVolcano API
 Loads settings from environment variables
 """
 from typing import List
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 
 
@@ -55,10 +55,7 @@ class Settings(BaseSettings):
             f"&serverSelectionTimeoutMS=10000"
         )
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
-
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
 # Create global settings instance
 settings = Settings()
