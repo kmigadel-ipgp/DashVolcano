@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import DeckGL from '@deck.gl/react';
-import { Map as MapboxMap } from 'react-map-gl/mapbox';
+import { Map as MaplibreMap } from 'react-map-gl/maplibre';
 import { ScatterplotLayer, GeoJsonLayer, IconLayer } from '@deck.gl/layers';
 import type { LayersList, PickingInfo, ViewStateChangeParameters } from '@deck.gl/core';
 import type { BBox, Sample, Volcano, TectonicBoundary } from '../../types';
@@ -12,9 +12,9 @@ import {
 } from '../../utils/matchMethod';
 import { getWrapCenter, wrapBbox, wrapLine, wrapLongitude } from '../../utils/longitude';
 
-import 'mapbox-gl/dist/mapbox-gl.css';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { usePlotTheme } from '../../hooks/usePlotTheme';
-import { BOUNDARY_TYPES, MAP_STYLE, MAPBOX_TOKEN, VOLCANO_ICON } from './mapStyle';
+import { BOUNDARY_TYPES, MAP_STYLE, VOLCANO_ICON } from './mapStyle';
 import { MapTooltip } from './MapTooltip';
 import { sampleHoverObject, useMapHover } from './mapHover';
 
@@ -92,7 +92,7 @@ const INITIAL_VIEW_STATE: ViewState = {
  * - Tectonic boundaries (GeoJsonLayer)
  * - Click and hover interactions
  * - Performance optimized for 100k+ samples
- * - OSM fallback when no Mapbox token provided
+ * - OpenStreetMap raster basemap (MapLibre GL)
  */
 export const VolcanoMap: React.FC<MapProps> = ({
   samples = [],
@@ -558,7 +558,7 @@ export const VolcanoMap: React.FC<MapProps> = ({
   }, [isDrawingBbox, onMapHover, clearHover]);
 
   // Keyboard access: deck.gl's event target (arrow keys pan, +/- zoom) is the
-  // single, named tab stop of the map; mapbox's own canvas leaves the tab order.
+  // single, named tab stop of the map; maplibre's own canvas leaves the tab order.
   const mapWrapperRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const wrapper = mapWrapperRef.current;
@@ -568,7 +568,7 @@ export const VolcanoMap: React.FC<MapProps> = ({
       deckTarget.setAttribute('aria-roledescription', 'map');
       deckTarget.setAttribute('aria-label', 'Volcano map. Use the arrow keys to pan and the + and - keys to zoom.');
     }
-    wrapper?.querySelector('.mapboxgl-canvas')?.setAttribute('tabindex', '-1');
+    wrapper?.querySelector('.maplibregl-canvas')?.setAttribute('tabindex', '-1');
   });
 
   return (
@@ -583,10 +583,9 @@ export const VolcanoMap: React.FC<MapProps> = ({
         getTooltip={() => null}
         getCursor={() => isDrawingBbox ? 'crosshair' : 'default'}
       >
-        <MapboxMap
-          mapboxAccessToken={MAPBOX_TOKEN}
+        <MaplibreMap
           mapStyle={MAP_STYLE}
-          // Replaced by the attribution below: mapbox-gl's control uses an invalid role="list"
+          // Replaced by the attribution below: consistent with the rest of the site
           attributionControl={false}
         />
       </DeckGL>

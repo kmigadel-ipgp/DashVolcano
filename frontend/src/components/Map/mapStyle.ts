@@ -1,12 +1,9 @@
 import type { ComponentProps } from 'react';
-import type { Map as MapboxMap } from 'react-map-gl/mapbox';
-
-/** Mapbox token (unused by the OSM raster style, kept for react-map-gl) */
-export const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
+import type { Map as MaplibreMap } from 'react-map-gl/maplibre';
 
 // OpenStreetMap raster basemap, as on VolcashDB. In the dark theme the basemap
 // canvas is inverted by CSS (index.css); deck.gl layers are not affected.
-export const MAP_STYLE: ComponentProps<typeof MapboxMap>['mapStyle'] = {
+export const MAP_STYLE: ComponentProps<typeof MaplibreMap>['mapStyle'] = {
   version: 8,
   sources: {
     osm: {
